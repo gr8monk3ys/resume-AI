@@ -1,0 +1,3 @@
+# Dependencies are managed in backend/pyproject.toml.
+# Install with: pip install -e ./backend
+-e ./backend
