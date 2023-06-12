@@ -4,7 +4,6 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain import OpenAI, LLMChain, PromptTemplate
 
-# @st.experimental.singleton
 def load_documents():
     resume_file = st.file_uploader("Upload Resume", type=['txt'])
     job_description_file = st.file_uploader("Upload Job Description", type=['txt'])
@@ -18,7 +17,7 @@ def load_documents():
 
 
 def correct_resume(resume):
-    llm = OpenAI(model_name="gpt-3.5-turbo", temperature=.5)
+    llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.9)
     template = """
     {resume}
 
@@ -31,7 +30,7 @@ def correct_resume(resume):
 
 
 def compare_and_update_resume(resume, job_description):
-    llm = OpenAI(model_name="gpt-3.5-turbo", temperature=.5)
+    llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.9)
     template = """
     Job Description:
     {job_description}
