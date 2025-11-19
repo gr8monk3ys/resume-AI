@@ -1,4 +1,26 @@
+# Core dependencies
 openai
 streamlit
 python-dotenv
 langchain
+langchain-community
+langchain-core
+
+# File parsing
+PyPDF2
+python-docx
+
+# Database
+# SQLite is built into Python, no additional package needed
+
+# Authentication & Security
+bcrypt
+
+# Development & Code Quality (optional - for development only)
+# Uncomment to use code quality tools:
+black>=23.12.0
+pylint>=3.0.0
+isort>=5.13.0
+mypy>=1.8.0
+pre-commit>=3.6.0
+bandit>=1.7.6
