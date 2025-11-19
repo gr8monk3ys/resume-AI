@@ -1,0 +1,25 @@
+Senior Software Engineer
+
+We are seeking an experienced Senior Software Engineer to join our team.
+
+Requirements:
+- 5+ years of software development experience
+- Strong proficiency in Python and JavaScript
+- Experience with cloud platforms (AWS, Azure, or GCP)
+- Knowledge of microservices architecture
+- Experience with CI/CD pipelines
+- Strong problem-solving skills
+- Excellent communication skills
+
+Nice to have:
+- Experience with Docker and Kubernetes
+- Knowledge of React or other modern frontend frameworks
+- Experience leading engineering teams
+- Background in distributed systems
+
+Responsibilities:
+- Design and implement scalable backend services
+- Collaborate with cross-functional teams
+- Mentor junior engineers
+- Participate in code reviews
+- Contribute to technical documentation
