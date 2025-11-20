@@ -1,0 +1,51 @@
+"""
+Profile model for user information.
+"""
+
+from datetime import datetime, timezone
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+class Profile(Base):
+    """User profile with personal information."""
+
+    __tablename__ = "profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    name = Column(String, nullable=False, default="New User")
+    email = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    linkedin = Column(String, nullable=True)
+    github = Column(String, nullable=True)
+    portfolio = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Relationships
+    user = relationship("User", back_populates="profile")
+    resumes = relationship("Resume", back_populates="profile", cascade="all, delete-orphan")
+    job_applications = relationship(
+        "JobApplication", back_populates="profile", cascade="all, delete-orphan"
+    )
+    cover_letters = relationship(
+        "CoverLetter", back_populates="profile", cascade="all, delete-orphan"
+    )
+    journal_entries = relationship(
+        "CareerJournalEntry", back_populates="profile", cascade="all, delete-orphan"
+    )
+    interview_events = relationship(
+        "InterviewEvent", back_populates="profile", cascade="all, delete-orphan"
+    )
+    star_stories = relationship("StarStory", back_populates="profile", cascade="all, delete-orphan")
+    company_research = relationship(
+        "CompanyResearch", back_populates="profile", cascade="all, delete-orphan"
+    )
