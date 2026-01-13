@@ -3,16 +3,33 @@ from typing import Optional
 from dotenv import load_dotenv
 from utils.cache import cached
 
-# Use modern LangChain imports to avoid deprecation warnings
+# Use modern LangChain imports
 try:
-    from langchain_community.llms import OpenAI
-    from langchain.chains import LLMChain
+    from langchain_openai import OpenAI
+except ImportError:
+    try:
+        from langchain_community.llms import OpenAI
+    except ImportError:
+        from langchain.llms import OpenAI
+
+try:
     from langchain_core.prompts import PromptTemplate
 except ImportError:
-    # Fallback to legacy imports if modern ones not available
-    from langchain import OpenAI, LLMChain, PromptTemplate
+    from langchain.prompts import PromptTemplate
+
+try:
+    from langchain_core.output_parsers import StrOutputParser
+except ImportError:
+    StrOutputParser = None
 
 load_dotenv()
+
+# Import timeout config with fallback
+try:
+    from config import OPENAI_REQUEST_TIMEOUT
+except ImportError:
+    OPENAI_REQUEST_TIMEOUT = 60
+
 
 class LLMService:
     """Service for managing LLM interactions."""
@@ -24,10 +41,43 @@ class LLMService:
         Args:
             model_name: OpenAI model to use
             temperature: Temperature for response generation
+
+        Raises:
+            ValueError: If OPENAI_API_KEY environment variable is not set
         """
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY environment variable is not set. "
+                "Please add it to your .env file: OPENAI_API_KEY=your_key_here"
+            )
+
         self.model_name = model_name
         self.temperature = temperature
-        self.llm = OpenAI(model_name=model_name, temperature=temperature)
+        self.llm = OpenAI(
+            model_name=model_name,
+            temperature=temperature,
+            request_timeout=OPENAI_REQUEST_TIMEOUT
+        )
+
+    def _invoke_chain(self, template: str, **kwargs) -> str:
+        """
+        Invoke a prompt chain with the given template and variables.
+
+        Args:
+            template: The prompt template string
+            **kwargs: Variables to substitute in the template
+
+        Returns:
+            The LLM response as a string
+        """
+        prompt = PromptTemplate.from_template(template)
+        if StrOutputParser is not None:
+            chain = prompt | self.llm | StrOutputParser()
+        else:
+            chain = prompt | self.llm
+        result = chain.invoke(kwargs)
+        return result if isinstance(result, str) else str(result)
 
     @cached(category='llm_grammar', ttl_seconds=7200)
     def correct_grammar(self, text: str) -> str:
@@ -48,9 +98,7 @@ class LLMService:
         You are an expert proofreader. Please correct any grammatical errors in the text above.
         Maintain the original formatting and structure. Only fix grammar, spelling, and punctuation.
         """
-        prompt_template = PromptTemplate(input_variables=["text"], template=template)
-        chain = LLMChain(llm=self.llm, prompt=prompt_template, verbose=False)
-        return chain.predict(text=text)
+        return self._invoke_chain(template, text=text)
 
     @cached(category='llm_resume_opt', ttl_seconds=3600)
     def optimize_resume(self, resume: str, job_description: str) -> str:
@@ -81,12 +129,7 @@ class LLMService:
 
         Provide your suggestions in a clear, actionable format.
         """
-        prompt_template = PromptTemplate(
-            input_variables=["job_description", "resume"],
-            template=template
-        )
-        chain = LLMChain(llm=self.llm, prompt=prompt_template, verbose=False)
-        return chain.predict(job_description=job_description, resume=resume)
+        return self._invoke_chain(template, job_description=job_description, resume=resume)
 
     def generate_cover_letter(
         self,
@@ -133,12 +176,8 @@ class LLMService:
 
         Generate the complete cover letter:
         """
-        prompt_template = PromptTemplate(
-            input_variables=["resume", "job_description", "company_name", "position", "name_line"],
-            template=template
-        )
-        chain = LLMChain(llm=self.llm, prompt=prompt_template, verbose=False)
-        return chain.predict(
+        return self._invoke_chain(
+            template,
             resume=resume,
             job_description=job_description,
             company_name=company_name,
@@ -183,12 +222,8 @@ class LLMService:
 
         Generate the email (include subject line):
         """
-        prompt_template = PromptTemplate(
-            input_variables=["recipient_name", "company_name", "purpose", "background_text"],
-            template=template
-        )
-        chain = LLMChain(llm=self.llm, prompt=prompt_template, verbose=False)
-        return chain.predict(
+        return self._invoke_chain(
+            template,
             recipient_name=recipient_name,
             company_name=company_name,
             purpose=purpose,
@@ -217,12 +252,229 @@ class LLMService:
 
         Enhanced achievement:
         """
-        prompt_template = PromptTemplate(input_variables=["achievement"], template=template)
-        chain = LLMChain(llm=self.llm, prompt=prompt_template, verbose=False)
-        return chain.predict(achievement=achievement)
+        return self._invoke_chain(template, achievement=achievement)
+
+    @cached(category='llm_tailor', ttl_seconds=3600)
+    def tailor_resume(self, resume: str, job_description: str, company_name: str, position: str) -> str:
+        """
+        Generate a tailored version of the resume for a specific job.
+
+        Unlike optimize_resume which gives suggestions, this actually rewrites
+        the resume to better match the job description.
+
+        Args:
+            resume: Current resume text
+            job_description: Target job description
+            company_name: Target company name
+            position: Target position title
+
+        Returns:
+            Tailored resume text
+        """
+        template = """
+        You are an expert resume writer specializing in ATS optimization.
+
+        ORIGINAL RESUME:
+        {resume}
+
+        TARGET JOB:
+        Company: {company_name}
+        Position: {position}
+
+        JOB DESCRIPTION:
+        {job_description}
+
+        TASK: Rewrite the resume to be tailored for this specific job while maintaining truthfulness.
+
+        Guidelines:
+        1. Keep all factual information (dates, companies, titles) exactly the same
+        2. Reorder and emphasize experiences most relevant to the job
+        3. Incorporate keywords from the job description naturally
+        4. Quantify achievements where possible
+        5. Use action verbs that match the job requirements
+        6. Ensure ATS-friendly formatting (no tables, graphics, or special characters)
+        7. Keep the same general structure but optimize content
+        8. Make the summary/objective specific to this role
+
+        Output the complete tailored resume:
+        """
+        return self._invoke_chain(
+            template,
+            resume=resume,
+            job_description=job_description,
+            company_name=company_name,
+            position=position
+        )
+
+    def answer_application_question(
+        self,
+        question: str,
+        resume: str,
+        job_description: str,
+        question_type: str = "general"
+    ) -> str:
+        """
+        Generate an answer for common job application questions.
+
+        Args:
+            question: The application question to answer
+            resume: User's resume for context
+            job_description: Job description for context
+            question_type: Type of question (general, behavioral, motivation, salary)
+
+        Returns:
+            Generated answer
+        """
+        type_instructions = {
+            "general": "Provide a clear, concise answer that highlights relevant experience.",
+            "behavioral": "Use the STAR method (Situation, Task, Action, Result) to structure the answer.",
+            "motivation": "Express genuine enthusiasm while connecting your background to the role.",
+            "salary": "Provide a diplomatic response that shows flexibility while knowing your worth.",
+            "weakness": "Give an honest weakness with clear steps you're taking to improve.",
+            "strength": "Highlight a relevant strength with specific examples from your experience."
+        }
+
+        instruction = type_instructions.get(question_type, type_instructions["general"])
+
+        template = """
+        You are helping a job applicant answer an application question.
+
+        APPLICANT'S RESUME:
+        {resume}
+
+        JOB DESCRIPTION:
+        {job_description}
+
+        APPLICATION QUESTION:
+        {question}
+
+        INSTRUCTIONS:
+        {instruction}
+
+        Guidelines:
+        - Be authentic and professional
+        - Keep the answer concise (150-250 words unless the question requires more)
+        - Use specific examples from the resume when relevant
+        - Align the answer with the job requirements
+        - Avoid generic responses - make it personal and specific
+
+        ANSWER:
+        """
+        return self._invoke_chain(
+            template,
+            question=question,
+            resume=resume,
+            job_description=job_description,
+            instruction=instruction
+        )
+
+    def generate_interview_answer(
+        self,
+        question: str,
+        resume: str,
+        job_description: str
+    ) -> str:
+        """
+        Generate a sample interview answer using STAR method.
+
+        Args:
+            question: Interview question
+            resume: User's resume
+            job_description: Job description
+
+        Returns:
+            Sample answer using STAR method
+        """
+        template = """
+        You are an interview coach helping prepare for a job interview.
+
+        CANDIDATE'S RESUME:
+        {resume}
+
+        JOB THEY'RE INTERVIEWING FOR:
+        {job_description}
+
+        INTERVIEW QUESTION:
+        {question}
+
+        Generate a strong answer using the STAR method:
+        - Situation: Set the context
+        - Task: Describe the challenge or responsibility
+        - Action: Explain what you did
+        - Result: Share the outcome with metrics if possible
+
+        Make the answer specific, using details from the resume where applicable.
+        Keep it conversational but professional (about 200-300 words).
+
+        SAMPLE ANSWER:
+        """
+        return self._invoke_chain(
+            template,
+            question=question,
+            resume=resume,
+            job_description=job_description
+        )
+
+    @cached(category='llm_keyword_suggestions', ttl_seconds=3600)
+    def suggest_keyword_additions(
+        self,
+        resume: str,
+        job_description: str,
+        missing_keywords: list
+    ) -> str:
+        """
+        Generate AI-powered suggestions for naturally incorporating missing keywords.
+
+        Args:
+            resume: User's current resume
+            job_description: Target job description
+            missing_keywords: List of missing keywords to incorporate
+
+        Returns:
+            Detailed suggestions for adding keywords naturally
+        """
+        keywords_str = ", ".join(missing_keywords[:15])
+
+        template = """
+        You are an expert resume writer and ATS optimization specialist.
+
+        CURRENT RESUME:
+        {resume}
+
+        TARGET JOB DESCRIPTION:
+        {job_description}
+
+        MISSING KEYWORDS TO ADD:
+        {keywords}
+
+        TASK: Provide specific, actionable suggestions for naturally incorporating these missing keywords into the resume.
+
+        For each major keyword or group of related keywords:
+        1. Identify WHERE in the resume it should be added (which section, which bullet point)
+        2. Provide an EXAMPLE of how to word it naturally
+        3. Explain WHY this placement makes sense
+
+        Important guidelines:
+        - Keywords should flow naturally, not feel forced
+        - Only suggest adding keywords the candidate can truthfully claim
+        - Suggest rephrasing existing bullet points when possible
+        - For technical skills, recommend the Skills section first
+        - For soft skills, show how to demonstrate them through achievements
+        - Keep suggestions realistic and professional
+
+        Provide 5-7 specific suggestions:
+        """
+        return self._invoke_chain(
+            template,
+            resume=resume,
+            job_description=job_description,
+            keywords=keywords_str
+        )
+
 
 # Singleton instance
 _llm_service = None
+
 
 def get_llm_service() -> LLMService:
     """Get or create the LLM service singleton."""
