@@ -92,7 +92,7 @@ with col2:
 
         api_key = os.getenv('OPENAI_API_KEY')
         if api_key and api_key.startswith('sk-'):
-            show_status("OpenAI API Key", True, f"Key found ({api_key[:10]}...)")
+            show_status("OpenAI API Key", True, "Key configured")
         else:
             show_status("OpenAI API Key", False, "Key not found or invalid")
     except Exception as e:
@@ -157,11 +157,12 @@ try:
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
-        # Get counts
+        # Get counts - use whitelist to prevent SQL injection
         stats = {}
-        tables = ['profiles', 'resumes', 'job_applications', 'cover_letters', 'career_journal']
+        ALLOWED_TABLES = {'profiles', 'resumes', 'job_applications', 'cover_letters', 'career_journal'}
 
-        for table in tables:
+        for table in ALLOWED_TABLES:
+            # Table name is from whitelist, safe to use in query
             cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
             stats[table] = cursor.fetchone()['count']
 

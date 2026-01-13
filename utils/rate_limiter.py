@@ -1,6 +1,8 @@
 """
 Rate limiting utilities to prevent API abuse
 """
+from __future__ import annotations
+
 import time
 from collections import defaultdict
 from typing import Dict, Optional

@@ -12,6 +12,7 @@ from models.database import get_db_connection
 from models.auth_database import init_auth_database
 from utils.rate_limiter import check_rate_limit
 from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from config import MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH
 
 st.set_page_config(page_title="Resume Optimizer", page_icon="📄", layout="wide")
 
@@ -62,6 +63,16 @@ with tab1:
                 try:
                     resume_text = extract_text_from_upload(resume_file)
                     job_desc_text = extract_text_from_upload(job_desc_file) if job_desc_file else ""
+
+                    # Validate input lengths
+                    if len(resume_text) > MAX_RESUME_LENGTH:
+                        st.error(f"❌ Resume is too large ({len(resume_text):,} characters). "
+                                f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters.")
+                        st.stop()
+                    if job_desc_text and len(job_desc_text) > MAX_JOB_DESCRIPTION_LENGTH:
+                        st.error(f"❌ Job description is too large ({len(job_desc_text):,} characters). "
+                                f"Maximum allowed is {MAX_JOB_DESCRIPTION_LENGTH:,} characters.")
+                        st.stop()
 
                     # Perform ATS analysis
                     analysis = ats_analyzer.analyze_resume(resume_text, job_desc_text)
@@ -172,6 +183,16 @@ with tab2:
                     resume_text = extract_text_from_upload(resume_file_opt)
                     job_desc_text = extract_text_from_upload(job_desc_file_opt)
 
+                    # Validate input lengths
+                    if len(resume_text) > MAX_RESUME_LENGTH:
+                        st.error(f"❌ Resume is too large ({len(resume_text):,} characters). "
+                                f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters.")
+                        st.stop()
+                    if len(job_desc_text) > MAX_JOB_DESCRIPTION_LENGTH:
+                        st.error(f"❌ Job description is too large ({len(job_desc_text):,} characters). "
+                                f"Maximum allowed is {MAX_JOB_DESCRIPTION_LENGTH:,} characters.")
+                        st.stop()
+
                     # Get grammar correction
                     st.subheader("1️⃣ Grammar Check")
                     with st.spinner("Checking grammar..."):
@@ -214,21 +235,26 @@ with tab3:
 
     if st.button("💾 Save Resume", type="primary"):
         if version_name and resume_content:
-            try:
-                profile = get_current_profile()
+            # Validate input length
+            if len(resume_content) > MAX_RESUME_LENGTH:
+                st.error(f"❌ Resume content is too large ({len(resume_content):,} characters). "
+                        f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters.")
+            else:
+                try:
+                    profile = get_current_profile()
 
-                with get_db_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT INTO resumes (profile_id, version_name, content)
-                        VALUES (?, ?, ?)
-                    ''', (profile['id'], version_name, resume_content))
-                    conn.commit()
+                    with get_db_connection() as conn:
+                        cursor = conn.cursor()
+                        cursor.execute('''
+                            INSERT INTO resumes (profile_id, version_name, content)
+                            VALUES (?, ?, ?)
+                        ''', (profile['id'], version_name, resume_content))
+                        conn.commit()
 
-                st.success(f"✅ Resume version '{version_name}' saved successfully!")
+                    st.success(f"✅ Resume version '{version_name}' saved successfully!")
 
-            except Exception as e:
-                st.error(f"Error saving resume: {str(e)}")
+                except Exception as e:
+                    st.error(f"Error saving resume: {str(e)}")
         else:
             st.warning("Please provide both version name and resume content.")
 

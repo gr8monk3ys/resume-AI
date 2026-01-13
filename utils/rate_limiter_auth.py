@@ -2,15 +2,35 @@
 Authentication rate limiting to prevent brute force attacks.
 
 This module tracks failed login attempts and implements:
-- Rate limiting: Max 5 attempts per 15 minutes per username
-- Account lockout: Account locked after 10 total failed attempts
+- Rate limiting: Configurable max attempts per time window per username
+- Account lockout: Account locked after configurable total failed attempts
 - Cooldown periods: Exponential backoff for repeated failures
+
+Configuration (via config.py or environment variables):
+- AUTH_MAX_RECENT_FAILURES: Max failures per window (default: 5)
+- AUTH_RATE_LIMIT_WINDOW_MINUTES: Window in minutes (default: 15)
+- AUTH_LOCKOUT_THRESHOLD: Total failures before lockout (default: 10)
+- AUTH_CLEANUP_DAYS: Days to keep failed attempts (default: 30)
 """
 
 import sqlite3
 import os
 from datetime import datetime, timedelta
 from contextlib import contextmanager
+
+# Import config settings with fallbacks
+try:
+    from config import (
+        AUTH_MAX_RECENT_FAILURES,
+        AUTH_RATE_LIMIT_WINDOW_MINUTES,
+        AUTH_LOCKOUT_THRESHOLD,
+        AUTH_CLEANUP_DAYS
+    )
+except ImportError:
+    AUTH_MAX_RECENT_FAILURES = 5
+    AUTH_RATE_LIMIT_WINDOW_MINUTES = 15
+    AUTH_LOCKOUT_THRESHOLD = 10
+    AUTH_CLEANUP_DAYS = 30
 
 # Use same auth database
 AUTH_DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'auth.db')
@@ -212,8 +232,8 @@ def check_login_allowed(username: str) -> tuple:
     Check if a login attempt is allowed for a username.
 
     Implements:
-    - Account lockout check (10+ total failures = permanent lock)
-    - Rate limiting (5 attempts per 15 minutes)
+    - Account lockout check (AUTH_LOCKOUT_THRESHOLD+ total failures = permanent lock)
+    - Rate limiting (AUTH_MAX_RECENT_FAILURES attempts per AUTH_RATE_LIMIT_WINDOW_MINUTES)
 
     Args:
         username: Username attempting to log in
@@ -226,19 +246,19 @@ def check_login_allowed(username: str) -> tuple:
     if is_locked:
         return (False, f"Account locked: {lock_reason}. Contact admin to unlock.", 0)
 
-    # Check total failures (trigger permanent lock if >= 10)
+    # Check total failures (trigger permanent lock if >= threshold)
     total_failures = get_total_failed_attempts(username)
-    if total_failures >= 10:
-        lock_account(username, "10+ failed login attempts")
+    if total_failures >= AUTH_LOCKOUT_THRESHOLD:
+        lock_account(username, f"{AUTH_LOCKOUT_THRESHOLD}+ failed login attempts")
         return (False, "Account locked due to too many failed attempts. Contact admin.", 0)
 
-    # Check recent failures (rate limiting: 5 per 15 minutes)
-    recent_failures = get_recent_failed_attempts(username, minutes=15)
-    if recent_failures >= 5:
+    # Check recent failures (rate limiting)
+    recent_failures = get_recent_failed_attempts(username, minutes=AUTH_RATE_LIMIT_WINDOW_MINUTES)
+    if recent_failures >= AUTH_MAX_RECENT_FAILURES:
         # Calculate wait time
         with get_auth_db_connection() as conn:
             cursor = conn.cursor()
-            cutoff_time = datetime.now() - timedelta(minutes=15)
+            cutoff_time = datetime.now() - timedelta(minutes=AUTH_RATE_LIMIT_WINDOW_MINUTES)
             cursor.execute('''
                 SELECT attempt_time
                 FROM failed_login_attempts
@@ -250,7 +270,7 @@ def check_login_allowed(username: str) -> tuple:
             oldest_attempt = cursor.fetchone()
             if oldest_attempt:
                 oldest_time = datetime.fromisoformat(oldest_attempt['attempt_time'])
-                wait_until = oldest_time + timedelta(minutes=15)
+                wait_until = oldest_time + timedelta(minutes=AUTH_RATE_LIMIT_WINDOW_MINUTES)
                 wait_seconds = int((wait_until - datetime.now()).total_seconds())
                 wait_minutes = wait_seconds // 60
 
@@ -261,13 +281,15 @@ def check_login_allowed(username: str) -> tuple:
     # Login allowed
     return (True, "", 0)
 
-def cleanup_old_attempts(days: int = 30):
+def cleanup_old_attempts(days: int = None):
     """
     Clean up old failed login attempts (housekeeping).
 
     Args:
-        days: Remove attempts older than this many days
+        days: Remove attempts older than this many days (default: AUTH_CLEANUP_DAYS)
     """
+    if days is None:
+        days = AUTH_CLEANUP_DAYS
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
         cutoff_time = datetime.now() - timedelta(days=days)

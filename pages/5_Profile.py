@@ -1,6 +1,8 @@
 import streamlit as st
 import sys
 import os
+import csv
+import io
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -167,6 +169,12 @@ with tab1:
                             WHERE id = ?
                         ''', (name, email, phone, linkedin, github, portfolio, profile['id']))
                         conn.commit()
+
+                        # Refresh session state with updated profile
+                        cursor.execute('SELECT * FROM profiles WHERE id = ?', (profile['id'],))
+                        updated_profile = cursor.fetchone()
+                        if updated_profile:
+                            st.session_state.profile = dict(updated_profile)
 
                     st.success("✅ Profile updated successfully!")
                     st.rerun()
@@ -454,12 +462,22 @@ with tab4:
                     apps = cursor.fetchall()
 
                 if apps:
-                    # Create CSV
-                    csv_lines = ["Company,Position,Status,Application Date,Deadline,Location,Job URL,Notes"]
+                    # Create CSV using csv module for proper escaping
+                    output = io.StringIO()
+                    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+                    writer.writerow(["Company", "Position", "Status", "Application Date", "Deadline", "Location", "Job URL", "Notes"])
                     for app in apps:
-                        csv_lines.append(f'"{app["company"]}","{app["position"]}","{app["status"]}","{app["application_date"]}","{app["deadline"] or ""}","{app["location"] or ""}","{app["job_url"] or ""}","{app["notes"] or ""}"')
-
-                    csv_content = '\n'.join(csv_lines)
+                        writer.writerow([
+                            app["company"],
+                            app["position"],
+                            app["status"],
+                            app["application_date"],
+                            app["deadline"] or "",
+                            app["location"] or "",
+                            app["job_url"] or "",
+                            app["notes"] or ""
+                        ])
+                    csv_content = output.getvalue()
 
                     st.download_button(
                         label="Download CSV",
