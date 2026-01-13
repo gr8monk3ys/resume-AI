@@ -8,6 +8,12 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.auth import init_session_state, login, logout, is_authenticated, register_user, get_current_user
 from models.auth_database import init_auth_database
 
+# Import config with fallback
+try:
+    from config import SHOW_DEMO_CREDENTIALS
+except ImportError:
+    SHOW_DEMO_CREDENTIALS = True
+
 st.set_page_config(page_title="Login", page_icon="🔐", layout="centered")
 
 # Initialize databases
@@ -63,7 +69,8 @@ with tab1:
                         st.error(f"❌ {message}")
 
     st.markdown("---")
-    st.info("💡 **Demo Account:** username: `demo`, password: `demo123`")
+    if SHOW_DEMO_CREDENTIALS:
+        st.info("💡 **Demo Account:** username: `demo`, password: `demo123`")
     st.caption("Don't have an account? Use the **Register** tab above")
 
 with tab2:

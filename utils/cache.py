@@ -75,6 +75,19 @@ def get_cache_db_connection():
         conn.close()
 
 
+def _make_serializable(obj):
+    """
+    Convert an object to a JSON-serializable form.
+    For non-serializable objects, use type name and id.
+    """
+    try:
+        json.dumps(obj)
+        return obj
+    except (TypeError, ValueError):
+        # For non-serializable objects (like self), use type name
+        return f"<{type(obj).__name__}:{id(obj)}>"
+
+
 def generate_cache_key(*args, **kwargs) -> str:
     """
     Generate a cache key from function arguments.
@@ -90,10 +103,14 @@ def generate_cache_key(*args, **kwargs) -> str:
         >>> key = generate_cache_key("resume text", job_id=123)
         'a1b2c3d4e5f6...'
     """
+    # Convert arguments to serializable form
+    serializable_args = tuple(_make_serializable(arg) for arg in args)
+    serializable_kwargs = {k: _make_serializable(v) for k, v in kwargs.items()}
+
     # Create a string representation of all arguments
     key_data = {
-        'args': args,
-        'kwargs': kwargs
+        'args': serializable_args,
+        'kwargs': serializable_kwargs
     }
 
     # Convert to JSON string (sorted for consistency)
