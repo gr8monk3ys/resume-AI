@@ -45,11 +45,8 @@ def init_database():
         )
     ''')
 
-    # Create index for faster user_id lookups (only if not exists)
-    try:
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON profiles(user_id)')
-    except Exception:
-        pass  # Index might already exist
+    # Create indexes for faster lookups
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id)')
 
     # Resumes table
     cursor.execute('''
@@ -62,7 +59,7 @@ def init_database():
             keywords TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (profile_id) REFERENCES profiles(id)
+            FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
         )
     ''')
 
@@ -82,7 +79,7 @@ def init_database():
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (profile_id) REFERENCES profiles(id)
+            FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
         )
     ''')
 
@@ -97,7 +94,7 @@ def init_database():
             tags TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (profile_id) REFERENCES profiles(id)
+            FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
         )
     ''')
 
@@ -110,10 +107,72 @@ def init_database():
             content TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (profile_id) REFERENCES profiles(id),
-            FOREIGN KEY (job_application_id) REFERENCES job_applications(id)
+            FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+            FOREIGN KEY (job_application_id) REFERENCES job_applications(id) ON DELETE SET NULL
         )
     ''')
+
+    # Job Offers table (for offer comparison)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS job_offers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id INTEGER,
+            job_application_id INTEGER,
+            company TEXT NOT NULL,
+            position TEXT NOT NULL,
+            base_salary INTEGER,
+            bonus_amount INTEGER,
+            bonus_type TEXT,
+            equity_value INTEGER,
+            equity_type TEXT,
+            signing_bonus INTEGER,
+            pto_days INTEGER,
+            remote_policy TEXT,
+            health_benefits TEXT,
+            retirement_match INTEGER,
+            other_benefits TEXT,
+            start_date DATE,
+            offer_deadline DATE,
+            location TEXT,
+            commute_time INTEGER,
+            notes TEXT,
+            status TEXT DEFAULT 'Pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+            FOREIGN KEY (job_application_id) REFERENCES job_applications(id) ON DELETE SET NULL
+        )
+    ''')
+
+    # Interview Events table (for timeline tracking)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS interview_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            job_application_id INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            event_date DATE,
+            event_time TEXT,
+            interviewer_name TEXT,
+            interviewer_title TEXT,
+            interviewer_email TEXT,
+            notes TEXT,
+            follow_up_date DATE,
+            follow_up_done INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (job_application_id) REFERENCES job_applications(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # Create indexes for frequently queried columns
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_resumes_profile_id ON resumes(profile_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_job_applications_profile_id ON job_applications(profile_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_job_applications_status ON job_applications(status)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_career_journal_profile_id ON career_journal(profile_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_cover_letters_profile_id ON cover_letters(profile_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_interview_events_job_id ON interview_events(job_application_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_interview_events_follow_up ON interview_events(follow_up_date)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_job_offers_profile_id ON job_offers(profile_id)')
 
     conn.commit()
     conn.close()
@@ -153,6 +212,9 @@ def get_or_create_profile_for_user(user_id: int, name: str = "New User", email: 
     """
     Get or create a profile for a specific user.
 
+    Uses INSERT OR IGNORE to avoid race conditions when multiple requests
+    try to create a profile for the same user simultaneously.
+
     Args:
         user_id: The authenticated user's ID
         name: Default name if creating new profile
@@ -163,17 +225,18 @@ def get_or_create_profile_for_user(user_id: int, name: str = "New User", email: 
     """
     with get_db_connection() as conn:
         cursor = conn.cursor()
+
+        # Use INSERT OR IGNORE to handle race conditions atomically
+        # If user_id already exists (UNIQUE constraint), this is a no-op
+        cursor.execute('''
+            INSERT OR IGNORE INTO profiles (user_id, name, email)
+            VALUES (?, ?, ?)
+        ''', (user_id, name, email))
+        conn.commit()
+
+        # Now fetch the profile (either existing or newly created)
         cursor.execute('SELECT * FROM profiles WHERE user_id = ?', (user_id,))
         profile = cursor.fetchone()
-
-        if not profile:
-            cursor.execute('''
-                INSERT INTO profiles (user_id, name, email)
-                VALUES (?, ?, ?)
-            ''', (user_id, name, email))
-            conn.commit()
-            cursor.execute('SELECT * FROM profiles WHERE id = ?', (cursor.lastrowid,))
-            profile = cursor.fetchone()
 
         return dict(profile)
 
