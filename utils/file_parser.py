@@ -1,5 +1,17 @@
 import io
 from typing import Optional
+from contextlib import contextmanager
+
+
+@contextmanager
+def _bytes_io_context(data: bytes):
+    """Context manager for BytesIO to ensure proper cleanup."""
+    buffer = io.BytesIO(data)
+    try:
+        yield buffer
+    finally:
+        buffer.close()
+
 
 def parse_txt(file_content: bytes) -> str:
     """Parse text file content."""
@@ -8,39 +20,56 @@ def parse_txt(file_content: bytes) -> str:
     except UnicodeDecodeError:
         return file_content.decode('latin-1')
 
+
 def parse_pdf(file_content: bytes) -> str:
-    """Parse PDF file content."""
+    """Parse PDF file content with proper resource cleanup."""
     try:
         import PyPDF2
-        pdf_file = io.BytesIO(file_content)
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
 
-        text = []
-        for page in pdf_reader.pages:
-            text.append(page.extract_text())
+        with _bytes_io_context(file_content) as pdf_file:
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
 
-        return '\n'.join(text)
+            text = []
+            for page in pdf_reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text.append(page_text)
+
+            return '\n'.join(text)
     except ImportError:
         raise ImportError("PyPDF2 is required to parse PDF files. Install it with: pip install PyPDF2")
     except Exception as e:
         raise ValueError(f"Error parsing PDF file: {str(e)}")
 
+
 def parse_docx(file_content: bytes) -> str:
-    """Parse DOCX file content."""
+    """Parse DOCX file content with proper resource cleanup."""
     try:
         from docx import Document
-        docx_file = io.BytesIO(file_content)
-        doc = Document(docx_file)
 
-        text = []
-        for paragraph in doc.paragraphs:
-            text.append(paragraph.text)
+        with _bytes_io_context(file_content) as docx_file:
+            doc = Document(docx_file)
 
-        return '\n'.join(text)
+            text = []
+            for paragraph in doc.paragraphs:
+                if paragraph.text:
+                    text.append(paragraph.text)
+
+            return '\n'.join(text)
     except ImportError:
         raise ImportError("python-docx is required to parse DOCX files. Install it with: pip install python-docx")
     except Exception as e:
         raise ValueError(f"Error parsing DOCX file: {str(e)}")
+
+
+# Supported file types and their parsers
+# Note: .doc (legacy Word format) is NOT supported - python-docx only supports .docx
+SUPPORTED_PARSERS = {
+    'txt': parse_txt,
+    'pdf': parse_pdf,
+    'docx': parse_docx,
+}
+
 
 def parse_file(file_content: bytes, file_type: str) -> str:
     """
@@ -55,19 +84,24 @@ def parse_file(file_content: bytes, file_type: str) -> str:
 
     Raises:
         ValueError: If file type is not supported
+
+    Note:
+        Legacy .doc files (Microsoft Word 97-2003) are NOT supported.
+        Please convert to .docx format before uploading.
     """
     file_type = file_type.lower().strip('.')
 
-    parsers = {
-        'txt': parse_txt,
-        'pdf': parse_pdf,
-        'docx': parse_docx,
-        'doc': parse_docx
-    }
+    # Provide helpful error for legacy .doc files
+    if file_type == 'doc':
+        raise ValueError(
+            "Legacy .doc format (Word 97-2003) is not supported. "
+            "Please save your document as .docx (Word 2007+) and try again."
+        )
 
-    parser = parsers.get(file_type)
+    parser = SUPPORTED_PARSERS.get(file_type)
     if not parser:
-        raise ValueError(f"Unsupported file type: {file_type}. Supported types: {', '.join(parsers.keys())}")
+        supported = ', '.join(SUPPORTED_PARSERS.keys())
+        raise ValueError(f"Unsupported file type: {file_type}. Supported types: {supported}")
 
     return parser(file_content)
 

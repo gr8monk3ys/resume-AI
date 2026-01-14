@@ -18,26 +18,33 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 # Create logger
 logger = logging.getLogger('resuboost_ai')
-logger.setLevel(logging.INFO)
 
-# File handler for all logs
-file_handler = logging.FileHandler(
-    os.path.join(LOG_DIR, f'app_{datetime.now().strftime("%Y%m%d")}.log')
-)
-file_handler.setLevel(logging.INFO)
-file_formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-file_handler.setFormatter(file_formatter)
-logger.addHandler(file_handler)
+# Only add handlers if they haven't been added yet (prevents duplicates on module reload)
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
 
-# Error file handler for errors and above
-error_handler = logging.FileHandler(
-    os.path.join(LOG_DIR, f'errors_{datetime.now().strftime("%Y%m%d")}.log')
-)
-error_handler.setLevel(logging.ERROR)
-error_handler.setFormatter(file_formatter)
-logger.addHandler(error_handler)
+    # File handler for all logs
+    file_formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, f'app_{datetime.now().strftime("%Y%m%d")}.log')
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+    # Error file handler for errors and above
+    error_file_handler = logging.FileHandler(
+        os.path.join(LOG_DIR, f'errors_{datetime.now().strftime("%Y%m%d")}.log')
+    )
+    error_file_handler.setLevel(logging.ERROR)
+    error_file_handler.setFormatter(file_formatter)
+    logger.addHandler(error_file_handler)
+
+    # Prevent propagation to root logger to avoid duplicate logs
+    logger.propagate = False
 
 
 # Custom Exception Classes
