@@ -83,6 +83,15 @@ def verify_password(password: str, password_hash: str) -> bool:
     """Verify a password against its hash."""
     return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
 
+# Reserved usernames that cannot be registered (enforced at database layer)
+RESERVED_USERNAMES = frozenset([
+    'admin', 'root', 'system', 'api', 'test', 'demo', 'null', 'undefined',
+    'administrator', 'superuser', 'support', 'help', 'info', 'contact',
+    'webmaster', 'postmaster', 'hostmaster', 'abuse', 'noreply', 'no-reply',
+    'mailer-daemon', 'nobody', 'www', 'ftp', 'mail', 'email'
+])
+
+
 def create_user(username: str, email: str, password: str, full_name: str = None, is_admin: bool = False) -> int:
     """
     Create a new user.
@@ -91,8 +100,15 @@ def create_user(username: str, email: str, password: str, full_name: str = None,
         user_id if successful
 
     Raises:
-        ValueError if username or email already exists
+        ValueError if username or email already exists, or if username is reserved
     """
+    # Normalize username
+    username = username.lower().strip()
+
+    # Enforce reserved username check at database layer (defense in depth)
+    if username in RESERVED_USERNAMES:
+        raise ValueError(f"Username '{username}' is reserved and cannot be used")
+
     password_hash = hash_password(password)
 
     with get_auth_db_connection() as conn:
@@ -118,7 +134,9 @@ def authenticate_user(username: str, password: str) -> dict:
     Authenticate a user by username and password.
 
     Returns:
-        User dict if authentication successful, None otherwise
+        User dict if authentication successful, None otherwise.
+        Note: password_hash is explicitly excluded from the returned dict
+        to prevent accidental exposure in session state or logs.
     """
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
@@ -127,6 +145,8 @@ def authenticate_user(username: str, password: str) -> dict:
         user = cursor.fetchone()
 
         if not user:
+            # Perform dummy password check to prevent timing attacks
+            bcrypt.checkpw(b"dummy_password", bcrypt.gensalt())
             return None
 
         if not user['is_active']:
@@ -139,23 +159,34 @@ def authenticate_user(username: str, password: str) -> dict:
         cursor.execute('UPDATE users SET last_login = ? WHERE id = ?',
                       (datetime.now(), user['id']))
 
-        return dict(user)
+        # Convert to dict and remove sensitive fields before returning
+        user_dict = dict(user)
+        user_dict.pop('password_hash', None)
+        return user_dict
+
+def _sanitize_user_dict(user_row) -> dict:
+    """Remove sensitive fields from user dict before returning."""
+    if not user_row:
+        return None
+    user_dict = dict(user_row)
+    user_dict.pop('password_hash', None)
+    return user_dict
 
 def get_user_by_id(user_id: int) -> dict:
-    """Get user by ID."""
+    """Get user by ID (excludes password_hash for security)."""
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
         user = cursor.fetchone()
-        return dict(user) if user else None
+        return _sanitize_user_dict(user)
 
 def get_user_by_username(username: str) -> dict:
-    """Get user by username."""
+    """Get user by username (excludes password_hash for security)."""
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
         user = cursor.fetchone()
-        return dict(user) if user else None
+        return _sanitize_user_dict(user)
 
 def get_all_users() -> list:
     """Get all users (admin only)."""
@@ -190,18 +221,20 @@ def update_user(user_id: int, **kwargs) -> bool:
 
 def change_password(user_id: int, old_password: str, new_password: str) -> bool:
     """Change user password."""
-    user = get_user_by_id(user_id)
-
-    if not user:
-        return False
-
-    if not verify_password(old_password, user['password_hash']):
-        return False
-
-    new_hash = hash_password(new_password)
-
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
+
+        # Fetch password hash directly (internal use only)
+        cursor.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+
+        if not result:
+            return False
+
+        if not verify_password(old_password, result['password_hash']):
+            return False
+
+        new_hash = hash_password(new_password)
         cursor.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_hash, user_id))
         return cursor.rowcount > 0
 

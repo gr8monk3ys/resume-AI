@@ -3,8 +3,14 @@ from typing import Dict, List, Tuple
 from collections import Counter
 from utils.cache import cached
 
+
 class ATSAnalyzer:
-    """Analyzer for ATS (Applicant Tracking System) compatibility scoring."""
+    """
+    Thread-safe analyzer for ATS (Applicant Tracking System) compatibility scoring.
+
+    Note: This class is stateless - all text data is passed as parameters to avoid
+    race conditions when the same instance is used concurrently.
+    """
 
     # Common ATS-friendly keywords and criteria
     FORMATTING_KEYWORDS = [
@@ -30,14 +36,16 @@ class ATSAnalyzer:
         'built', 'launched', 'delivered', 'coordinated', 'established', 'initiated'
     ]
 
-    def __init__(self):
-        self.resume_text = ""
-        self.job_description = ""
+    # Pre-compiled regex patterns for performance
+    _NUMBER_PATTERN = re.compile(r'\d+')
+    _PERCENTAGE_PATTERN = re.compile(r'\d+%')
+    _METRIC_PATTERN = re.compile(r'\d+[kKmMbB]?\+?')
+    _WORD_PATTERN = re.compile(r'\b[a-z]{4,}\b')
 
     @cached(category='ats_analysis', ttl_seconds=3600)
     def analyze_resume(self, resume_text: str, job_description: str = "") -> Dict:
         """
-        Analyze resume for ATS compatibility.
+        Analyze resume for ATS compatibility (thread-safe).
 
         Note: Results are cached for 1 hour to improve performance.
 
@@ -47,17 +55,24 @@ class ATSAnalyzer:
 
         Returns:
             Dictionary containing ATS score and detailed analysis
+
+        Raises:
+            ValueError: If resume_text is empty
         """
-        self.resume_text = resume_text.lower()
-        self.job_description = job_description.lower()
+        if not resume_text or not resume_text.strip():
+            raise ValueError("Resume text cannot be empty")
+
+        # Convert to lowercase for analysis (local variables, not instance state)
+        resume_lower = resume_text.lower()
+        job_lower = job_description.lower() if job_description else ""
 
         score_breakdown = {
-            'formatting': self._check_formatting(),
-            'keywords': self._check_keywords(),
-            'action_verbs': self._check_action_verbs(),
-            'quantifiable_results': self._check_quantifiable_results(),
-            'length': self._check_length(),
-            'job_match': self._check_job_match() if job_description else 0
+            'formatting': self._check_formatting(resume_lower),
+            'keywords': self._check_keywords(resume_lower),
+            'action_verbs': self._check_action_verbs(resume_lower),
+            'quantifiable_results': self._check_quantifiable_results(resume_lower),
+            'length': self._check_length(resume_lower),
+            'job_match': self._check_job_match(resume_lower, job_lower) if job_description else 0
         }
 
         total_score = sum(score_breakdown.values())
@@ -69,97 +84,84 @@ class ATSAnalyzer:
             'ats_score': min(ats_score, 100),
             'score_breakdown': score_breakdown,
             'suggestions': self._generate_suggestions(score_breakdown),
-            'missing_keywords': self._find_missing_keywords(),
-            'found_skills': self._extract_skills()
+            'missing_keywords': self._find_missing_keywords(resume_lower, job_lower),
+            'found_skills': self._extract_skills(resume_lower)
         }
 
-    def _check_formatting(self) -> int:
+    def _check_formatting(self, resume_text: str) -> int:
         """Check for standard resume sections (20 points max)."""
-        score = 0
         sections_found = sum(1 for keyword in self.FORMATTING_KEYWORDS
-                           if keyword in self.resume_text)
+                           if keyword in resume_text)
 
         # Award points based on sections found
         if sections_found >= 5:
-            score = 20
+            return 20
         elif sections_found >= 4:
-            score = 15
+            return 15
         elif sections_found >= 3:
-            score = 10
-        else:
-            score = 5
+            return 10
+        return 5
 
-        return score
-
-    def _check_keywords(self) -> int:
+    def _check_keywords(self, resume_text: str) -> int:
         """Check for relevant keywords and skills (25 points max)."""
         technical_count = sum(1 for skill in self.TECHNICAL_SKILLS
-                             if skill in self.resume_text)
+                             if skill in resume_text)
         soft_count = sum(1 for skill in self.SOFT_SKILLS
-                        if skill in self.resume_text)
+                        if skill in resume_text)
 
         total_keywords = technical_count + soft_count
-        score = min(total_keywords * 2, 25)
+        return min(total_keywords * 2, 25)
 
-        return score
-
-    def _check_action_verbs(self) -> int:
+    def _check_action_verbs(self, resume_text: str) -> int:
         """Check for strong action verbs (15 points max)."""
         action_verbs_found = sum(1 for verb in self.ACTION_VERBS
-                                if verb in self.resume_text)
+                                if verb in resume_text)
+        return min(action_verbs_found * 2, 15)
 
-        score = min(action_verbs_found * 2, 15)
-        return score
-
-    def _check_quantifiable_results(self) -> int:
+    def _check_quantifiable_results(self, resume_text: str) -> int:
         """Check for quantifiable achievements (20 points max)."""
-        # Look for numbers, percentages, and metrics
-        numbers = len(re.findall(r'\d+', self.resume_text))
-        percentages = len(re.findall(r'\d+%', self.resume_text))
-        metrics = len(re.findall(r'\d+[kKmMbB]?\+?', self.resume_text))
+        # Look for numbers, percentages, and metrics using pre-compiled patterns
+        numbers = len(self._NUMBER_PATTERN.findall(resume_text))
+        percentages = len(self._PERCENTAGE_PATTERN.findall(resume_text))
+        metrics = len(self._METRIC_PATTERN.findall(resume_text))
 
         total_quantifiers = numbers + (percentages * 2) + (metrics * 2)
-        score = min(total_quantifiers, 20)
+        return min(total_quantifiers, 20)
 
-        return score
-
-    def _check_length(self) -> int:
+    def _check_length(self, resume_text: str) -> int:
         """Check if resume length is appropriate (10 points max)."""
-        word_count = len(self.resume_text.split())
+        word_count = len(resume_text.split())
 
         # Ideal resume: 400-800 words
         if 400 <= word_count <= 800:
             return 10
         elif 300 <= word_count < 400 or 800 < word_count <= 1000:
             return 7
-        elif word_count < 300 or word_count > 1000:
-            return 5
-
+        # word_count < 300 or word_count > 1000
         return 5
 
-    def _check_job_match(self) -> int:
+    def _check_job_match(self, resume_text: str, job_description: str) -> int:
         """Check how well resume matches job description (20 points max)."""
-        if not self.job_description:
+        if not job_description:
             return 0
 
-        # Extract important words from job description
-        job_words = set(re.findall(r'\b[a-z]{4,}\b', self.job_description))
-        resume_words = set(re.findall(r'\b[a-z]{4,}\b', self.resume_text))
+        # Extract important words from job description using pre-compiled pattern
+        job_words = set(self._WORD_PATTERN.findall(job_description))
+        resume_words = set(self._WORD_PATTERN.findall(resume_text))
 
         # Calculate match percentage
         common_words = job_words.intersection(resume_words)
         match_ratio = len(common_words) / len(job_words) if job_words else 0
 
-        score = int(match_ratio * 20)
-        return score
+        return int(match_ratio * 20)
 
-    def _find_missing_keywords(self) -> List[str]:
+    def _find_missing_keywords(self, resume_text: str, job_description: str) -> List[str]:
         """Find keywords from job description missing in resume."""
-        if not self.job_description:
+        if not job_description:
             return []
 
-        job_words = set(re.findall(r'\b[a-z]{4,}\b', self.job_description))
-        resume_words = set(re.findall(r'\b[a-z]{4,}\b', self.resume_text))
+        job_words = set(self._WORD_PATTERN.findall(job_description))
+        resume_words = set(self._WORD_PATTERN.findall(resume_text))
 
         # Focus on technical skills and important words
         all_important_words = set(self.TECHNICAL_SKILLS + self.SOFT_SKILLS)
@@ -167,12 +169,12 @@ class ATSAnalyzer:
 
         return sorted(list(missing))[:10]  # Return top 10
 
-    def _extract_skills(self) -> Dict[str, List[str]]:
+    def _extract_skills(self, resume_text: str) -> Dict[str, List[str]]:
         """Extract skills found in the resume."""
         technical = [skill for skill in self.TECHNICAL_SKILLS
-                    if skill in self.resume_text]
+                    if skill in resume_text]
         soft = [skill for skill in self.SOFT_SKILLS
-               if skill in self.resume_text]
+               if skill in resume_text]
 
         return {
             'technical_skills': technical,

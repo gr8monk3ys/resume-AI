@@ -22,6 +22,20 @@ CACHE_DB_PATH = os.path.join(
     'cache.db'
 )
 
+# Sentinel object to distinguish "not in cache" from "cached None"
+_CACHE_MISS = object()
+
+# Lazy initialization flag
+_db_initialized = False
+
+
+def _ensure_db_initialized():
+    """Ensure cache database is initialized (lazy initialization)."""
+    global _db_initialized
+    if not _db_initialized:
+        init_cache_database()
+        _db_initialized = True
+
 
 def init_cache_database():
     """Initialize the cache database."""
@@ -120,7 +134,7 @@ def generate_cache_key(*args, **kwargs) -> str:
     return hashlib.md5(key_string.encode()).hexdigest()
 
 
-def cache_get(key: str, category: str = 'general') -> Optional[Any]:
+def cache_get(key: str, category: str = 'general') -> Any:
     """
     Retrieve value from cache.
 
@@ -129,14 +143,16 @@ def cache_get(key: str, category: str = 'general') -> Optional[Any]:
         category: Cache category (e.g., 'ai_response', 'ats_score')
 
     Returns:
-        Cached value or None if not found/expired
+        Cached value or _CACHE_MISS sentinel if not found/expired.
+        Use 'cache_get(key) is not _CACHE_MISS' to check for cache hits,
+        which correctly handles cached None, False, 0, etc.
 
     Example:
         >>> value = cache_get('resume_123_ats_score', category='ats')
-        >>> if value:
+        >>> if value is not _CACHE_MISS:
         ...     return value
     """
-    init_cache_database()
+    _ensure_db_initialized()
 
     try:
         with get_cache_db_connection() as conn:
@@ -154,12 +170,12 @@ def cache_get(key: str, category: str = 'general') -> Optional[Any]:
                 # Deserialize value
                 return json.loads(result['value'])
 
-            return None
+            return _CACHE_MISS
 
     except Exception as e:
         # Cache errors should not break the application
         print(f"Cache get error: {e}")
-        return None
+        return _CACHE_MISS
 
 
 def cache_set(key: str, value: Any, category: str = 'general', ttl_seconds: int = 3600):
@@ -175,7 +191,7 @@ def cache_set(key: str, value: Any, category: str = 'general', ttl_seconds: int 
     Example:
         >>> cache_set('resume_123_ats_score', 85, category='ats', ttl_seconds=7200)
     """
-    init_cache_database()
+    _ensure_db_initialized()
 
     try:
         # Serialize value
@@ -209,7 +225,7 @@ def cache_delete(key: str, category: str = 'general'):
     Example:
         >>> cache_delete('resume_123_ats_score', category='ats')
     """
-    init_cache_database()
+    _ensure_db_initialized()
 
     try:
         with get_cache_db_connection() as conn:
@@ -231,7 +247,7 @@ def cache_clear(category: Optional[str] = None):
         >>> cache_clear(category='ai_response')  # Clear only AI responses
         >>> cache_clear()  # Clear all cache
     """
-    init_cache_database()
+    _ensure_db_initialized()
 
     try:
         with get_cache_db_connection() as conn:
@@ -255,7 +271,7 @@ def cleanup_expired_cache():
     Example:
         >>> cleanup_expired_cache()
     """
-    init_cache_database()
+    _ensure_db_initialized()
 
     try:
         with get_cache_db_connection() as conn:
@@ -281,7 +297,7 @@ def get_cache_stats() -> dict:
         >>> stats = get_cache_stats()
         >>> print(f"Total entries: {stats['total_entries']}")
     """
-    init_cache_database()
+    _ensure_db_initialized()
 
     try:
         with get_cache_db_connection() as conn:
@@ -324,6 +340,9 @@ def cached(category: str = 'general', ttl_seconds: int = 3600, key_prefix: str =
     """
     Decorator to automatically cache function results.
 
+    Supports caching of falsy values (None, False, 0, empty string, etc.)
+    by using a sentinel object to distinguish "not in cache" from "cached falsy value".
+
     Args:
         category: Cache category
         ttl_seconds: Time to live in seconds
@@ -345,10 +364,11 @@ def cached(category: str = 'general', ttl_seconds: int = 3600, key_prefix: str =
             base_key = f"{key_prefix}{func.__name__}"
             cache_key = f"{base_key}_{generate_cache_key(*args, **kwargs)}"
 
-            # Try to get from cache
+            # Try to get from cache (uses sentinel for cache miss)
             cached_value = cache_get(cache_key, category=category)
 
-            if cached_value is not None:
+            # Check against sentinel, not None (allows caching of falsy values)
+            if cached_value is not _CACHE_MISS:
                 return cached_value
 
             # Call function and cache result
@@ -372,22 +392,29 @@ def cached(category: str = 'general', ttl_seconds: int = 3600, key_prefix: str =
 
 
 # In-memory cache for very short-lived data (within same request)
+import threading
+
+
 class MemoryCache:
     """
-    Simple in-memory cache for request-scoped caching.
+    Thread-safe in-memory cache for request-scoped caching.
 
     Use for very short-lived caching within a single request/session.
     Data is lost when object is destroyed.
+
+    Thread-safety is achieved through a reentrant lock to allow
+    nested calls from the same thread.
     """
 
     def __init__(self):
-        """Initialize memory cache."""
+        """Initialize memory cache with thread lock."""
         self._cache = {}
         self._expiry = {}
+        self._lock = threading.RLock()  # Reentrant lock for thread safety
 
     def get(self, key: str) -> Optional[Any]:
         """
-        Get value from memory cache.
+        Get value from memory cache (thread-safe).
 
         Args:
             key: Cache key
@@ -395,40 +422,44 @@ class MemoryCache:
         Returns:
             Cached value or None if not found/expired
         """
-        if key in self._cache:
-            # Check expiry
-            if key in self._expiry and datetime.now() > self._expiry[key]:
-                del self._cache[key]
-                del self._expiry[key]
-                return None
+        with self._lock:
+            if key in self._cache:
+                # Check expiry
+                if key in self._expiry and datetime.now() > self._expiry[key]:
+                    del self._cache[key]
+                    del self._expiry[key]
+                    return None
 
-            return self._cache[key]
+                return self._cache[key]
 
-        return None
+            return None
 
     def set(self, key: str, value: Any, ttl_seconds: int = 300):
         """
-        Set value in memory cache.
+        Set value in memory cache (thread-safe).
 
         Args:
             key: Cache key
             value: Value to cache
             ttl_seconds: Time to live in seconds (default: 5 minutes)
         """
-        self._cache[key] = value
-        self._expiry[key] = datetime.now() + timedelta(seconds=ttl_seconds)
+        with self._lock:
+            self._cache[key] = value
+            self._expiry[key] = datetime.now() + timedelta(seconds=ttl_seconds)
 
     def delete(self, key: str):
-        """Delete value from memory cache."""
-        if key in self._cache:
-            del self._cache[key]
-        if key in self._expiry:
-            del self._expiry[key]
+        """Delete value from memory cache (thread-safe)."""
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+            if key in self._expiry:
+                del self._expiry[key]
 
     def clear(self):
-        """Clear all memory cache."""
-        self._cache.clear()
-        self._expiry.clear()
+        """Clear all memory cache (thread-safe)."""
+        with self._lock:
+            self._cache.clear()
+            self._expiry.clear()
 
 
 # Global memory cache instance (for request-scoped caching)

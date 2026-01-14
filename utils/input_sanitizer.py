@@ -5,9 +5,30 @@ This module provides functions to sanitize and validate user inputs to prevent
 security vulnerabilities like XSS, SQL injection, and malicious file uploads.
 """
 
+import html
 import re
 from typing import Optional, Tuple
 import os
+
+
+def escape_html(text: str) -> str:
+    """
+    Escape HTML special characters to prevent XSS attacks.
+
+    Uses Python's html.escape which handles all HTML special characters:
+    - < becomes &lt;
+    - > becomes &gt;
+    - & becomes &amp;
+    - " becomes &quot;
+    - ' becomes &#x27;
+
+    Args:
+        text: Text to escape
+
+    Returns:
+        HTML-escaped text
+    """
+    return html.escape(text, quote=True)
 
 
 def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = False) -> str:
@@ -24,7 +45,7 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
 
     Example:
         >>> sanitize_text_input("<script>alert('xss')</script>Hello")
-        "Hello"
+        "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;Hello"
         >>> sanitize_text_input("Normal text")
         "Normal text"
     """
@@ -34,9 +55,9 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
     # Limit length
     text = text[:max_length]
 
-    # Remove HTML tags if not allowed
+    # Escape HTML characters if HTML not allowed (safer than stripping)
     if not allow_html:
-        text = re.sub(r'<[^>]+>', '', text)
+        text = escape_html(text)
 
     # Remove null bytes
     text = text.replace('\x00', '')
@@ -45,6 +66,34 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
     text = text.strip()
 
     return text
+
+
+def strip_html_tags(text: str) -> str:
+    """
+    Strip HTML tags from text (for display purposes when you want plain text).
+
+    Note: For security, prefer escape_html() over strip_html_tags().
+    This function is for cases where you need to display plain text
+    extracted from HTML content.
+
+    Args:
+        text: Text containing HTML tags
+
+    Returns:
+        Text with HTML tags removed
+    """
+    if not text:
+        return ""
+
+    # First decode any HTML entities
+    text = html.unescape(text)
+
+    # Remove HTML tags - use a more robust pattern
+    # Handle malformed tags by also looking for unclosed tags
+    text = re.sub(r'<[^>]*>', '', text)
+    text = re.sub(r'<[^>]*$', '', text)  # Handle unclosed tags at end
+
+    return text.strip()
 
 
 def sanitize_username(username: str) -> Tuple[bool, Optional[str]]:
@@ -420,6 +469,8 @@ def validate_profile_update(data: dict) -> Tuple[bool, dict]:
 
 # Export all sanitization functions
 __all__ = [
+    'escape_html',
+    'strip_html_tags',
     'sanitize_text_input',
     'sanitize_username',
     'sanitize_email',

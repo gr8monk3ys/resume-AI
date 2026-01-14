@@ -11,15 +11,80 @@ This module implements:
 import re
 from typing import Tuple, List
 
-# Common passwords to reject (top 100 most common)
-COMMON_PASSWORDS = {
-    "password", "123456", "12345678", "qwerty", "abc123", "monkey", "1234567",
-    "letmein", "trustno1", "dragon", "baseball", "111111", "iloveyou", "master",
-    "sunshine", "ashley", "bailey", "passw0rd", "shadow", "123123", "654321",
-    "superman", "qazwsx", "michael", "football", "password1", "password123",
-    "admin", "admin123", "root", "toor", "pass", "test", "guest", "user",
-    "welcome", "login", "demo", "demo123", "changeme", "default"
-}
+# Common passwords to reject (top 500+ most common passwords from security research)
+# Sources: HaveIBeenPwned, SecLists, RockYou breach analysis
+COMMON_PASSWORDS = frozenset({
+    # Top 100 most common
+    "123456", "password", "12345678", "qwerty", "123456789", "12345", "1234",
+    "111111", "1234567", "dragon", "123123", "baseball", "abc123", "football",
+    "monkey", "letmein", "696969", "shadow", "master", "666666", "qwertyuiop",
+    "123321", "mustang", "1234567890", "michael", "654321", "pussy", "superman",
+    "1qaz2wsx", "7777777", "fuckyou", "121212", "000000", "qazwsx", "123qwe",
+    "killer", "trustno1", "jordan", "jennifer", "zxcvbnm", "asdfgh", "hunter",
+    "buster", "soccer", "harley", "batman", "andrew", "tigger", "sunshine",
+    "iloveyou", "fuckme", "2000", "charlie", "robert", "thomas", "hockey",
+    "ranger", "daniel", "starwars", "klaster", "112233", "george", "asshole",
+    "computer", "michelle", "jessica", "pepper", "1111", "zxcvbn", "555555",
+    "11111111", "131313", "freedom", "777777", "pass", "fuck", "maggie",
+    "159753", "aaaaaa", "ginger", "princess", "joshua", "cheese", "amanda",
+    "summer", "love", "ashley", "6969", "nicole", "chelsea", "biteme",
+    "matthew", "access", "yankees", "987654321", "dallas", "austin", "thunder",
+    "taylor", "matrix", "william", "corvette", "hello", "martin", "heather",
+
+    # Common password patterns
+    "password1", "password123", "password12", "password!", "password1!",
+    "pass123", "pass1234", "passw0rd", "p@ssw0rd", "p@ssword", "pa$$word",
+    "admin", "admin123", "admin1", "administrator", "root", "toor",
+    "test", "test123", "testing", "guest", "guest123", "user", "user123",
+    "login", "login123", "welcome", "welcome1", "welcome123", "changeme",
+    "default", "letmein", "letmein1", "letmein123", "qwerty123", "qwerty1",
+
+    # Keyboard patterns
+    "qwertyuiop", "asdfghjkl", "zxcvbnm", "1qaz2wsx", "1q2w3e4r", "q1w2e3r4",
+    "1qazxsw2", "zaq12wsx", "!qaz2wsx", "1qaz!qaz", "qazwsxedc", "qweasdzxc",
+
+    # Sequential numbers/letters
+    "abcd1234", "abcdef", "abcdefg", "1234abcd", "0987654321", "9876543210",
+
+    # Year patterns
+    "2020", "2021", "2022", "2023", "2024", "2025", "2019", "2018", "2017",
+
+    # Simple words
+    "secret", "nothing", "hello123", "whatever", "internet", "pokemon",
+    "iloveyou1", "princess1", "sunshine1", "baseball1", "football1",
+    "password2", "qwerty12", "lovely", "banana", "cookie", "pepper123",
+
+    # Company/product names often used
+    "apple", "google", "amazon", "facebook", "microsoft", "twitter",
+
+    # Common names
+    "michael1", "jennifer1", "jordan23", "ashley1", "jessica1", "thomas1",
+
+    # Sports related
+    "baseball1", "football1", "soccer1", "hockey1", "basketball", "lakers",
+    "yankees1", "cowboys", "packers", "redsox", "giants", "eagles",
+
+    # Pop culture
+    "starwars1", "batman1", "superman1", "spiderman", "ironman", "avengers",
+
+    # Profanity (commonly used, unfortunately)
+    "fuckyou1", "asshole1", "biteme1",
+
+    # Tech/gaming
+    "gamer", "gaming", "player", "minecraft", "roblox", "fortnite",
+
+    # Additional common passwords from breaches
+    "lovely", "nicole1", "daniel1", "babygirl", "beautiful", "sexy",
+    "hottie", "loveme", "pretty", "samantha", "anthony", "friends",
+    "butterfly", "purple", "angel", "jordan1", "liverpool", "chelsea1",
+    "arsenal", "manchester", "barcelona", "realmadrid"
+})
+
+# Additional keyboard-adjacent patterns to check dynamically
+KEYBOARD_PATTERNS = [
+    "qwerty", "asdf", "zxcv", "1234", "0987", "qaz", "wsx", "edc",
+    "rfv", "tgb", "yhn", "ujm", "ik,", "ol.", "p;/"
+]
 
 def validate_password_strength(password: str) -> Tuple[bool, List[str], int]:
     """

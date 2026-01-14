@@ -1,9 +1,18 @@
 """
 Authentication utilities for multi-user support
 """
+import os
+import logging
+from datetime import datetime, timedelta
 import streamlit as st
 from models.auth_database import init_auth_database, authenticate_user, create_user, get_user_by_id
 from models.database import get_or_create_profile_for_user
+
+logger = logging.getLogger(__name__)
+
+# Session timeout in minutes (default: 30 minutes)
+SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
+
 
 def init_session_state():
     """Initialize session state variables for authentication."""
@@ -15,6 +24,73 @@ def init_session_state():
         st.session_state.user_id = None
     if 'profile' not in st.session_state:
         st.session_state.profile = None
+    if 'session_created_at' not in st.session_state:
+        st.session_state.session_created_at = None
+    if 'last_activity' not in st.session_state:
+        st.session_state.last_activity = None
+
+
+def _update_activity():
+    """Update last activity timestamp."""
+    st.session_state.last_activity = datetime.now()
+
+
+def _check_session_timeout() -> bool:
+    """
+    Check if session has timed out due to inactivity.
+
+    Returns:
+        True if session is valid, False if timed out
+    """
+    if not st.session_state.get('authenticated'):
+        return True  # Not authenticated, no timeout check needed
+
+    last_activity = st.session_state.get('last_activity')
+    if not last_activity:
+        return True  # No activity tracked yet
+
+    timeout_delta = timedelta(minutes=SESSION_TIMEOUT_MINUTES)
+    if datetime.now() - last_activity > timeout_delta:
+        logger.info(
+            f"Session timeout for user {st.session_state.get('user', {}).get('username', 'unknown')} "
+            f"after {SESSION_TIMEOUT_MINUTES} minutes of inactivity"
+        )
+        return False
+
+    return True
+
+
+def check_and_refresh_session() -> bool:
+    """
+    Check session validity and refresh activity timestamp.
+
+    Should be called at the start of each page to maintain session.
+
+    Returns:
+        True if session is valid, False if expired/invalid
+    """
+    init_session_state()
+
+    if not st.session_state.get('authenticated'):
+        return False
+
+    # Check for session timeout
+    if not _check_session_timeout():
+        from utils.audit_logger import log_event
+        user = st.session_state.get('user', {})
+        log_event(
+            user_id=user.get('id'),
+            event_type='session_timeout',
+            details=f"Session timed out after {SESSION_TIMEOUT_MINUTES} minutes of inactivity"
+        )
+        # Set flag to show timeout message
+        st.session_state._session_timed_out = True
+        logout(reason="session_timeout")
+        return False
+
+    # Refresh activity timestamp
+    _update_activity()
+    return True
 
 def login(username: str, password: str) -> tuple:
     """
@@ -55,6 +131,10 @@ def login(username: str, password: str) -> tuple:
         st.session_state.user = user
         st.session_state.user_id = user['id']
 
+        # Set session timestamps for timeout tracking
+        st.session_state.session_created_at = datetime.now()
+        st.session_state.last_activity = datetime.now()
+
         # Get or create profile for this user
         profile = get_or_create_profile_for_user(
             user['id'],
@@ -70,20 +150,29 @@ def login(username: str, password: str) -> tuple:
         log_login_failed(username, "Invalid credentials")
         return (False, "Invalid username or password")
 
-def logout():
-    """Clear session state and log out user with audit logging."""
+def logout(reason: str = "user_initiated"):
+    """
+    Clear session state and log out user with audit logging.
+
+    Args:
+        reason: Reason for logout (user_initiated, session_timeout, etc.)
+    """
     from utils.audit_logger import log_logout
 
     # Log logout if user is authenticated
     if st.session_state.get('authenticated') and st.session_state.get('user'):
         user = st.session_state.user
         log_logout(user['id'], user['username'])
+        if reason != "user_initiated":
+            logger.info(f"User {user['username']} logged out due to: {reason}")
 
     # Clear session state
     st.session_state.authenticated = False
     st.session_state.user = None
     st.session_state.user_id = None
     st.session_state.profile = None
+    st.session_state.session_created_at = None
+    st.session_state.last_activity = None
 
 def is_authenticated() -> bool:
     """Check if user is authenticated."""
@@ -105,6 +194,8 @@ def require_auth(func):
     """
     Decorator to require authentication for a function/page.
 
+    Includes session timeout checking and activity refresh.
+
     Usage:
         @require_auth
         def my_page():
@@ -113,8 +204,13 @@ def require_auth(func):
     def wrapper(*args, **kwargs):
         init_session_state()
 
-        if not is_authenticated():
-            st.warning("⚠️ Please log in to access this page")
+        # Check session validity (includes timeout check)
+        if not check_and_refresh_session():
+            if st.session_state.get('_session_timed_out'):
+                st.warning("⚠️ Your session has expired due to inactivity. Please log in again.")
+                st.session_state._session_timed_out = False
+            else:
+                st.warning("⚠️ Please log in to access this page")
             st.info("👉 Use the Login page from the sidebar")
             st.stop()
 
