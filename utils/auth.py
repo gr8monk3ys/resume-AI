@@ -79,9 +79,10 @@ def check_and_refresh_session() -> bool:
         from utils.audit_logger import log_event
         user = st.session_state.get('user', {})
         log_event(
-            user_id=user.get('id'),
             event_type='session_timeout',
-            details=f"Session timed out after {SESSION_TIMEOUT_MINUTES} minutes of inactivity"
+            action='session_expired',
+            user_id=user.get('id'),
+            details={'message': f"Session timed out after {SESSION_TIMEOUT_MINUTES} minutes of inactivity"}
         )
         # Set flag to show timeout message
         st.session_state._session_timed_out = True

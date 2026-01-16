@@ -123,7 +123,9 @@ with tab1:
                 if st.button("💡 Get Tips", key=f"tips_{category}_{idx}"):
                     with st.spinner("Generating tips..."):
                         try:
-                            from langchain import PromptTemplate, LLMChain, OpenAI
+                            from langchain.prompts import PromptTemplate
+                            from langchain.chains import LLMChain
+                            from langchain_community.llms import OpenAI
 
                             llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                             template = """
@@ -147,7 +149,9 @@ with tab1:
                 if st.button("✨ Get Example", key=f"example_{category}_{idx}"):
                     with st.spinner("Generating example answer..."):
                         try:
-                            from langchain import PromptTemplate, LLMChain, OpenAI
+                            from langchain.prompts import PromptTemplate
+                            from langchain.chains import LLMChain
+                            from langchain_community.llms import OpenAI
 
                             llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                             template = """
@@ -204,7 +208,9 @@ with tab2:
         if your_answer and question_to_practice:
             with st.spinner("Analyzing your answer..."):
                 try:
-                    from langchain import PromptTemplate, LLMChain, OpenAI
+                    from langchain.prompts import PromptTemplate
+                    from langchain.chains import LLMChain
+                    from langchain_community.llms import OpenAI
 
                     llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                     template = """
@@ -337,7 +343,9 @@ with tab3:
 
                 with st.spinner("Crafting your story..."):
                     try:
-                        from langchain import PromptTemplate, LLMChain, OpenAI
+                        from langchain.prompts import PromptTemplate
+                        from langchain.chains import LLMChain
+                        from langchain_community.llms import OpenAI
 
                         llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                         template = """
@@ -420,7 +428,9 @@ with tab4:
 
             with st.spinner("Generating talking points..."):
                 try:
-                    from langchain import PromptTemplate, LLMChain, OpenAI
+                    from langchain.prompts import PromptTemplate
+                    from langchain.chains import LLMChain
+                    from langchain_community.llms import OpenAI
 
                     llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                     template = """
