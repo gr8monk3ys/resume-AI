@@ -32,6 +32,17 @@ python3 -m pip install -r requirements.txt
 echo "✅ Dependencies installed"
 echo ""
 
+# Install pre-commit hooks (for development)
+if command -v pre-commit &> /dev/null; then
+    echo "Setting up pre-commit hooks..."
+    pre-commit install
+    echo "✅ Pre-commit hooks installed"
+    echo ""
+else
+    echo "ℹ️  pre-commit not found - skipping hooks setup (optional for development)"
+    echo ""
+fi
+
 # Check if .env exists
 if [ ! -f .env ]; then
     echo "📝 Creating .env file from template..."
