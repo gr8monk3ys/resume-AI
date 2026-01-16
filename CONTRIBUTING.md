@@ -396,6 +396,50 @@ def test_authenticate_user_invalid_password_returns_none(self):
     pass
 ```
 
+### Manual E2E Testing Checklist
+
+Before releasing, manually verify these user flows in the browser:
+
+**Authentication Flow:**
+- [ ] Register new account with valid credentials
+- [ ] Login with correct password
+- [ ] Login fails with wrong password (rate limiting kicks in after 5 attempts)
+- [ ] Session persists across page navigation
+- [ ] Logout clears session
+- [ ] Session times out after inactivity
+
+**Resume Optimizer:**
+- [ ] Upload PDF resume successfully
+- [ ] Upload DOCX resume successfully
+- [ ] Paste job description
+- [ ] ATS analysis generates score and feedback
+- [ ] AI optimization suggestions appear
+- [ ] Download optimized resume
+
+**Job Tracker:**
+- [ ] Add new job application
+- [ ] Update application status
+- [ ] Filter by status works
+- [ ] Export to CSV downloads file
+- [ ] Delete application works
+
+**Cover Letter:**
+- [ ] Generate cover letter with resume + job description
+- [ ] Save cover letter
+- [ ] Load saved cover letter
+- [ ] Generate networking email
+
+**Profile:**
+- [ ] View profile statistics
+- [ ] Update profile information
+- [ ] Change password
+- [ ] Export user data
+
+**Data Isolation:**
+- [ ] User A cannot see User B's resumes
+- [ ] User A cannot see User B's job applications
+- [ ] User A cannot see User B's cover letters
+
 ---
 
 ## Adding New Features
