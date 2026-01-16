@@ -1,13 +1,15 @@
 """
 FastAPI main application entry point.
 """
+
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import auth, profile, resumes, jobs, cover_letters, ai
+from app.routers import ai, auth, cover_letters, jobs, profile, resumes
 
 settings = get_settings()
 
@@ -67,4 +69,5 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=settings.debug)

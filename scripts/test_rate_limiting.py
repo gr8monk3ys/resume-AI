@@ -2,23 +2,24 @@
 Test script for login rate limiting functionality.
 """
 
-import sys
 import os
+import sys
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from utils.rate_limiter_auth import (
-    init_rate_limiting_table,
-    record_failed_login,
+    check_login_allowed,
+    clear_failed_attempts,
     get_recent_failed_attempts,
     get_total_failed_attempts,
-    check_login_allowed,
-    lock_account,
-    unlock_account,
+    init_rate_limiting_table,
     is_account_locked,
-    clear_failed_attempts
+    lock_account,
+    record_failed_login,
+    unlock_account,
 )
+
 
 def print_header(text):
     """Print a section header."""
@@ -26,12 +27,14 @@ def print_header(text):
     print(f"  {text}")
     print("=" * 70)
 
+
 def print_test(test_name, passed, details=""):
     """Print test result."""
     status = "✅ PASS" if passed else "❌ FAIL"
     print(f"{status} - {test_name}")
     if details:
         print(f"     {details}")
+
 
 def main():
     """Run rate limiting tests."""
@@ -88,8 +91,9 @@ def main():
         record_failed_login(test_user)
 
         allowed, reason, wait_seconds = check_login_allowed(test_user)
-        print_test("Rate limiting at 5 attempts", not allowed,
-                  f"Allowed: {allowed}, Reason: {reason}")
+        print_test(
+            "Rate limiting at 5 attempts", not allowed, f"Allowed: {allowed}, Reason: {reason}"
+        )
         if not allowed:
             passed_tests += 1
     except Exception as e:
@@ -101,8 +105,7 @@ def main():
     try:
         clear_failed_attempts(test_user2)
         allowed, reason, wait_seconds = check_login_allowed(test_user2)
-        print_test("Different user not affected", allowed,
-                  f"User2 allowed: {allowed}")
+        print_test("Different user not affected", allowed, f"User2 allowed: {allowed}")
         if allowed:
             passed_tests += 1
     except Exception as e:
@@ -122,8 +125,11 @@ def main():
         allowed, reason, wait_seconds = check_login_allowed(test_user3)
         is_locked, lock_reason, _ = is_account_locked(test_user3)
 
-        print_test("Account locked at 10 attempts", not allowed and is_locked,
-                  f"Locked: {is_locked}, Reason: {lock_reason}")
+        print_test(
+            "Account locked at 10 attempts",
+            not allowed and is_locked,
+            f"Locked: {is_locked}, Reason: {lock_reason}",
+        )
         if not allowed and is_locked:
             passed_tests += 1
     except Exception as e:
@@ -164,6 +170,7 @@ def main():
     else:
         print(f"\n⚠️  {total_tests - passed_tests} TEST(S) FAILED! Review failures above.")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = main()

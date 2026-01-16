@@ -1,15 +1,16 @@
-import streamlit as st
-import sys
 import os
+import sys
 from datetime import date
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from models.database import get_db_connection
 from models.auth_database import init_auth_database
+from models.database import get_db_connection
 from services.llm_service import get_llm_service
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
 
 st.set_page_config(page_title="Career Journal", page_icon="📓", layout="wide")
 
@@ -25,7 +26,9 @@ if not is_authenticated():
     st.stop()
 
 st.title("📓 Career Journal")
-st.markdown("Document your achievements and build a library of accomplishments for future applications")
+st.markdown(
+    "Document your achievements and build a library of accomplishments for future applications"
+)
 
 # Initialize services
 llm_service = get_llm_service()
@@ -37,35 +40,34 @@ tab1, tab2, tab3 = st.tabs(["➕ Add Achievement", "📚 All Achievements", "✨
 with tab1:
     st.header("Document a New Achievement")
 
-    st.markdown("""
+    st.markdown(
+        """
     Keep a record of your accomplishments, projects, and wins. This journal helps you:
     - Remember specific achievements during interviews
     - Build compelling resume bullet points
     - Track your professional growth over time
-    """)
+    """
+    )
 
     with st.form("add_achievement_form"):
         title = st.text_input(
-            "Achievement Title*",
-            placeholder="e.g., Led migration to microservices architecture"
+            "Achievement Title*", placeholder="e.g., Led migration to microservices architecture"
         )
 
         achievement_date = st.date_input(
-            "Date",
-            value=date.today(),
-            help="When did this achievement occur?"
+            "Date", value=date.today(), help="When did this achievement occur?"
         )
 
         description = st.text_area(
             "Description*",
             height=200,
-            placeholder="Describe what you did, how you did it, and what the impact was. Include specific metrics and outcomes if possible.\n\nExample:\nLed the migration of monolithic application to microservices architecture, reducing deployment time by 60% and improving system reliability to 99.9% uptime. Coordinated with 5 cross-functional teams and delivered the project 2 weeks ahead of schedule."
+            placeholder="Describe what you did, how you did it, and what the impact was. Include specific metrics and outcomes if possible.\n\nExample:\nLed the migration of monolithic application to microservices architecture, reducing deployment time by 60% and improving system reliability to 99.9% uptime. Coordinated with 5 cross-functional teams and delivered the project 2 weeks ahead of schedule.",
         )
 
         tags = st.text_input(
             "Tags (comma-separated)",
             placeholder="e.g., leadership, python, aws, cost-reduction",
-            help="Add tags to make achievements easier to find and categorize"
+            help="Add tags to make achievements easier to find and categorize",
         )
 
         col1, col2 = st.columns([1, 4])
@@ -77,10 +79,13 @@ with tab1:
                 try:
                     with get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             INSERT INTO career_journal (profile_id, title, description, achievement_date, tags)
                             VALUES (?, ?, ?, ?, ?)
-                        ''', (profile['id'], title, description, achievement_date.isoformat(), tags))
+                        """,
+                            (profile["id"], title, description, achievement_date.isoformat(), tags),
+                        )
                         conn.commit()
 
                     st.success("✅ Achievement saved successfully!")
@@ -104,34 +109,31 @@ with tab2:
         tag_filter = st.text_input("🏷️ Filter by Tag", placeholder="e.g., leadership")
 
     with col3:
-        sort_by = st.selectbox(
-            "Sort By",
-            ["Date (Newest)", "Date (Oldest)", "Title"]
-        )
+        sort_by = st.selectbox("Sort By", ["Date (Newest)", "Date (Oldest)", "Title"])
 
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
             # Build query
-            query = 'SELECT * FROM career_journal WHERE profile_id = ?'
-            params = [profile['id']]
+            query = "SELECT * FROM career_journal WHERE profile_id = ?"
+            params = [profile["id"]]
 
             if search_query:
-                query += ' AND (title LIKE ? OR description LIKE ?)'
-                params.extend([f'%{search_query}%', f'%{search_query}%'])
+                query += " AND (title LIKE ? OR description LIKE ?)"
+                params.extend([f"%{search_query}%", f"%{search_query}%"])
 
             if tag_filter:
-                query += ' AND tags LIKE ?'
-                params.append(f'%{tag_filter}%')
+                query += " AND tags LIKE ?"
+                params.append(f"%{tag_filter}%")
 
             # Add sorting
             if sort_by == "Date (Newest)":
-                query += ' ORDER BY achievement_date DESC'
+                query += " ORDER BY achievement_date DESC"
             elif sort_by == "Date (Oldest)":
-                query += ' ORDER BY achievement_date ASC'
+                query += " ORDER BY achievement_date ASC"
             else:
-                query += ' ORDER BY title ASC'
+                query += " ORDER BY title ASC"
 
             cursor.execute(query, params)
             achievements = cursor.fetchall()
@@ -143,14 +145,19 @@ with tab2:
                 with st.expander(f"**{achievement['title']}** ({achievement['achievement_date']})"):
 
                     # Display tags if available
-                    if achievement['tags']:
-                        tags_list = [tag.strip() for tag in achievement['tags'].split(',')]
-                        tag_html = ' '.join([f'<span style="background-color: #e1f5ff; padding: 2px 8px; border-radius: 4px; margin: 2px; display: inline-block;">{tag}</span>' for tag in tags_list])
+                    if achievement["tags"]:
+                        tags_list = [tag.strip() for tag in achievement["tags"].split(",")]
+                        tag_html = " ".join(
+                            [
+                                f'<span style="background-color: #e1f5ff; padding: 2px 8px; border-radius: 4px; margin: 2px; display: inline-block;">{tag}</span>'
+                                for tag in tags_list
+                            ]
+                        )
                         st.markdown(tag_html, unsafe_allow_html=True)
                         st.write("")
 
                     st.write("**Description:**")
-                    st.write(achievement['description'])
+                    st.write(achievement["description"])
 
                     st.write(f"**Date:** {achievement['achievement_date']}")
 
@@ -159,7 +166,7 @@ with tab2:
 
                     with col1:
                         if st.button("📋 Copy", key=f"copy_{achievement['id']}"):
-                            st.code(achievement['description'])
+                            st.code(achievement["description"])
                             st.info("Text displayed above - copy manually")
 
                     with col2:
@@ -175,17 +182,28 @@ with tab2:
                             col_a, col_b = st.columns(2)
 
                             with col_a:
-                                if st.button("✅ Yes", key=f"yes_delete_ach_{achievement['id']}", use_container_width=True):
+                                if st.button(
+                                    "✅ Yes",
+                                    key=f"yes_delete_ach_{achievement['id']}",
+                                    use_container_width=True,
+                                ):
                                     with get_db_connection() as conn:
                                         cursor = conn.cursor()
-                                        cursor.execute('DELETE FROM career_journal WHERE id = ?', (achievement['id'],))
+                                        cursor.execute(
+                                            "DELETE FROM career_journal WHERE id = ?",
+                                            (achievement["id"],),
+                                        )
                                         conn.commit()
                                     st.session_state[delete_key] = False
                                     st.success("Achievement deleted!")
                                     st.rerun()
 
                             with col_b:
-                                if st.button("❌ No", key=f"no_delete_ach_{achievement['id']}", use_container_width=True):
+                                if st.button(
+                                    "❌ No",
+                                    key=f"no_delete_ach_{achievement['id']}",
+                                    use_container_width=True,
+                                ):
                                     st.session_state[delete_key] = False
                                     st.rerun()
                         else:
@@ -197,18 +215,26 @@ with tab2:
                     if st.session_state.get(f'enhance_{achievement["id"]}', False):
                         with st.spinner("Enhancing achievement with AI..."):
                             try:
-                                enhanced = llm_service.enhance_achievement(achievement['description'])
+                                enhanced = llm_service.enhance_achievement(
+                                    achievement["description"]
+                                )
                                 st.write("**✨ AI-Enhanced Version:**")
                                 st.info(enhanced)
 
-                                if st.button("💾 Update with Enhanced", key=f"update_enhanced_{achievement['id']}"):
+                                if st.button(
+                                    "💾 Update with Enhanced",
+                                    key=f"update_enhanced_{achievement['id']}",
+                                ):
                                     with get_db_connection() as conn:
                                         cursor = conn.cursor()
-                                        cursor.execute('''
+                                        cursor.execute(
+                                            """
                                             UPDATE career_journal
                                             SET description = ?
                                             WHERE id = ?
-                                        ''', (enhanced, achievement['id']))
+                                        """,
+                                            (enhanced, achievement["id"]),
+                                        )
                                         conn.commit()
                                     st.success("Achievement updated!")
                                     st.session_state[f'enhance_{achievement["id"]}'] = False
@@ -229,7 +255,7 @@ with tab3:
     raw_achievement = st.text_area(
         "Enter Raw Achievement",
         height=150,
-        placeholder="Example:\nWorked on improving the website performance. Made some changes to the database queries and added caching. The site is now faster."
+        placeholder="Example:\nWorked on improving the website performance. Made some changes to the database queries and added caching. The site is now faster.",
     )
 
     if st.button("✨ Enhance with AI", type="primary"):
@@ -247,18 +273,18 @@ with tab3:
                     with col1:
                         if st.button("💾 Save to Journal"):
                             # Show form to add title and tags
-                            st.session_state['pending_save'] = enhanced
+                            st.session_state["pending_save"] = enhanced
 
                     with col2:
                         st.download_button(
                             label="📥 Download",
                             data=enhanced,
                             file_name="enhanced_achievement.txt",
-                            mime="text/plain"
+                            mime="text/plain",
                         )
 
                     # Quick save form
-                    if st.session_state.get('pending_save'):
+                    if st.session_state.get("pending_save"):
                         with st.form("quick_save_form"):
                             st.write("**Save Enhanced Achievement**")
                             title = st.text_input("Title*")
@@ -269,13 +295,22 @@ with tab3:
                                 if title:
                                     with get_db_connection() as conn:
                                         cursor = conn.cursor()
-                                        cursor.execute('''
+                                        cursor.execute(
+                                            """
                                             INSERT INTO career_journal (profile_id, title, description, achievement_date, tags)
                                             VALUES (?, ?, ?, ?, ?)
-                                        ''', (profile['id'], title, st.session_state['pending_save'], achievement_date.isoformat(), tags))
+                                        """,
+                                            (
+                                                profile["id"],
+                                                title,
+                                                st.session_state["pending_save"],
+                                                achievement_date.isoformat(),
+                                                tags,
+                                            ),
+                                        )
                                         conn.commit()
                                     st.success("✅ Saved to journal!")
-                                    del st.session_state['pending_save']
+                                    del st.session_state["pending_save"]
                                     st.rerun()
 
                 except Exception as e:
@@ -285,7 +320,8 @@ with tab3:
 
     # Examples
     with st.expander("💡 See Examples"):
-        st.markdown("""
+        st.markdown(
+            """
         **Before:**
         > Worked on a project to reduce costs. Changed some cloud services and the company saved money.
 
@@ -299,12 +335,14 @@ with tab3:
 
         **After:**
         > Led cross-functional team of 6 engineers to deliver mobile-first payment feature, achieving 80% user adoption within first month and increasing transaction completion rate by 25%.
-        """)
+        """
+        )
 
 # Sidebar tips
 with st.sidebar:
     st.header("💡 Achievement Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **STAR Method:**
     - **S**ituation - Context
     - **T**ask - Challenge
@@ -330,4 +368,5 @@ with st.sidebar:
     - Types: leadership, technical
     - Impact: cost-reduction, efficiency
     - Domain: backend, frontend
-    """)
+    """
+    )

@@ -1,14 +1,15 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from services.llm_service import get_llm_service
-from models.database import get_db_connection
 from models.auth_database import init_auth_database
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from models.database import get_db_connection
+from services.llm_service import get_llm_service
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
 
 st.set_page_config(page_title="Interview Prep", page_icon="🎯", layout="wide")
 
@@ -31,7 +32,9 @@ llm_service = get_llm_service()
 profile = get_current_profile()
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📝 Question Bank", "🤖 AI Practice", "💡 STAR Stories", "📊 Company Research"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📝 Question Bank", "🤖 AI Practice", "💡 STAR Stories", "📊 Company Research"]
+)
 
 with tab1:
     st.header("Common Interview Questions")
@@ -111,10 +114,7 @@ with tab1:
             answer_key = f"answer_{category}_{idx}"
 
             st.text_area(
-                "Your Answer",
-                key=answer_key,
-                height=150,
-                placeholder="Write your answer here..."
+                "Your Answer", key=answer_key, height=150, placeholder="Write your answer here..."
             )
 
             col1, col2 = st.columns(2)
@@ -123,8 +123,8 @@ with tab1:
                 if st.button("💡 Get Tips", key=f"tips_{category}_{idx}"):
                     with st.spinner("Generating tips..."):
                         try:
-                            from langchain.prompts import PromptTemplate
                             from langchain.chains import LLMChain
+                            from langchain.prompts import PromptTemplate
                             from langchain_community.llms import OpenAI
 
                             llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
@@ -149,8 +149,8 @@ with tab1:
                 if st.button("✨ Get Example", key=f"example_{category}_{idx}"):
                     with st.spinner("Generating example answer..."):
                         try:
-                            from langchain.prompts import PromptTemplate
                             from langchain.chains import LLMChain
+                            from langchain.prompts import PromptTemplate
                             from langchain_community.llms import OpenAI
 
                             llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
@@ -177,8 +177,7 @@ with tab2:
     st.markdown("Practice answering questions and get AI-powered feedback")
 
     practice_type = st.selectbox(
-        "Interview Type",
-        ["General Behavioral", "Technical", "Leadership", "Custom Question"]
+        "Interview Type", ["General Behavioral", "Technical", "Leadership", "Custom Question"]
     )
 
     if practice_type == "Custom Question":
@@ -199,17 +198,15 @@ with tab2:
     st.info(question_to_practice)
 
     your_answer = st.text_area(
-        "Your Answer",
-        height=200,
-        placeholder="Type your answer as if you were in an interview..."
+        "Your Answer", height=200, placeholder="Type your answer as if you were in an interview..."
     )
 
     if st.button("🎯 Get Feedback", type="primary"):
         if your_answer and question_to_practice:
             with st.spinner("Analyzing your answer..."):
                 try:
-                    from langchain.prompts import PromptTemplate
                     from langchain.chains import LLMChain
+                    from langchain.prompts import PromptTemplate
                     from langchain_community.llms import OpenAI
 
                     llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
@@ -228,7 +225,9 @@ with tab2:
 
                     Feedback:
                     """
-                    prompt = PromptTemplate(input_variables=["question", "answer"], template=template)
+                    prompt = PromptTemplate(
+                        input_variables=["question", "answer"], template=template
+                    )
                     chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
                     feedback = chain.predict(question=question_to_practice, answer=your_answer)
 
@@ -244,13 +243,15 @@ with tab3:
     st.header("STAR Story Builder")
     st.markdown("Build compelling stories using the STAR (Situation, Task, Action, Result) method")
 
-    st.info("""
+    st.info(
+        """
     **STAR Method:**
     - **S**ituation: Set the context
     - **T**ask: Describe the challenge
     - **A**ction: Explain what you did
     - **R**esult: Share the outcome and impact
-    """)
+    """
+    )
 
     # Option to import from career journal
     col1, col2 = st.columns([3, 1])
@@ -260,32 +261,35 @@ with tab3:
 
     with col2:
         if st.button("📓 Import from Journal"):
-            st.session_state['show_journal_import'] = True
+            st.session_state["show_journal_import"] = True
 
     # Show journal import
-    if st.session_state.get('show_journal_import', False):
+    if st.session_state.get("show_journal_import", False):
         try:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT id, title, description
                     FROM career_journal
                     WHERE profile_id = ?
                     ORDER BY achievement_date DESC
-                ''', (profile['id'],))
+                """,
+                    (profile["id"],),
+                )
                 achievements = cursor.fetchall()
 
             if achievements:
                 selected = st.selectbox(
                     "Select Achievement",
-                    [(a['id'], a['title']) for a in achievements],
-                    format_func=lambda x: x[1]
+                    [(a["id"], a["title"]) for a in achievements],
+                    format_func=lambda x: x[1],
                 )
 
                 if st.button("Load"):
-                    selected_achievement = next(a for a in achievements if a['id'] == selected[0])
-                    st.session_state['star_description'] = selected_achievement['description']
-                    st.session_state['show_journal_import'] = False
+                    selected_achievement = next(a for a in achievements if a["id"] == selected[0])
+                    st.session_state["star_description"] = selected_achievement["description"]
+                    st.session_state["show_journal_import"] = False
                     st.rerun()
             else:
                 st.info("No journal entries found")
@@ -297,30 +301,30 @@ with tab3:
     with st.form("star_form"):
         situation = st.text_area(
             "**Situation** - What was the context?",
-            value=st.session_state.get('star_situation', ''),
+            value=st.session_state.get("star_situation", ""),
             height=100,
-            placeholder="Example: Our company's mobile app was experiencing high crash rates (15%) causing user frustration..."
+            placeholder="Example: Our company's mobile app was experiencing high crash rates (15%) causing user frustration...",
         )
 
         task = st.text_area(
             "**Task** - What was your responsibility?",
-            value=st.session_state.get('star_task', ''),
+            value=st.session_state.get("star_task", ""),
             height=100,
-            placeholder="Example: I was tasked with identifying the root cause and reducing crash rates to under 2% within one month..."
+            placeholder="Example: I was tasked with identifying the root cause and reducing crash rates to under 2% within one month...",
         )
 
         action = st.text_area(
             "**Action** - What did you do?",
-            value=st.session_state.get('star_action', ''),
+            value=st.session_state.get("star_action", ""),
             height=150,
-            placeholder="Example: I analyzed crash logs, identified 3 critical bugs in the payment module, implemented fixes, added comprehensive error handling, and set up automated testing..."
+            placeholder="Example: I analyzed crash logs, identified 3 critical bugs in the payment module, implemented fixes, added comprehensive error handling, and set up automated testing...",
         )
 
         result = st.text_area(
             "**Result** - What was the outcome?",
-            value=st.session_state.get('star_result', ''),
+            value=st.session_state.get("star_result", ""),
             height=100,
-            placeholder="Example: Reduced crash rate to 1.5%, improved app store rating from 3.8 to 4.5 stars, increased user retention by 25%..."
+            placeholder="Example: Reduced crash rate to 1.5%, improved app store rating from 3.8 to 4.5 stars, increased user retention by 25%...",
         )
 
         col1, col2 = st.columns(2)
@@ -332,7 +336,7 @@ with tab3:
             clear = st.form_submit_button("🗑️ Clear")
 
         if clear:
-            for key in ['star_situation', 'star_task', 'star_action', 'star_result']:
+            for key in ["star_situation", "star_task", "star_action", "star_result"]:
                 if key in st.session_state:
                     del st.session_state[key]
             st.rerun()
@@ -343,8 +347,8 @@ with tab3:
 
                 with st.spinner("Crafting your story..."):
                     try:
-                        from langchain.prompts import PromptTemplate
                         from langchain.chains import LLMChain
+                        from langchain.prompts import PromptTemplate
                         from langchain_community.llms import OpenAI
 
                         llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
@@ -361,7 +365,9 @@ with tab3:
 
                         Polished Story:
                         """
-                        prompt = PromptTemplate(input_variables=["star_components"], template=template)
+                        prompt = PromptTemplate(
+                            input_variables=["star_components"], template=template
+                        )
                         chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
                         polished_story = chain.predict(star_components=combined)
 
@@ -372,7 +378,7 @@ with tab3:
                             label="📥 Download Story",
                             data=polished_story,
                             file_name="star_story.txt",
-                            mime="text/plain"
+                            mime="text/plain",
                         )
 
                     except Exception as e:
@@ -428,8 +434,8 @@ with tab4:
 
             with st.spinner("Generating talking points..."):
                 try:
-                    from langchain.prompts import PromptTemplate
                     from langchain.chains import LLMChain
+                    from langchain.prompts import PromptTemplate
                     from langchain_community.llms import OpenAI
 
                     llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
@@ -442,9 +448,13 @@ with tab4:
 
                     Talking Points:
                     """
-                    prompt = PromptTemplate(input_variables=["company", "position"], template=template)
+                    prompt = PromptTemplate(
+                        input_variables=["company", "position"], template=template
+                    )
                     chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
-                    talking_points = chain.predict(company=company_name, position=position or "the position")
+                    talking_points = chain.predict(
+                        company=company_name, position=position or "the position"
+                    )
 
                     st.info(talking_points)
 
@@ -457,7 +467,8 @@ with tab4:
 # Sidebar
 with st.sidebar:
     st.header("💡 Interview Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Before:**
     - Research the company
     - Review your resume
@@ -478,4 +489,5 @@ with st.sidebar:
     - Note what went well
     - Note areas to improve
     - Follow up appropriately
-    """)
+    """
+    )

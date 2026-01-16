@@ -7,57 +7,69 @@ Tests core functionality without requiring Streamlit
 import os
 import sys
 
+
 def test_imports():
     """Test all critical imports."""
     print("Testing imports...")
     errors = []
 
     try:
-        from models.database import init_database, get_db_connection, get_or_create_default_profile
+        from models.database import get_db_connection, get_or_create_default_profile, init_database
+
         print("  ✓ Database models")
     except Exception as e:
         errors.append(f"Database models: {e}")
 
     try:
         from services.llm_service import LLMService, get_llm_service
+
         print("  ✓ LLM service")
     except Exception as e:
         errors.append(f"LLM service: {e}")
 
     try:
         from services.resume_analyzer import ATSAnalyzer, extract_keywords
+
         print("  ✓ Resume analyzer")
     except Exception as e:
         errors.append(f"Resume analyzer: {e}")
 
     try:
-        from utils.file_parser import parse_file, extract_text_from_upload
+        from utils.file_parser import extract_text_from_upload, parse_file
+
         print("  ✓ File parser")
     except Exception as e:
         errors.append(f"File parser: {e}")
 
     try:
         from utils.validators import (
-            validate_email, validate_url, validate_phone,
-            validate_linkedin_url, validate_github_url
+            validate_email,
+            validate_github_url,
+            validate_linkedin_url,
+            validate_phone,
+            validate_url,
         )
+
         print("  ✓ Validators")
     except Exception as e:
         errors.append(f"Validators: {e}")
 
     try:
         from utils.ui_helpers import confirm_delete, show_error_with_suggestion
+
         print("  ✓ UI helpers")
     except Exception as e:
         errors.append(f"UI helpers: {e}")
 
     try:
         import config
+
         print(f"  ✓ Config (v{config.APP_VERSION})")
     except Exception as e:
         errors.append(f"Config: {e}")
 
     return errors
+
 
 def test_database():
     """Test database initialization."""
@@ -65,7 +77,7 @@ def test_database():
     errors = []
 
     try:
-        from models.database import init_database, get_db_connection, get_or_create_default_profile
+        from models.database import get_db_connection, get_or_create_default_profile, init_database
 
         # Initialize
         init_database()
@@ -75,9 +87,15 @@ def test_database():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = [row['name'] for row in cursor.fetchall()]
+            tables = [row["name"] for row in cursor.fetchall()]
 
-        expected_tables = ['profiles', 'resumes', 'job_applications', 'cover_letters', 'career_journal']
+        expected_tables = [
+            "profiles",
+            "resumes",
+            "job_applications",
+            "cover_letters",
+            "career_journal",
+        ]
         for table in expected_tables:
             if table in tables:
                 print(f"  ✓ Table '{table}' exists")
@@ -86,7 +104,7 @@ def test_database():
 
         # Test profile creation
         profile = get_or_create_default_profile()
-        if profile and profile.get('id'):
+        if profile and profile.get("id"):
             print(f"  ✓ Profile created (ID: {profile['id']})")
         else:
             errors.append("Profile creation failed")
@@ -96,14 +114,18 @@ def test_database():
 
     return errors
 
+
 def test_validators():
     """Test validation functions."""
     print("\nTesting validators...")
     errors = []
 
     from utils.validators import (
-        validate_email, validate_url, validate_phone,
-        validate_linkedin_url, validate_github_url
+        validate_email,
+        validate_github_url,
+        validate_linkedin_url,
+        validate_phone,
+        validate_url,
     )
 
     # Test email validation
@@ -126,6 +148,7 @@ def test_validators():
             errors.append(f"{desc}: expected {expected_valid}, got {is_valid}")
 
     return errors
+
 
 def test_ats_analyzer():
     """Test ATS scoring."""
@@ -160,8 +183,8 @@ def test_ats_analyzer():
 
         result = analyzer.analyze_resume(test_resume, test_job_desc)
 
-        if 'ats_score' in result:
-            score = result['ats_score']
+        if "ats_score" in result:
+            score = result["ats_score"]
             print(f"  ✓ ATS score calculated: {score}/100")
 
             if score >= 0 and score <= 100:
@@ -171,7 +194,7 @@ def test_ats_analyzer():
         else:
             errors.append("No ATS score returned")
 
-        if 'suggestions' in result and len(result['suggestions']) > 0:
+        if "suggestions" in result and len(result["suggestions"]) > 0:
             print(f"  ✓ Generated {len(result['suggestions'])} suggestions")
         else:
             errors.append("No suggestions generated")
@@ -180,6 +203,7 @@ def test_ats_analyzer():
         errors.append(f"ATS analyzer test failed: {e}")
 
     return errors
+
 
 def test_file_parser():
     """Test file parsing."""
@@ -191,7 +215,7 @@ def test_file_parser():
 
         # Test text parsing
         test_text = b"This is a test resume"
-        result = parse_file(test_text, 'txt')
+        result = parse_file(test_text, "txt")
 
         if result == "This is a test resume":
             print("  ✓ Text parsing works")
@@ -203,6 +227,7 @@ def test_file_parser():
 
     return errors
 
+
 def test_config():
     """Test configuration."""
     print("\nTesting configuration...")
@@ -212,10 +237,10 @@ def test_config():
         import config
 
         required_settings = [
-            'MAX_FILE_SIZE_MB',
-            'OPENAI_MODEL',
-            'APP_VERSION',
-            'APP_NAME',
+            "MAX_FILE_SIZE_MB",
+            "OPENAI_MODEL",
+            "APP_VERSION",
+            "APP_NAME",
         ]
 
         for setting in required_settings:
@@ -230,11 +255,12 @@ def test_config():
 
     return errors
 
+
 def main():
     """Run all tests."""
-    print("="*60)
+    print("=" * 60)
     print("ResuBoost AI - Comprehensive Test Suite")
-    print("="*60)
+    print("=" * 60)
 
     all_errors = []
 
@@ -247,22 +273,23 @@ def main():
     all_errors.extend(test_config())
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     if not all_errors:
         print("✅ ALL TESTS PASSED!")
-        print("="*60)
+        print("=" * 60)
         print("\nYour ResuBoost AI installation is working correctly.")
         print("\nTo start the app:")
         print("  streamlit run app.py")
         return 0
     else:
         print(f"❌ {len(all_errors)} TEST(S) FAILED")
-        print("="*60)
+        print("=" * 60)
         print("\nErrors:")
         for i, error in enumerate(all_errors, 1):
             print(f"  {i}. {error}")
         print("\nPlease fix these issues before running the app.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

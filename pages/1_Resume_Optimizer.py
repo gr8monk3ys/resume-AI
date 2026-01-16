@@ -1,18 +1,19 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from utils.file_parser import extract_text_from_upload
+from config import MAX_JOB_DESCRIPTION_LENGTH, MAX_RESUME_LENGTH
+from models.auth_database import init_auth_database
+from models.database import get_db_connection
 from services.llm_service import get_llm_service
 from services.resume_analyzer import ATSAnalyzer, extract_keywords
-from models.database import get_db_connection
-from models.auth_database import init_auth_database
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
+from utils.file_parser import extract_text_from_upload
 from utils.rate_limiter import check_rate_limit
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
-from config import MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH
 
 st.set_page_config(page_title="Resume Optimizer", page_icon="📄", layout="wide")
 
@@ -45,16 +46,12 @@ with tab1:
 
     with col1:
         resume_file = st.file_uploader(
-            "Upload Resume",
-            type=['txt', 'pdf', 'docx'],
-            key="ats_resume"
+            "Upload Resume", type=["txt", "pdf", "docx"], key="ats_resume"
         )
 
     with col2:
         job_desc_file = st.file_uploader(
-            "Upload Job Description (Optional)",
-            type=['txt', 'pdf', 'docx'],
-            key="ats_job_desc"
+            "Upload Job Description (Optional)", type=["txt", "pdf", "docx"], key="ats_job_desc"
         )
 
     if st.button("Analyze ATS Score", type="primary"):
@@ -66,12 +63,16 @@ with tab1:
 
                     # Validate input lengths
                     if len(resume_text) > MAX_RESUME_LENGTH:
-                        st.error(f"❌ Resume is too large ({len(resume_text):,} characters). "
-                                f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters.")
+                        st.error(
+                            f"❌ Resume is too large ({len(resume_text):,} characters). "
+                            f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters."
+                        )
                         st.stop()
                     if job_desc_text and len(job_desc_text) > MAX_JOB_DESCRIPTION_LENGTH:
-                        st.error(f"❌ Job description is too large ({len(job_desc_text):,} characters). "
-                                f"Maximum allowed is {MAX_JOB_DESCRIPTION_LENGTH:,} characters.")
+                        st.error(
+                            f"❌ Job description is too large ({len(job_desc_text):,} characters). "
+                            f"Maximum allowed is {MAX_JOB_DESCRIPTION_LENGTH:,} characters."
+                        )
                         st.stop()
 
                     # Perform ATS analysis
@@ -79,7 +80,7 @@ with tab1:
 
                     # Display ATS Score
                     st.subheader("ATS Score")
-                    score = analysis['ats_score']
+                    score = analysis["ats_score"]
 
                     # Color code the score
                     if score >= 80:
@@ -97,7 +98,7 @@ with tab1:
 
                     # Score breakdown
                     st.subheader("Score Breakdown")
-                    breakdown = analysis['score_breakdown']
+                    breakdown = analysis["score_breakdown"]
 
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -115,36 +116,36 @@ with tab1:
 
                     # Suggestions
                     st.subheader("💡 Improvement Suggestions")
-                    for idx, suggestion in enumerate(analysis['suggestions'], 1):
+                    for idx, suggestion in enumerate(analysis["suggestions"], 1):
                         st.write(f"{idx}. {suggestion}")
 
                     # Found Skills
                     st.subheader("✅ Skills Found in Your Resume")
-                    skills = analysis['found_skills']
+                    skills = analysis["found_skills"]
 
                     col1, col2 = st.columns(2)
                     with col1:
                         st.write("**Technical Skills:**")
-                        if skills['technical_skills']:
-                            for skill in skills['technical_skills']:
+                        if skills["technical_skills"]:
+                            for skill in skills["technical_skills"]:
                                 st.write(f"- {skill}")
                         else:
                             st.write("No technical skills identified")
 
                     with col2:
                         st.write("**Soft Skills:**")
-                        if skills['soft_skills']:
-                            for skill in skills['soft_skills']:
+                        if skills["soft_skills"]:
+                            for skill in skills["soft_skills"]:
                                 st.write(f"- {skill}")
                         else:
                             st.write("No soft skills identified")
 
                     # Missing Keywords
-                    if job_desc_file and analysis['missing_keywords']:
+                    if job_desc_file and analysis["missing_keywords"]:
                         st.subheader("🔍 Missing Keywords from Job Description")
                         st.write("Consider adding these keywords to your resume:")
                         cols = st.columns(5)
-                        for idx, keyword in enumerate(analysis['missing_keywords']):
+                        for idx, keyword in enumerate(analysis["missing_keywords"]):
                             cols[idx % 5].write(f"• {keyword}")
 
                 except Exception as e:
@@ -160,16 +161,12 @@ with tab2:
 
     with col1:
         resume_file_opt = st.file_uploader(
-            "Upload Resume",
-            type=['txt', 'pdf', 'docx'],
-            key="opt_resume"
+            "Upload Resume", type=["txt", "pdf", "docx"], key="opt_resume"
         )
 
     with col2:
         job_desc_file_opt = st.file_uploader(
-            "Upload Job Description",
-            type=['txt', 'pdf', 'docx'],
-            key="opt_job_desc"
+            "Upload Job Description", type=["txt", "pdf", "docx"], key="opt_job_desc"
         )
 
     if st.button("Optimize Resume", type="primary"):
@@ -185,12 +182,16 @@ with tab2:
 
                     # Validate input lengths
                     if len(resume_text) > MAX_RESUME_LENGTH:
-                        st.error(f"❌ Resume is too large ({len(resume_text):,} characters). "
-                                f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters.")
+                        st.error(
+                            f"❌ Resume is too large ({len(resume_text):,} characters). "
+                            f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters."
+                        )
                         st.stop()
                     if len(job_desc_text) > MAX_JOB_DESCRIPTION_LENGTH:
-                        st.error(f"❌ Job description is too large ({len(job_desc_text):,} characters). "
-                                f"Maximum allowed is {MAX_JOB_DESCRIPTION_LENGTH:,} characters.")
+                        st.error(
+                            f"❌ Job description is too large ({len(job_desc_text):,} characters). "
+                            f"Maximum allowed is {MAX_JOB_DESCRIPTION_LENGTH:,} characters."
+                        )
                         st.stop()
 
                     # Get grammar correction
@@ -211,14 +212,14 @@ with tab2:
                         "Corrected Resume",
                         value=corrected_resume,
                         height=300,
-                        key="corrected_resume_display"
+                        key="corrected_resume_display",
                     )
 
                     st.download_button(
                         label="📥 Download Corrected Resume",
                         data=corrected_resume,
                         file_name="corrected_resume.txt",
-                        mime="text/plain"
+                        mime="text/plain",
                     )
 
                 except Exception as e:
@@ -237,18 +238,23 @@ with tab3:
         if version_name and resume_content:
             # Validate input length
             if len(resume_content) > MAX_RESUME_LENGTH:
-                st.error(f"❌ Resume content is too large ({len(resume_content):,} characters). "
-                        f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters.")
+                st.error(
+                    f"❌ Resume content is too large ({len(resume_content):,} characters). "
+                    f"Maximum allowed is {MAX_RESUME_LENGTH:,} characters."
+                )
             else:
                 try:
                     profile = get_current_profile()
 
                     with get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             INSERT INTO resumes (profile_id, version_name, content)
                             VALUES (?, ?, ?)
-                        ''', (profile['id'], version_name, resume_content))
+                        """,
+                            (profile["id"], version_name, resume_content),
+                        )
                         conn.commit()
 
                     st.success(f"✅ Resume version '{version_name}' saved successfully!")
@@ -266,12 +272,15 @@ with tab3:
 
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, version_name, created_at, ats_score
                 FROM resumes
                 WHERE profile_id = ?
                 ORDER BY created_at DESC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             resumes = cursor.fetchall()
 
         if resumes:
@@ -285,9 +294,16 @@ with tab3:
                     if st.button("View", key=f"view_{resume['id']}"):
                         with get_db_connection() as conn:
                             cursor = conn.cursor()
-                            cursor.execute('SELECT content FROM resumes WHERE id = ?', (resume['id'],))
-                            content = cursor.fetchone()['content']
-                            st.text_area("Resume Content", value=content, height=200, key=f"content_{resume['id']}")
+                            cursor.execute(
+                                "SELECT content FROM resumes WHERE id = ?", (resume["id"],)
+                            )
+                            content = cursor.fetchone()["content"]
+                            st.text_area(
+                                "Resume Content",
+                                value=content,
+                                height=200,
+                                key=f"content_{resume['id']}",
+                            )
         else:
             st.info("No saved resumes yet. Save your first resume above!")
 
@@ -297,7 +313,8 @@ with tab3:
 # Sidebar with tips
 with st.sidebar:
     st.header("💡 Resume Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **ATS Best Practices:**
     - Use standard section headers
     - Include relevant keywords
@@ -311,4 +328,5 @@ with st.sidebar:
     - Entry-level: 1 page
     - Mid-level: 1-2 pages
     - Senior: 2 pages max
-    """)
+    """
+    )

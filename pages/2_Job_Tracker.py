@@ -1,16 +1,17 @@
-import streamlit as st
-import sys
-import os
 import csv
 import io
-from datetime import datetime, date
+import os
+import sys
+from datetime import date, datetime
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from models.database import get_db_connection
 from models.auth_database import init_auth_database
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from models.database import get_db_connection
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
 
 st.set_page_config(page_title="Job Tracker", page_icon="📊", layout="wide")
 
@@ -39,7 +40,7 @@ STATUS_COLORS = {
     "Phone Screen": "📞",
     "Interview": "🎯",
     "Offer": "🎉",
-    "Rejected": "❌"
+    "Rejected": "❌",
 }
 
 # Header actions
@@ -49,25 +50,46 @@ with col2:
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT company, position, status, application_date, deadline, location, job_url, notes
                 FROM job_applications
                 WHERE profile_id = ?
                 ORDER BY application_date DESC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             export_apps = cursor.fetchall()
 
         if export_apps:
             # Create CSV using csv module
             output = io.StringIO()
             writer = csv.writer(output, quoting=csv.QUOTE_ALL)
-            writer.writerow(["Company", "Position", "Status", "Application Date", "Deadline", "Location", "Job URL", "Notes"])
+            writer.writerow(
+                [
+                    "Company",
+                    "Position",
+                    "Status",
+                    "Application Date",
+                    "Deadline",
+                    "Location",
+                    "Job URL",
+                    "Notes",
+                ]
+            )
             for app in export_apps:
-                writer.writerow([
-                    app["company"], app["position"], app["status"],
-                    app["application_date"], app["deadline"] or "",
-                    app["location"] or "", app["job_url"] or "", app["notes"] or ""
-                ])
+                writer.writerow(
+                    [
+                        app["company"],
+                        app["position"],
+                        app["status"],
+                        app["application_date"],
+                        app["deadline"] or "",
+                        app["location"] or "",
+                        app["job_url"] or "",
+                        app["notes"] or "",
+                    ]
+                )
             csv_content = output.getvalue()
 
             st.download_button(
@@ -75,33 +97,40 @@ with col2:
                 data=csv_content,
                 file_name=f"job_applications_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                help="Export all applications to CSV"
+                help="Export all applications to CSV",
             )
     except Exception as e:
         st.error(f"Export error: {str(e)}")
 
 # Tabs for different views
-tab1, tab2, tab3, tab4 = st.tabs(["📋 Kanban Board", "➕ Add Application", "📝 List View", "📈 Analytics"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📋 Kanban Board", "➕ Add Application", "📝 List View", "📈 Analytics"]
+)
 
 with tab1:
     st.header("Kanban Board")
-    st.caption("Drag mentally, click to move! Select a new status to move applications between columns.")
+    st.caption(
+        "Drag mentally, click to move! Select a new status to move applications between columns."
+    )
 
     # Get all applications
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT * FROM job_applications
                 WHERE profile_id = ?
                 ORDER BY updated_at DESC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             all_applications = cursor.fetchall()
 
         # Group applications by status
         apps_by_status = {status: [] for status in KANBAN_STATUSES}
         for app in all_applications:
-            status = app['status']
+            status = app["status"]
             # Map old statuses to new ones
             if status == "Interview Scheduled" or status == "Interviewed":
                 status = "Interview"
@@ -125,13 +154,16 @@ with tab1:
                 for app in apps_by_status[status]:
                     with st.container():
                         # Card styling using markdown
-                        st.markdown(f"""
+                        st.markdown(
+                            f"""
                         <div style="background-color: #f0f2f6; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid {'#ff6b6b' if status == 'Rejected' else '#4CAF50' if status == 'Offer' else '#2196F3'};">
                             <strong>{app['company']}</strong><br>
                             <small>{app['position']}</small><br>
                             <small style="color: #666;">{app['application_date'] or 'No date'}</small>
                         </div>
-                        """, unsafe_allow_html=True)
+                        """,
+                            unsafe_allow_html=True,
+                        )
 
                         # Quick actions in expander
                         with st.expander("Actions", expanded=False):
@@ -139,41 +171,54 @@ with tab1:
                             new_status = st.selectbox(
                                 "Move to",
                                 KANBAN_STATUSES,
-                                index=KANBAN_STATUSES.index(status) if status in KANBAN_STATUSES else 0,
-                                key=f"kanban_status_{app['id']}"
+                                index=(
+                                    KANBAN_STATUSES.index(status)
+                                    if status in KANBAN_STATUSES
+                                    else 0
+                                ),
+                                key=f"kanban_status_{app['id']}",
                             )
 
                             col_a, col_b = st.columns(2)
                             with col_a:
-                                if st.button("Move", key=f"kanban_move_{app['id']}", use_container_width=True):
+                                if st.button(
+                                    "Move", key=f"kanban_move_{app['id']}", use_container_width=True
+                                ):
                                     with get_db_connection() as conn:
                                         cursor = conn.cursor()
                                         cursor.execute(
-                                            'UPDATE job_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                                            (new_status, app['id'])
+                                            "UPDATE job_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                                            (new_status, app["id"]),
                                         )
                                         conn.commit()
                                     st.rerun()
 
                             with col_b:
-                                if st.button("🗑️", key=f"kanban_del_{app['id']}", use_container_width=True):
+                                if st.button(
+                                    "🗑️", key=f"kanban_del_{app['id']}", use_container_width=True
+                                ):
                                     with get_db_connection() as conn:
                                         cursor = conn.cursor()
-                                        cursor.execute('DELETE FROM job_applications WHERE id = ?', (app['id'],))
+                                        cursor.execute(
+                                            "DELETE FROM job_applications WHERE id = ?",
+                                            (app["id"],),
+                                        )
                                         conn.commit()
                                     st.rerun()
 
                             # Show details
-                            if app['location']:
+                            if app["location"]:
                                 st.caption(f"📍 {app['location']}")
-                            if app['job_url']:
+                            if app["job_url"]:
                                 st.markdown(f"[🔗 View Job]({app['job_url']})")
-                            if app['notes']:
+                            if app["notes"]:
                                 st.caption(f"📝 {app['notes'][:50]}...")
 
                 # Add new to this column button
-                if st.button(f"+ Add to {status}", key=f"add_to_{status}", use_container_width=True):
-                    st.session_state['prefill_status'] = status
+                if st.button(
+                    f"+ Add to {status}", key=f"add_to_{status}", use_container_width=True
+                ):
+                    st.session_state["prefill_status"] = status
                     st.switch_page("pages/2_Job_Tracker.py")
 
     except Exception as e:
@@ -183,9 +228,9 @@ with tab2:
     st.header("Add New Job Application")
 
     # Check if we have a prefilled status
-    prefill_status = st.session_state.get('prefill_status', 'Applied')
-    if 'prefill_status' in st.session_state:
-        del st.session_state['prefill_status']
+    prefill_status = st.session_state.get("prefill_status", "Applied")
+    if "prefill_status" in st.session_state:
+        del st.session_state["prefill_status"]
 
     with st.form("add_application_form"):
         col1, col2 = st.columns(2)
@@ -199,14 +244,22 @@ with tab2:
             status = st.selectbox(
                 "Application Status",
                 KANBAN_STATUSES,
-                index=KANBAN_STATUSES.index(prefill_status) if prefill_status in KANBAN_STATUSES else 1
+                index=(
+                    KANBAN_STATUSES.index(prefill_status)
+                    if prefill_status in KANBAN_STATUSES
+                    else 1
+                ),
             )
             application_date = st.date_input("Application Date", value=date.today())
             deadline = st.date_input("Deadline (Optional)", value=None)
 
         job_url = st.text_input("Job Posting URL", placeholder="https://...")
-        job_description = st.text_area("Job Description", height=150, placeholder="Paste the job description here...")
-        notes = st.text_area("Notes", height=100, placeholder="Any additional notes about this application...")
+        job_description = st.text_area(
+            "Job Description", height=150, placeholder="Paste the job description here..."
+        )
+        notes = st.text_area(
+            "Notes", height=100, placeholder="Any additional notes about this application..."
+        )
 
         submitted = st.form_submit_button("➕ Add Application", type="primary")
 
@@ -215,15 +268,25 @@ with tab2:
                 try:
                     with get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             INSERT INTO job_applications
                             (profile_id, company, position, job_description, status, application_date, deadline, location, job_url, notes)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (
-                            profile['id'], company, position, job_description, status,
-                            application_date.isoformat(), deadline.isoformat() if deadline else None,
-                            location, job_url, notes
-                        ))
+                        """,
+                            (
+                                profile["id"],
+                                company,
+                                position,
+                                job_description,
+                                status,
+                                application_date.isoformat(),
+                                deadline.isoformat() if deadline else None,
+                                location,
+                                job_url,
+                                notes,
+                            ),
+                        )
                         conn.commit()
 
                     st.success(f"✅ Application to {company} for {position} added successfully!")
@@ -244,7 +307,9 @@ with tab2:
         with col1:
             bm_company = st.text_input("Company*", placeholder="Company name", key="bm_company")
         with col2:
-            bm_position = st.text_input("Position*", placeholder="Position title", key="bm_position")
+            bm_position = st.text_input(
+                "Position*", placeholder="Position title", key="bm_position"
+            )
 
         bm_url = st.text_input("Job URL (optional)", placeholder="https://...", key="bm_url")
 
@@ -253,11 +318,14 @@ with tab2:
                 try:
                     with get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             INSERT INTO job_applications
                             (profile_id, company, position, status, job_url)
                             VALUES (?, ?, ?, 'Bookmarked', ?)
-                        ''', (profile['id'], bm_company, bm_position, bm_url))
+                        """,
+                            (profile["id"], bm_company, bm_position, bm_url),
+                        )
                         conn.commit()
                     st.success(f"✅ Bookmarked {bm_company} - {bm_position}")
                     st.rerun()
@@ -273,44 +341,43 @@ with tab3:
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        status_filter = st.multiselect(
-            "Filter by Status",
-            KANBAN_STATUSES,
-            default=KANBAN_STATUSES
-        )
+        status_filter = st.multiselect("Filter by Status", KANBAN_STATUSES, default=KANBAN_STATUSES)
 
     with col2:
         search_company = st.text_input("Search Company/Position", placeholder="Search...")
 
     with col3:
-        sort_by = st.selectbox("Sort By", ["Application Date (Newest)", "Application Date (Oldest)", "Company", "Status"])
+        sort_by = st.selectbox(
+            "Sort By",
+            ["Application Date (Newest)", "Application Date (Oldest)", "Company", "Status"],
+        )
 
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
             # Build query with filters
-            query = 'SELECT * FROM job_applications WHERE profile_id = ?'
-            params = [profile['id']]
+            query = "SELECT * FROM job_applications WHERE profile_id = ?"
+            params = [profile["id"]]
 
             if status_filter:
-                placeholders = ','.join('?' * len(status_filter))
-                query += f' AND status IN ({placeholders})'
+                placeholders = ",".join("?" * len(status_filter))
+                query += f" AND status IN ({placeholders})"
                 params.extend(status_filter)
 
             if search_company:
-                query += ' AND (company LIKE ? OR position LIKE ?)'
-                params.extend([f'%{search_company}%', f'%{search_company}%'])
+                query += " AND (company LIKE ? OR position LIKE ?)"
+                params.extend([f"%{search_company}%", f"%{search_company}%"])
 
             # Add sorting
             if sort_by == "Application Date (Newest)":
-                query += ' ORDER BY application_date DESC'
+                query += " ORDER BY application_date DESC"
             elif sort_by == "Application Date (Oldest)":
-                query += ' ORDER BY application_date ASC'
+                query += " ORDER BY application_date ASC"
             elif sort_by == "Company":
-                query += ' ORDER BY company ASC'
+                query += " ORDER BY company ASC"
             else:
-                query += ' ORDER BY status ASC'
+                query += " ORDER BY status ASC"
 
             cursor.execute(query, params)
             applications = cursor.fetchall()
@@ -319,8 +386,10 @@ with tab3:
             st.write(f"**Showing {len(applications)} application(s)**")
 
             for app in applications:
-                status_emoji = STATUS_COLORS.get(app['status'], "📋")
-                with st.expander(f"{status_emoji} **{app['company']}** - {app['position']} ({app['status']})"):
+                status_emoji = STATUS_COLORS.get(app["status"], "📋")
+                with st.expander(
+                    f"{status_emoji} **{app['company']}** - {app['position']} ({app['status']})"
+                ):
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
@@ -331,20 +400,26 @@ with tab3:
                     with col2:
                         st.write(f"**Status:** {app['status']}")
                         st.write(f"**Applied:** {app['application_date'] or 'N/A'}")
-                        if app['deadline']:
+                        if app["deadline"]:
                             st.write(f"**Deadline:** {app['deadline']}")
 
                     with col3:
-                        if app['job_url']:
+                        if app["job_url"]:
                             st.markdown(f"[View Job Posting]({app['job_url']})")
 
-                    if app['job_description']:
+                    if app["job_description"]:
                         st.write("**Job Description:**")
-                        st.text_area("", value=app['job_description'], height=150, key=f"jd_{app['id']}", disabled=True)
+                        st.text_area(
+                            "",
+                            value=app["job_description"],
+                            height=150,
+                            key=f"jd_{app['id']}",
+                            disabled=True,
+                        )
 
-                    if app['notes']:
+                    if app["notes"]:
                         st.write("**Notes:**")
-                        st.write(app['notes'])
+                        st.write(app["notes"])
 
                     # Action buttons
                     st.markdown("---")
@@ -354,16 +429,20 @@ with tab3:
                         new_status = st.selectbox(
                             "Update Status",
                             KANBAN_STATUSES,
-                            index=KANBAN_STATUSES.index(app['status']) if app['status'] in KANBAN_STATUSES else 0,
-                            key=f"status_{app['id']}"
+                            index=(
+                                KANBAN_STATUSES.index(app["status"])
+                                if app["status"] in KANBAN_STATUSES
+                                else 0
+                            ),
+                            key=f"status_{app['id']}",
                         )
 
                         if st.button("Update Status", key=f"update_{app['id']}"):
                             with get_db_connection() as conn:
                                 cursor = conn.cursor()
                                 cursor.execute(
-                                    'UPDATE job_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                                    (new_status, app['id'])
+                                    "UPDATE job_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                                    (new_status, app["id"]),
                                 )
                                 conn.commit()
                             st.success("Status updated!")
@@ -373,13 +452,17 @@ with tab3:
                         if st.button("🗑️ Delete", key=f"delete_{app['id']}"):
                             with get_db_connection() as conn:
                                 cursor = conn.cursor()
-                                cursor.execute('DELETE FROM job_applications WHERE id = ?', (app['id'],))
+                                cursor.execute(
+                                    "DELETE FROM job_applications WHERE id = ?", (app["id"],)
+                                )
                                 conn.commit()
                             st.success("Deleted!")
                             st.rerun()
 
         else:
-            st.info("No applications found. Add your first application in the 'Add Application' tab!")
+            st.info(
+                "No applications found. Add your first application in the 'Add Application' tab!"
+            )
 
     except Exception as e:
         st.error(f"Error loading applications: {str(e)}")
@@ -392,34 +475,46 @@ with tab4:
             cursor = conn.cursor()
 
             # Total applications
-            cursor.execute('SELECT COUNT(*) as count FROM job_applications WHERE profile_id = ?', (profile['id'],))
-            total_apps = cursor.fetchone()['count']
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM job_applications WHERE profile_id = ?",
+                (profile["id"],),
+            )
+            total_apps = cursor.fetchone()["count"]
 
             # Applications by status
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT status, COUNT(*) as count
                 FROM job_applications
                 WHERE profile_id = ?
                 GROUP BY status
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             status_counts = cursor.fetchall()
 
             # Applications this month
-            current_month = datetime.now().strftime('%Y-%m')
-            cursor.execute('''
+            current_month = datetime.now().strftime("%Y-%m")
+            cursor.execute(
+                """
                 SELECT COUNT(*) as count
                 FROM job_applications
                 WHERE profile_id = ? AND application_date LIKE ?
-            ''', (profile['id'], f'{current_month}%'))
-            this_month = cursor.fetchone()['count']
+            """,
+                (profile["id"], f"{current_month}%"),
+            )
+            this_month = cursor.fetchone()["count"]
 
             # Applications this week
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT COUNT(*) as count
                 FROM job_applications
                 WHERE profile_id = ? AND application_date >= date('now', '-7 days')
-            ''', (profile['id'],))
-            this_week = cursor.fetchone()['count']
+            """,
+                (profile["id"],),
+            )
+            this_week = cursor.fetchone()["count"]
 
         # Display metrics
         st.subheader("Overview")
@@ -435,31 +530,33 @@ with tab4:
             st.metric("This Month", this_month)
 
         with col4:
-            active = sum(row['count'] for row in status_counts if row['status'] not in ['Rejected', 'Offer'])
+            active = sum(
+                row["count"] for row in status_counts if row["status"] not in ["Rejected", "Offer"]
+            )
             st.metric("Active", active)
 
         # Funnel metrics
         st.subheader("Application Funnel")
         col1, col2, col3, col4 = st.columns(4)
 
-        status_data = {row['status']: row['count'] for row in status_counts}
+        status_data = {row["status"]: row["count"] for row in status_counts}
 
         with col1:
-            applied = status_data.get('Applied', 0) + status_data.get('Bookmarked', 0)
+            applied = status_data.get("Applied", 0) + status_data.get("Bookmarked", 0)
             st.metric("📤 Applied/Saved", applied)
 
         with col2:
-            screens = status_data.get('Phone Screen', 0)
+            screens = status_data.get("Phone Screen", 0)
             rate = f"{(screens/applied*100):.0f}%" if applied > 0 else "0%"
             st.metric("📞 Phone Screens", screens, rate)
 
         with col3:
-            interviews = status_data.get('Interview', 0)
+            interviews = status_data.get("Interview", 0)
             rate = f"{(interviews/applied*100):.0f}%" if applied > 0 else "0%"
             st.metric("🎯 Interviews", interviews, rate)
 
         with col4:
-            offers = status_data.get('Offer', 0)
+            offers = status_data.get("Offer", 0)
             rate = f"{(offers/applied*100):.0f}%" if applied > 0 else "0%"
             st.metric("🎉 Offers", offers, rate)
 
@@ -485,19 +582,24 @@ with tab4:
 
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT company, position, application_date, status
                 FROM job_applications
                 WHERE profile_id = ?
                 ORDER BY updated_at DESC
                 LIMIT 10
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             recent = cursor.fetchall()
 
         if recent:
             for app in recent:
-                emoji = STATUS_COLORS.get(app['status'], "📋")
-                st.write(f"{emoji} **{app['company']}** - {app['position']} | {app['application_date'] or 'No date'} | {app['status']}")
+                emoji = STATUS_COLORS.get(app["status"], "📋")
+                st.write(
+                    f"{emoji} **{app['company']}** - {app['position']} | {app['application_date'] or 'No date'} | {app['status']}"
+                )
         else:
             st.info("No applications yet.")
 
@@ -517,7 +619,8 @@ with tab4:
 # Sidebar tips
 with st.sidebar:
     st.header("💡 Tracker Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Kanban Workflow:**
     1. 🔖 **Bookmark** jobs you find interesting
     2. 📤 Move to **Applied** when you submit
@@ -530,4 +633,5 @@ with st.sidebar:
     - Keep job descriptions for interview prep
     - Add notes after each interaction
     - Export data for backup
-    """)
+    """
+    )

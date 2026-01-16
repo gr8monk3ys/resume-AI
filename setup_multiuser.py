@@ -7,14 +7,15 @@ This script:
 3. Migrates existing data (if any) to default user
 """
 
-import sys
 import os
+import sys
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from models.auth_database import init_auth_database, create_user, get_user_by_username
+from models.auth_database import create_user, get_user_by_username, init_auth_database
 from models.database import init_database
+
 
 def setup_multi_user():
     """Set up multi-user authentication system."""
@@ -37,10 +38,7 @@ def setup_multi_user():
     print("\n3. Creating demo user...")
     try:
         demo_user_id = create_user(
-            username="demo",
-            email="demo@resuboost.ai",
-            password="demo123",
-            full_name="Demo User"
+            username="demo", email="demo@resuboost.ai", password="demo123", full_name="Demo User"
         )
         print(f"   ✅ Demo user created (ID: {demo_user_id})")
         print("      Username: demo")
@@ -56,14 +54,14 @@ def setup_multi_user():
 
         # Generate secure random password
         alphabet = string.ascii_letters + string.digits + string.punctuation
-        admin_password = ''.join(secrets.choice(alphabet) for i in range(16))
+        admin_password = "".join(secrets.choice(alphabet) for i in range(16))
 
         admin_user_id = create_user(
             username="admin",
             email="admin@resuboost.ai",
             password=admin_password,
             full_name="Administrator",
-            is_admin=True
+            is_admin=True,
         )
         print(f"   ✅ Admin user created (ID: {admin_user_id})")
         print("      Username: admin")
@@ -112,6 +110,7 @@ def setup_multi_user():
     print("  - Create your own account for production use")
     print("  - Delete demo/test accounts before production deployment")
     print("=" * 70)
+
 
 if __name__ == "__main__":
     setup_multi_user()

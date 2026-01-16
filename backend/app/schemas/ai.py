@@ -1,7 +1,9 @@
 """
 AI service schemas.
 """
-from typing import Optional, List
+
+from typing import List, Optional
+
 from pydantic import BaseModel
 
 
@@ -25,7 +27,9 @@ class AnswerQuestionRequest(BaseModel):
     """Schema for answering application questions."""
 
     question: str
-    question_type: Optional[str] = "general"  # general, behavioral, motivation, salary, weakness, strength
+    question_type: Optional[str] = (
+        "general"  # general, behavioral, motivation, salary, weakness, strength
+    )
     resume_content: Optional[str] = None
     job_description: Optional[str] = None
     max_length: Optional[int] = 300

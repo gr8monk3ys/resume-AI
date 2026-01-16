@@ -1,21 +1,22 @@
-import streamlit as st
-import sys
-import os
 import csv
 import io
+import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from models.database import get_db_connection
 from models.auth_database import init_auth_database
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from models.database import get_db_connection
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
 from utils.validators import (
     validate_email,
-    validate_linkedin_url,
     validate_github_url,
+    validate_linkedin_url,
+    validate_phone,
     validate_url,
-    validate_phone
 )
 
 st.set_page_config(page_title="Profile", page_icon="👤", layout="wide")
@@ -38,7 +39,9 @@ st.markdown("Manage your personal information and preferences")
 profile = get_current_profile()
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["✏️ Edit Profile", "📊 Statistics", "🔐 Change Password", "⚙️ Settings"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["✏️ Edit Profile", "📊 Statistics", "🔐 Change Password", "⚙️ Settings"]
+)
 
 with tab1:
     st.header("Personal Information")
@@ -49,50 +52,44 @@ with tab1:
 
         with col1:
             name = st.text_input(
-                "Full Name*",
-                value=profile.get('name', ''),
-                placeholder="John Doe"
+                "Full Name*", value=profile.get("name", ""), placeholder="John Doe"
             )
 
             email = st.text_input(
-                "Email",
-                value=profile.get('email', ''),
-                placeholder="john.doe@example.com"
+                "Email", value=profile.get("email", ""), placeholder="john.doe@example.com"
             )
 
             phone = st.text_input(
-                "Phone",
-                value=profile.get('phone', ''),
-                placeholder="+1 (555) 123-4567"
+                "Phone", value=profile.get("phone", ""), placeholder="+1 (555) 123-4567"
             )
 
         with col2:
             linkedin = st.text_input(
                 "LinkedIn URL",
-                value=profile.get('linkedin', ''),
-                placeholder="https://linkedin.com/in/johndoe"
+                value=profile.get("linkedin", ""),
+                placeholder="https://linkedin.com/in/johndoe",
             )
 
             github = st.text_input(
                 "GitHub URL",
-                value=profile.get('github', ''),
-                placeholder="https://github.com/johndoe"
+                value=profile.get("github", ""),
+                placeholder="https://github.com/johndoe",
             )
 
             portfolio = st.text_input(
                 "Portfolio/Website",
-                value=profile.get('portfolio', ''),
-                placeholder="https://johndoe.com"
+                value=profile.get("portfolio", ""),
+                placeholder="https://johndoe.com",
             )
 
         submitted = st.form_submit_button("💾 Update Profile", type="primary")
 
         if submitted:
+            from utils.input_sanitizer import sanitize_email as sanitize_email_input
+            from utils.input_sanitizer import sanitize_phone as sanitize_phone_input
             from utils.input_sanitizer import (
                 sanitize_text_input,
-                sanitize_email as sanitize_email_input,
-                sanitize_phone as sanitize_phone_input,
-                sanitize_url
+                sanitize_url,
             )
 
             # Sanitize inputs first
@@ -163,15 +160,18 @@ with tab1:
                 try:
                     with get_db_connection() as conn:
                         cursor = conn.cursor()
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             UPDATE profiles
                             SET name = ?, email = ?, phone = ?, linkedin = ?, github = ?, portfolio = ?, updated_at = CURRENT_TIMESTAMP
                             WHERE id = ?
-                        ''', (name, email, phone, linkedin, github, portfolio, profile['id']))
+                        """,
+                            (name, email, phone, linkedin, github, portfolio, profile["id"]),
+                        )
                         conn.commit()
 
                         # Refresh session state with updated profile
-                        cursor.execute('SELECT * FROM profiles WHERE id = ?', (profile['id'],))
+                        cursor.execute("SELECT * FROM profiles WHERE id = ?", (profile["id"],))
                         updated_profile = cursor.fetchone()
                         if updated_profile:
                             st.session_state.profile = dict(updated_profile)
@@ -191,27 +191,27 @@ with tab1:
 
     with col1:
         if st.button("Copy Email"):
-            if profile.get('email'):
-                st.code(profile['email'])
+            if profile.get("email"):
+                st.code(profile["email"])
             else:
                 st.info("No email set")
 
         if st.button("Copy LinkedIn"):
-            if profile.get('linkedin'):
-                st.code(profile['linkedin'])
+            if profile.get("linkedin"):
+                st.code(profile["linkedin"])
             else:
                 st.info("No LinkedIn URL set")
 
     with col2:
         if st.button("Copy Phone"):
-            if profile.get('phone'):
-                st.code(profile['phone'])
+            if profile.get("phone"):
+                st.code(profile["phone"])
             else:
                 st.info("No phone set")
 
         if st.button("Copy GitHub"):
-            if profile.get('github'):
-                st.code(profile['github'])
+            if profile.get("github"):
+                st.code(profile["github"])
             else:
                 st.info("No GitHub URL set")
 
@@ -224,50 +224,64 @@ with tab2:
 
             # Get comprehensive stats
             # Resumes
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT COUNT(*) as total,
                        AVG(ats_score) as avg_score,
                        MAX(ats_score) as max_score
                 FROM resumes
                 WHERE profile_id = ?
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             resume_stats = cursor.fetchone()
 
             # Applications by status
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT status, COUNT(*) as count
                 FROM job_applications
                 WHERE profile_id = ?
                 GROUP BY status
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             app_status = cursor.fetchall()
 
             # Recent activity
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT COUNT(*) as count
                 FROM job_applications
                 WHERE profile_id = ? AND date(application_date) >= date('now', '-7 days')
-            ''', (profile['id'],))
-            recent_apps = cursor.fetchone()['count']
+            """,
+                (profile["id"],),
+            )
+            recent_apps = cursor.fetchone()["count"]
 
             # Cover letters
-            cursor.execute('SELECT COUNT(*) as count FROM cover_letters WHERE profile_id = ?', (profile['id'],))
-            letter_count = cursor.fetchone()['count']
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM cover_letters WHERE profile_id = ?", (profile["id"],)
+            )
+            letter_count = cursor.fetchone()["count"]
 
             # Career journal
-            cursor.execute('SELECT COUNT(*) as count FROM career_journal WHERE profile_id = ?', (profile['id'],))
-            journal_count = cursor.fetchone()['count']
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM career_journal WHERE profile_id = ?",
+                (profile["id"],),
+            )
+            journal_count = cursor.fetchone()["count"]
 
         # Display metrics
         st.subheader("Overview")
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
-            total_resumes = resume_stats['total'] or 0
+            total_resumes = resume_stats["total"] or 0
             st.metric("Resume Versions", total_resumes)
 
         with col2:
-            total_apps = sum(row['count'] for row in app_status)
+            total_apps = sum(row["count"] for row in app_status)
             st.metric("Total Applications", total_apps)
 
         with col3:
@@ -283,11 +297,11 @@ with tab2:
             col1, col2 = st.columns(2)
 
             with col1:
-                avg_score = resume_stats['avg_score'] or 0
+                avg_score = resume_stats["avg_score"] or 0
                 st.metric("Average ATS Score", f"{avg_score:.1f}")
 
             with col2:
-                max_score = resume_stats['max_score'] or 0
+                max_score = resume_stats["max_score"] or 0
                 st.metric("Best ATS Score", f"{max_score}")
 
         # Application stats
@@ -296,7 +310,7 @@ with tab2:
             st.subheader("Application Breakdown")
 
             for status in app_status:
-                percentage = (status['count'] / total_apps * 100) if total_apps > 0 else 0
+                percentage = (status["count"] / total_apps * 100) if total_apps > 0 else 0
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     st.write(f"**{status['status']}**")
@@ -314,8 +328,20 @@ with tab2:
 
         with col2:
             if total_apps > 0:
-                success_rate = sum(row['count'] for row in app_status if row['status'] in ['Offer', 'Interviewed']) / total_apps * 100
-                st.metric("Success Rate", f"{success_rate:.1f}%", help="Percentage of applications that reached interview or offer stage")
+                success_rate = (
+                    sum(
+                        row["count"]
+                        for row in app_status
+                        if row["status"] in ["Offer", "Interviewed"]
+                    )
+                    / total_apps
+                    * 100
+                )
+                st.metric(
+                    "Success Rate",
+                    f"{success_rate:.1f}%",
+                    help="Percentage of applications that reached interview or offer stage",
+                )
 
         # Account info
         st.markdown("---")
@@ -330,16 +356,16 @@ with tab3:
     st.header("🔐 Change Password")
     st.markdown("Update your account password for better security")
 
-    from utils.auth import get_current_user
     from models.auth_database import change_password
+    from utils.audit_logger import log_password_change
+    from utils.auth import get_current_user
     from utils.password_validator import (
-        validate_password_strength,
-        validate_password_confirmation,
+        generate_password_requirements_text,
         get_password_strength_label,
         suggest_password_improvements,
-        generate_password_requirements_text
+        validate_password_confirmation,
+        validate_password_strength,
     )
-    from utils.audit_logger import log_password_change
 
     user = get_current_user()
 
@@ -351,21 +377,15 @@ with tab3:
         st.markdown("**All fields are required**")
 
         current_password = st.text_input(
-            "Current Password",
-            type="password",
-            placeholder="Enter your current password"
+            "Current Password", type="password", placeholder="Enter your current password"
         )
 
         new_password = st.text_input(
-            "New Password",
-            type="password",
-            placeholder="Enter your new password"
+            "New Password", type="password", placeholder="Enter your new password"
         )
 
         confirm_new_password = st.text_input(
-            "Confirm New Password",
-            type="password",
-            placeholder="Re-enter your new password"
+            "Confirm New Password", type="password", placeholder="Re-enter your new password"
         )
 
         submit_password = st.form_submit_button("🔒 Change Password", type="primary")
@@ -401,7 +421,9 @@ with tab3:
                                 st.warning(suggestion)
 
             # Validate confirmation
-            conf_valid, conf_error = validate_password_confirmation(new_password, confirm_new_password)
+            conf_valid, conf_error = validate_password_confirmation(
+                new_password, confirm_new_password
+            )
             if not conf_valid:
                 errors.append(conf_error)
 
@@ -415,11 +437,11 @@ with tab3:
             else:
                 # Attempt password change
                 try:
-                    success = change_password(user['id'], current_password, new_password)
+                    success = change_password(user["id"], current_password, new_password)
 
                     if success:
                         # Log password change
-                        log_password_change(user['id'], user['username'])
+                        log_password_change(user["id"], user["username"])
 
                         st.success("✅ Password changed successfully!")
                         st.info("👉 Please use your new password the next time you log in")
@@ -432,13 +454,15 @@ with tab3:
 
     st.markdown("---")
     st.markdown("### Password Security Tips")
-    st.markdown("""
+    st.markdown(
+        """
     - Use a unique password for each account
     - Consider using a password manager
     - Change your password regularly (every 90 days recommended)
     - Never share your password with anyone
     - Use two-factor authentication when available (coming soon!)
-    """)
+    """
+    )
 
 with tab4:
     st.header("Settings & Data Management")
@@ -453,37 +477,53 @@ with tab4:
             try:
                 with get_db_connection() as conn:
                     cursor = conn.cursor()
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         SELECT company, position, status, application_date, deadline, location, job_url, notes
                         FROM job_applications
                         WHERE profile_id = ?
                         ORDER BY application_date DESC
-                    ''', (profile['id'],))
+                    """,
+                        (profile["id"],),
+                    )
                     apps = cursor.fetchall()
 
                 if apps:
                     # Create CSV using csv module for proper escaping
                     output = io.StringIO()
                     writer = csv.writer(output, quoting=csv.QUOTE_ALL)
-                    writer.writerow(["Company", "Position", "Status", "Application Date", "Deadline", "Location", "Job URL", "Notes"])
+                    writer.writerow(
+                        [
+                            "Company",
+                            "Position",
+                            "Status",
+                            "Application Date",
+                            "Deadline",
+                            "Location",
+                            "Job URL",
+                            "Notes",
+                        ]
+                    )
                     for app in apps:
-                        writer.writerow([
-                            app["company"],
-                            app["position"],
-                            app["status"],
-                            app["application_date"],
-                            app["deadline"] or "",
-                            app["location"] or "",
-                            app["job_url"] or "",
-                            app["notes"] or ""
-                        ])
+                        writer.writerow(
+                            [
+                                app["company"],
+                                app["position"],
+                                app["status"],
+                                app["application_date"],
+                                app["deadline"] or "",
+                                app["location"] or "",
+                                app["job_url"] or "",
+                                app["notes"] or "",
+                            ]
+                        )
                     csv_content = output.getvalue()
 
                     st.download_button(
                         label="Download CSV",
                         data=csv_content,
                         file_name="job_applications.csv",
-                        mime="text/csv"
+                        mime="text/csv",
                     )
                 else:
                     st.info("No applications to export")
@@ -496,30 +536,33 @@ with tab4:
             try:
                 with get_db_connection() as conn:
                     cursor = conn.cursor()
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         SELECT title, description, achievement_date, tags
                         FROM career_journal
                         WHERE profile_id = ?
                         ORDER BY achievement_date DESC
-                    ''', (profile['id'],))
+                    """,
+                        (profile["id"],),
+                    )
                     achievements = cursor.fetchall()
 
                 if achievements:
                     # Create formatted text
-                    content = "CAREER JOURNAL\n" + "="*50 + "\n\n"
+                    content = "CAREER JOURNAL\n" + "=" * 50 + "\n\n"
                     for ach in achievements:
                         content += f"Title: {ach['title']}\n"
                         content += f"Date: {ach['achievement_date']}\n"
-                        if ach['tags']:
+                        if ach["tags"]:
                             content += f"Tags: {ach['tags']}\n"
                         content += f"\n{ach['description']}\n"
-                        content += "\n" + "-"*50 + "\n\n"
+                        content += "\n" + "-" * 50 + "\n\n"
 
                     st.download_button(
                         label="Download Journal",
                         data=content,
                         file_name="career_journal.txt",
-                        mime="text/plain"
+                        mime="text/plain",
                     )
                 else:
                     st.info("No journal entries to export")
@@ -533,7 +576,8 @@ with tab4:
     with st.expander("🗑️ Delete All Data"):
         st.warning("This action cannot be undone!")
 
-        st.markdown("""
+        st.markdown(
+            """
         This will permanently delete:
         - All resume versions
         - All job applications
@@ -542,7 +586,8 @@ with tab4:
         - Your profile information will be reset
 
         **Your profile will remain, but all data will be cleared.**
-        """)
+        """
+        )
 
         confirm_text = st.text_input("Type 'DELETE ALL DATA' to confirm:")
 
@@ -553,17 +598,26 @@ with tab4:
                         cursor = conn.cursor()
 
                         # Delete all user data
-                        cursor.execute('DELETE FROM resumes WHERE profile_id = ?', (profile['id'],))
-                        cursor.execute('DELETE FROM job_applications WHERE profile_id = ?', (profile['id'],))
-                        cursor.execute('DELETE FROM cover_letters WHERE profile_id = ?', (profile['id'],))
-                        cursor.execute('DELETE FROM career_journal WHERE profile_id = ?', (profile['id'],))
+                        cursor.execute("DELETE FROM resumes WHERE profile_id = ?", (profile["id"],))
+                        cursor.execute(
+                            "DELETE FROM job_applications WHERE profile_id = ?", (profile["id"],)
+                        )
+                        cursor.execute(
+                            "DELETE FROM cover_letters WHERE profile_id = ?", (profile["id"],)
+                        )
+                        cursor.execute(
+                            "DELETE FROM career_journal WHERE profile_id = ?", (profile["id"],)
+                        )
 
                         # Reset profile
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             UPDATE profiles
                             SET name = 'Default User', email = '', phone = '', linkedin = '', github = '', portfolio = ''
                             WHERE id = ?
-                        ''', (profile['id'],))
+                        """,
+                            (profile["id"],),
+                        )
 
                         conn.commit()
 
@@ -584,14 +638,22 @@ with st.sidebar:
             cursor = conn.cursor()
 
             # Get counts
-            cursor.execute('SELECT COUNT(*) as count FROM resumes WHERE profile_id = ?', (profile['id'],))
-            resumes = cursor.fetchone()['count']
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM resumes WHERE profile_id = ?", (profile["id"],)
+            )
+            resumes = cursor.fetchone()["count"]
 
-            cursor.execute('SELECT COUNT(*) as count FROM job_applications WHERE profile_id = ?', (profile['id'],))
-            apps = cursor.fetchone()['count']
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM job_applications WHERE profile_id = ?",
+                (profile["id"],),
+            )
+            apps = cursor.fetchone()["count"]
 
-            cursor.execute('SELECT COUNT(*) as count FROM career_journal WHERE profile_id = ?', (profile['id'],))
-            journal = cursor.fetchone()['count']
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM career_journal WHERE profile_id = ?",
+                (profile["id"],),
+            )
+            journal = cursor.fetchone()["count"]
 
         st.metric("Resume Versions", resumes)
         st.metric("Applications", apps)
@@ -601,4 +663,4 @@ with st.sidebar:
         st.error("Error loading stats")
 
     st.markdown("---")
-    st.markdown("**Profile ID:** " + str(profile['id']))
+    st.markdown("**Profile ID:** " + str(profile["id"]))

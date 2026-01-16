@@ -2,35 +2,87 @@
 ATS Resume Analyzer service.
 Ported from Streamlit version to work with FastAPI.
 """
+
 import re
-from typing import Dict, List, Tuple
 from collections import Counter
+from typing import Dict, List, Tuple
 
 
 class ATSAnalyzer:
     """Analyzer for ATS (Applicant Tracking System) compatibility scoring."""
 
     FORMATTING_KEYWORDS = [
-        'experience', 'education', 'skills', 'projects', 'certifications',
-        'achievements', 'summary', 'objective'
+        "experience",
+        "education",
+        "skills",
+        "projects",
+        "certifications",
+        "achievements",
+        "summary",
+        "objective",
     ]
 
     TECHNICAL_SKILLS = [
-        'python', 'java', 'javascript', 'react', 'node', 'sql', 'aws', 'docker',
-        'kubernetes', 'git', 'agile', 'scrum', 'ci/cd', 'api', 'rest', 'graphql',
-        'typescript', 'html', 'css', 'mongodb', 'postgresql', 'redis', 'kafka'
+        "python",
+        "java",
+        "javascript",
+        "react",
+        "node",
+        "sql",
+        "aws",
+        "docker",
+        "kubernetes",
+        "git",
+        "agile",
+        "scrum",
+        "ci/cd",
+        "api",
+        "rest",
+        "graphql",
+        "typescript",
+        "html",
+        "css",
+        "mongodb",
+        "postgresql",
+        "redis",
+        "kafka",
     ]
 
     SOFT_SKILLS = [
-        'leadership', 'communication', 'collaboration', 'problem-solving',
-        'analytical', 'team player', 'creative', 'innovative', 'detail-oriented',
-        'self-motivated', 'adaptable', 'organized', 'time management'
+        "leadership",
+        "communication",
+        "collaboration",
+        "problem-solving",
+        "analytical",
+        "team player",
+        "creative",
+        "innovative",
+        "detail-oriented",
+        "self-motivated",
+        "adaptable",
+        "organized",
+        "time management",
     ]
 
     ACTION_VERBS = [
-        'achieved', 'developed', 'implemented', 'designed', 'led', 'managed',
-        'created', 'improved', 'increased', 'reduced', 'streamlined', 'optimized',
-        'built', 'launched', 'delivered', 'coordinated', 'established', 'initiated'
+        "achieved",
+        "developed",
+        "implemented",
+        "designed",
+        "led",
+        "managed",
+        "created",
+        "improved",
+        "increased",
+        "reduced",
+        "streamlined",
+        "optimized",
+        "built",
+        "launched",
+        "delivered",
+        "coordinated",
+        "established",
+        "initiated",
     ]
 
     def __init__(self):
@@ -52,12 +104,12 @@ class ATSAnalyzer:
         self.job_description = job_description.lower()
 
         score_breakdown = {
-            'formatting': self._check_formatting(),
-            'keywords': self._check_keywords(),
-            'action_verbs': self._check_action_verbs(),
-            'quantifiable_results': self._check_quantifiable_results(),
-            'length': self._check_length(),
-            'job_match': self._check_job_match() if job_description else 0
+            "formatting": self._check_formatting(),
+            "keywords": self._check_keywords(),
+            "action_verbs": self._check_action_verbs(),
+            "quantifiable_results": self._check_quantifiable_results(),
+            "length": self._check_length(),
+            "job_match": self._check_job_match() if job_description else 0,
         }
 
         total_score = sum(score_breakdown.values())
@@ -66,18 +118,19 @@ class ATSAnalyzer:
         ats_score = int((total_score / max_score) * 100)
 
         return {
-            'ats_score': min(ats_score, 100),
-            'score_breakdown': score_breakdown,
-            'suggestions': self._generate_suggestions(score_breakdown),
-            'missing_keywords': self._find_missing_keywords(),
-            'keyword_matches': self._find_keyword_matches(),
-            'found_skills': self._extract_skills()
+            "ats_score": min(ats_score, 100),
+            "score_breakdown": score_breakdown,
+            "suggestions": self._generate_suggestions(score_breakdown),
+            "missing_keywords": self._find_missing_keywords(),
+            "keyword_matches": self._find_keyword_matches(),
+            "found_skills": self._extract_skills(),
         }
 
     def _check_formatting(self) -> int:
         """Check for standard resume sections (20 points max)."""
-        sections_found = sum(1 for keyword in self.FORMATTING_KEYWORDS
-                           if keyword in self.resume_text)
+        sections_found = sum(
+            1 for keyword in self.FORMATTING_KEYWORDS if keyword in self.resume_text
+        )
 
         if sections_found >= 5:
             return 20
@@ -89,25 +142,22 @@ class ATSAnalyzer:
 
     def _check_keywords(self) -> int:
         """Check for relevant keywords and skills (25 points max)."""
-        technical_count = sum(1 for skill in self.TECHNICAL_SKILLS
-                             if skill in self.resume_text)
-        soft_count = sum(1 for skill in self.SOFT_SKILLS
-                        if skill in self.resume_text)
+        technical_count = sum(1 for skill in self.TECHNICAL_SKILLS if skill in self.resume_text)
+        soft_count = sum(1 for skill in self.SOFT_SKILLS if skill in self.resume_text)
 
         total_keywords = technical_count + soft_count
         return min(total_keywords * 2, 25)
 
     def _check_action_verbs(self) -> int:
         """Check for strong action verbs (15 points max)."""
-        action_verbs_found = sum(1 for verb in self.ACTION_VERBS
-                                if verb in self.resume_text)
+        action_verbs_found = sum(1 for verb in self.ACTION_VERBS if verb in self.resume_text)
         return min(action_verbs_found * 2, 15)
 
     def _check_quantifiable_results(self) -> int:
         """Check for quantifiable achievements (20 points max)."""
-        numbers = len(re.findall(r'\d+', self.resume_text))
-        percentages = len(re.findall(r'\d+%', self.resume_text))
-        metrics = len(re.findall(r'\d+[kKmMbB]?\+?', self.resume_text))
+        numbers = len(re.findall(r"\d+", self.resume_text))
+        percentages = len(re.findall(r"\d+%", self.resume_text))
+        metrics = len(re.findall(r"\d+[kKmMbB]?\+?", self.resume_text))
 
         total_quantifiers = numbers + (percentages * 2) + (metrics * 2)
         return min(total_quantifiers, 20)
@@ -127,8 +177,8 @@ class ATSAnalyzer:
         if not self.job_description:
             return 0
 
-        job_words = set(re.findall(r'\b[a-z]{4,}\b', self.job_description))
-        resume_words = set(re.findall(r'\b[a-z]{4,}\b', self.resume_text))
+        job_words = set(re.findall(r"\b[a-z]{4,}\b", self.job_description))
+        resume_words = set(re.findall(r"\b[a-z]{4,}\b", self.resume_text))
 
         common_words = job_words.intersection(resume_words)
         match_ratio = len(common_words) / len(job_words) if job_words else 0
@@ -140,8 +190,8 @@ class ATSAnalyzer:
         if not self.job_description:
             return []
 
-        job_words = set(re.findall(r'\b[a-z]{4,}\b', self.job_description))
-        resume_words = set(re.findall(r'\b[a-z]{4,}\b', self.resume_text))
+        job_words = set(re.findall(r"\b[a-z]{4,}\b", self.job_description))
+        resume_words = set(re.findall(r"\b[a-z]{4,}\b", self.resume_text))
 
         all_important_words = set(self.TECHNICAL_SKILLS + self.SOFT_SKILLS)
         missing = (job_words - resume_words) & all_important_words
@@ -153,8 +203,8 @@ class ATSAnalyzer:
         if not self.job_description:
             return []
 
-        job_words = set(re.findall(r'\b[a-z]{4,}\b', self.job_description))
-        resume_words = set(re.findall(r'\b[a-z]{4,}\b', self.resume_text))
+        job_words = set(re.findall(r"\b[a-z]{4,}\b", self.job_description))
+        resume_words = set(re.findall(r"\b[a-z]{4,}\b", self.resume_text))
 
         all_important_words = set(self.TECHNICAL_SKILLS + self.SOFT_SKILLS)
         matches = job_words.intersection(resume_words).intersection(all_important_words)
@@ -163,36 +213,31 @@ class ATSAnalyzer:
 
     def _extract_skills(self) -> Dict[str, List[str]]:
         """Extract skills found in the resume."""
-        technical = [skill for skill in self.TECHNICAL_SKILLS
-                    if skill in self.resume_text]
-        soft = [skill for skill in self.SOFT_SKILLS
-               if skill in self.resume_text]
+        technical = [skill for skill in self.TECHNICAL_SKILLS if skill in self.resume_text]
+        soft = [skill for skill in self.SOFT_SKILLS if skill in self.resume_text]
 
-        return {
-            'technical_skills': technical,
-            'soft_skills': soft
-        }
+        return {"technical_skills": technical, "soft_skills": soft}
 
     def _generate_suggestions(self, score_breakdown: Dict[str, int]) -> List[str]:
         """Generate improvement suggestions based on scores."""
         suggestions = []
 
-        if score_breakdown['formatting'] < 15:
+        if score_breakdown["formatting"] < 15:
             suggestions.append("Add clear section headers (Experience, Education, Skills, etc.)")
 
-        if score_breakdown['keywords'] < 15:
+        if score_breakdown["keywords"] < 15:
             suggestions.append("Include more relevant technical and soft skills")
 
-        if score_breakdown['action_verbs'] < 10:
+        if score_breakdown["action_verbs"] < 10:
             suggestions.append("Use strong action verbs (achieved, developed, led, etc.)")
 
-        if score_breakdown['quantifiable_results'] < 10:
+        if score_breakdown["quantifiable_results"] < 10:
             suggestions.append("Add quantifiable metrics (percentages, numbers, growth metrics)")
 
-        if score_breakdown['length'] < 8:
+        if score_breakdown["length"] < 8:
             suggestions.append("Adjust resume length to 400-800 words for optimal ATS scanning")
 
-        if score_breakdown.get('job_match', 0) < 10:
+        if score_breakdown.get("job_match", 0) < 10:
             suggestions.append("Incorporate more keywords from the job description")
 
         if not suggestions:
@@ -213,11 +258,25 @@ def extract_keywords(text: str, top_n: int = 20) -> List[Tuple[str, int]]:
         List of (keyword, frequency) tuples
     """
     stop_words = {
-        'the', 'and', 'for', 'with', 'this', 'that', 'from', 'have',
-        'will', 'your', 'are', 'was', 'were', 'been', 'being', 'has'
+        "the",
+        "and",
+        "for",
+        "with",
+        "this",
+        "that",
+        "from",
+        "have",
+        "will",
+        "your",
+        "are",
+        "was",
+        "were",
+        "been",
+        "being",
+        "has",
     }
 
-    words = re.findall(r'\b[a-z]{4,}\b', text.lower())
+    words = re.findall(r"\b[a-z]{4,}\b", text.lower())
     filtered_words = [word for word in words if word not in stop_words]
 
     word_freq = Counter(filtered_words)

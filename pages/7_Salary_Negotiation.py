@@ -1,12 +1,13 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from services.llm_service import get_llm_service
 from models.auth_database import init_auth_database
+from services.llm_service import get_llm_service
 from utils.auth import init_session_state, is_authenticated, show_auth_sidebar
 
 st.set_page_config(page_title="Salary Negotiation", page_icon="💰", layout="wide")
@@ -29,7 +30,9 @@ st.markdown("Navigate salary discussions with confidence using data and AI-power
 llm_service = get_llm_service()
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Salary Research", "💬 Negotiation Scripts", "📝 Email Templates", "💡 Tips & Strategies"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["📊 Salary Research", "💬 Negotiation Scripts", "📝 Email Templates", "💡 Tips & Strategies"]
+)
 
 with tab1:
     st.header("Salary Research & Analysis")
@@ -43,8 +46,13 @@ with tab1:
         years_exp = st.number_input("Years of Experience", min_value=0, max_value=50, value=5)
 
     with col2:
-        education = st.selectbox("Education Level", ["High School", "Associate", "Bachelor's", "Master's", "PhD"])
-        company_size = st.selectbox("Company Size", ["Startup (1-50)", "Small (51-200)", "Medium (201-1000)", "Large (1000+)"])
+        education = st.selectbox(
+            "Education Level", ["High School", "Associate", "Bachelor's", "Master's", "PhD"]
+        )
+        company_size = st.selectbox(
+            "Company Size",
+            ["Startup (1-50)", "Small (51-200)", "Medium (201-1000)", "Large (1000+)"],
+        )
         industry = st.text_input("Industry", placeholder="e.g., Technology, Finance")
 
     if st.button("🔍 Get Salary Insights", type="primary"):
@@ -52,7 +60,8 @@ with tab1:
             st.subheader("Salary Research Checklist")
 
             # Resources to check
-            st.markdown("""
+            st.markdown(
+                """
             **Recommended Salary Resources:**
 
             1. **Glassdoor** - [glassdoor.com/Salaries](https://www.glassdoor.com/Salaries)
@@ -77,13 +86,14 @@ with tab1:
             5. **Bureau of Labor Statistics** - [bls.gov/oes](https://www.bls.gov/oes)
                - Official government data
                - Regional wage data
-            """)
+            """
+            )
 
             st.markdown("---")
 
             with st.spinner("Generating personalized insights..."):
                 try:
-                    from langchain import PromptTemplate, LLMChain, OpenAI
+                    from langchain import LLMChain, OpenAI, PromptTemplate
 
                     llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                     template = """
@@ -103,8 +113,15 @@ with tab1:
                     Analysis:
                     """
                     prompt = PromptTemplate(
-                        input_variables=["position", "location", "years_exp", "education", "company_size", "industry"],
-                        template=template
+                        input_variables=[
+                            "position",
+                            "location",
+                            "years_exp",
+                            "education",
+                            "company_size",
+                            "industry",
+                        ],
+                        template=template,
                     )
                     chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
                     insights = chain.predict(
@@ -113,7 +130,7 @@ with tab1:
                         years_exp=years_exp,
                         education=education,
                         company_size=company_size,
-                        industry=industry
+                        industry=industry,
                     )
 
                     st.subheader("📊 Personalized Analysis")
@@ -138,7 +155,9 @@ with tab1:
         bonus = st.number_input("Annual Bonus ($)", min_value=0, value=15000, step=1000)
 
     with col3:
-        stock_value = st.number_input("Stock/Equity (Annual Value $)", min_value=0, value=20000, step=5000)
+        stock_value = st.number_input(
+            "Stock/Equity (Annual Value $)", min_value=0, value=20000, step=5000
+        )
 
     total_comp = base_salary + bonus + stock_value
 
@@ -149,14 +168,18 @@ with tab1:
         col1, col2 = st.columns(2)
 
         with col1:
-            health_insurance = st.number_input("Health Insurance Value ($)", min_value=0, value=0, step=500)
+            health_insurance = st.number_input(
+                "Health Insurance Value ($)", min_value=0, value=0, step=500
+            )
             retirement_match = st.number_input("401k Match ($)", min_value=0, value=0, step=1000)
 
         with col2:
             pto_value = st.number_input("PTO/Vacation Value ($)", min_value=0, value=0, step=500)
             other_benefits = st.number_input("Other Benefits ($)", min_value=0, value=0, step=500)
 
-        total_package = total_comp + health_insurance + retirement_match + pto_value + other_benefits
+        total_package = (
+            total_comp + health_insurance + retirement_match + pto_value + other_benefits
+        )
         st.metric("**Total Compensation Package**", f"${total_package:,}")
 
 with tab2:
@@ -173,8 +196,8 @@ with tab2:
             "Asking for More Time",
             "Multiple Offers - Leveraging",
             "Internal Promotion/Raise",
-            "Custom Scenario"
-        ]
+            "Custom Scenario",
+        ],
     )
 
     if scenario == "Custom Scenario":
@@ -186,7 +209,9 @@ with tab2:
     col1, col2 = st.columns(2)
 
     with col1:
-        current_offer = st.number_input("Current Offer/Salary ($)", min_value=0, value=100000, step=5000)
+        current_offer = st.number_input(
+            "Current Offer/Salary ($)", min_value=0, value=100000, step=5000
+        )
 
     with col2:
         target_salary = st.number_input("Target Salary ($)", min_value=0, value=120000, step=5000)
@@ -194,13 +219,13 @@ with tab2:
     additional_context = st.text_area(
         "Additional Context (Optional)",
         height=100,
-        placeholder="e.g., I have another offer at $X, I bring Y years of experience in Z..."
+        placeholder="e.g., I have another offer at $X, I bring Y years of experience in Z...",
     )
 
     if st.button("💬 Generate Script", type="primary"):
         with st.spinner("Generating negotiation script..."):
             try:
-                from langchain import PromptTemplate, LLMChain, OpenAI
+                from langchain import LLMChain, OpenAI, PromptTemplate
 
                 llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                 template = """
@@ -222,14 +247,14 @@ with tab2:
                 """
                 prompt = PromptTemplate(
                     input_variables=["scenario", "current_offer", "target_salary", "context"],
-                    template=template
+                    template=template,
                 )
                 chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
                 script = chain.predict(
                     scenario=scenario_description,
                     current_offer=current_offer,
                     target_salary=target_salary,
-                    context=additional_context or "None provided"
+                    context=additional_context or "None provided",
                 )
 
                 st.subheader("💬 Your Negotiation Script")
@@ -239,7 +264,7 @@ with tab2:
                     label="📥 Download Script",
                     data=script,
                     file_name="negotiation_script.txt",
-                    mime="text/plain"
+                    mime="text/plain",
                 )
 
             except Exception as e:
@@ -257,8 +282,8 @@ with tab3:
             "Declining Offer (Too Low)",
             "Requesting Time to Decide",
             "Thank You After Negotiation",
-            "Following Up on Salary Discussion"
-        ]
+            "Following Up on Salary Discussion",
+        ],
     )
 
     company_name = st.text_input("Company Name", placeholder="e.g., TechCorp")
@@ -266,15 +291,19 @@ with tab3:
 
     col1, col2 = st.columns(2)
     with col1:
-        current_offer_val = st.number_input("Offer Amount ($)", min_value=0, value=100000, step=5000, key="email_current")
+        current_offer_val = st.number_input(
+            "Offer Amount ($)", min_value=0, value=100000, step=5000, key="email_current"
+        )
     with col2:
-        requested_val = st.number_input("Requested Amount ($)", min_value=0, value=120000, step=5000, key="email_target")
+        requested_val = st.number_input(
+            "Requested Amount ($)", min_value=0, value=120000, step=5000, key="email_target"
+        )
 
     if st.button("✉️ Generate Email", type="primary"):
         if company_name and hiring_manager:
             with st.spinner("Generating email..."):
                 try:
-                    from langchain import PromptTemplate, LLMChain, OpenAI
+                    from langchain import LLMChain, OpenAI, PromptTemplate
 
                     llm = OpenAI(model_name="gpt-3.5-turbo", temperature=0.7)
                     template = """
@@ -295,8 +324,14 @@ with tab3:
                     Email:
                     """
                     prompt = PromptTemplate(
-                        input_variables=["email_type", "company", "manager", "current_offer", "requested"],
-                        template=template
+                        input_variables=[
+                            "email_type",
+                            "company",
+                            "manager",
+                            "current_offer",
+                            "requested",
+                        ],
+                        template=template,
                     )
                     chain = LLMChain(llm=llm, prompt=prompt, verbose=False)
                     email = chain.predict(
@@ -304,7 +339,7 @@ with tab3:
                         company=company_name,
                         manager=hiring_manager,
                         current_offer=current_offer_val,
-                        requested=requested_val
+                        requested=requested_val,
                     )
 
                     st.subheader("✉️ Your Email")
@@ -314,7 +349,7 @@ with tab3:
                         label="📥 Download Email",
                         data=email,
                         file_name=f"salary_email_{email_type.lower().replace(' ', '_')}.txt",
-                        mime="text/plain"
+                        mime="text/plain",
                     )
 
                 except Exception as e:
@@ -327,7 +362,8 @@ with tab4:
 
     # Key principles
     st.subheader("🎯 Key Principles")
-    st.markdown("""
+    st.markdown(
+        """
     1. **Do Your Research** - Know the market rate for your position and location
     2. **Know Your Worth** - Quantify your value with specific achievements
     3. **Never Accept the First Offer** - Companies expect negotiation
@@ -335,11 +371,13 @@ with tab4:
     5. **Think Total Compensation** - Consider benefits, equity, bonuses, etc.
     6. **Get it in Writing** - Verbal offers aren't binding
     7. **Be Prepared to Walk Away** - But only if you mean it
-    """)
+    """
+    )
 
     # Timing
     st.subheader("⏰ Timing Matters")
-    st.markdown("""
+    st.markdown(
+        """
     **When to Negotiate:**
     - ✅ After receiving a written offer
     - ✅ Before accepting the offer
@@ -352,7 +390,8 @@ with tab4:
     - ❌ Before receiving an offer
     - ❌ When you haven't researched market rates
     - ❌ If you're desperate for the job (they can sense it)
-    """)
+    """
+    )
 
     # What to negotiate
     st.subheader("💼 What to Negotiate Beyond Salary")
@@ -360,7 +399,8 @@ with tab4:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("""
+        st.markdown(
+            """
         **Compensation:**
         - Base salary
         - Signing bonus
@@ -374,10 +414,12 @@ with tab4:
         - Parental leave
         - Sabbaticals
         - Flexible schedule
-        """)
+        """
+        )
 
     with col2:
-        st.markdown("""
+        st.markdown(
+            """
         **Benefits:**
         - Health insurance
         - 401k match
@@ -391,11 +433,13 @@ with tab4:
         - Flexible hours
         - Equipment budget
         - Home office setup
-        """)
+        """
+        )
 
     # Common mistakes
     st.subheader("⚠️ Common Mistakes to Avoid")
-    st.markdown("""
+    st.markdown(
+        """
     1. **Sharing salary history** - Focus on market value, not past pay
     2. **Giving a specific number first** - Let them make the first offer
     3. **Accepting immediately** - Take time to review and consider
@@ -403,13 +447,15 @@ with tab4:
     5. **Making it personal** - Keep it professional and data-driven
     6. **Forgetting to negotiate benefits** - Total comp matters
     7. **Not getting the offer in writing** - Always get it documented
-    """)
+    """
+    )
 
     # Scripts for common situations
     st.subheader("💬 Quick Response Templates")
 
-    with st.expander("\"What are your salary expectations?\""):
-        st.markdown("""
+    with st.expander('"What are your salary expectations?"'):
+        st.markdown(
+            """
         **Option 1 (Deflect):**
         > "I'd prefer to learn more about the role and responsibilities first. Could you share the budgeted range for this position?"
 
@@ -418,10 +464,12 @@ with tab4:
 
         **Option 3 (Flexible):**
         > "I'm focused on finding the right fit. If this role is a match, I'm confident we can agree on fair compensation."
-        """)
+        """
+        )
 
-    with st.expander("\"What's your current salary?\""):
-        st.markdown("""
+    with st.expander('"What\'s your current salary?"'):
+        st.markdown(
+            """
         **Option 1 (Deflect):**
         > "I prefer to focus on the value I can bring to this role rather than my current compensation. What's the budgeted range?"
 
@@ -430,21 +478,25 @@ with tab4:
 
         **Option 3 (Polite Redirect):**
         > "I'd rather not share that, as I'm looking for a position that aligns with my current market value and the responsibilities of this role."
-        """)
+        """
+        )
 
     with st.expander("Offer is lower than expected"):
-        st.markdown("""
+        st.markdown(
+            """
         **Response Template:**
         > "Thank you so much for the offer! I'm excited about the opportunity to join [Company]. Based on my research of market rates for this role and my X years of experience in [specific skills], I was expecting a base salary in the range of $X-Y. Is there flexibility in the offer?"
 
         **Follow-up if they say no:**
         > "I understand. Would it be possible to explore other components of the compensation package, such as signing bonus, additional equity, or performance-based increases?"
-        """)
+        """
+        )
 
 # Sidebar
 with st.sidebar:
     st.header("💡 Quick Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Golden Rules:**
     1. Always negotiate
     2. Be data-driven
@@ -464,4 +516,5 @@ with st.sidebar:
     - Unwillingness to negotiate
     - Vague compensation details
     - No written offer
-    """)
+    """
+    )

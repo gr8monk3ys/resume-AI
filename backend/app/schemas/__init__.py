@@ -1,42 +1,43 @@
 """
 Pydantic schemas for request/response validation.
 """
-from app.schemas.user import (
-    UserCreate,
-    UserResponse,
-    UserLogin,
-    Token,
-    TokenData,
-)
-from app.schemas.profile import (
-    ProfileCreate,
-    ProfileUpdate,
-    ProfileResponse,
-)
-from app.schemas.resume import (
-    ResumeCreate,
-    ResumeUpdate,
-    ResumeResponse,
-    ATSAnalysisRequest,
-    ATSAnalysisResponse,
-)
-from app.schemas.job import (
-    JobCreate,
-    JobUpdate,
-    JobResponse,
-    JobStatus,
+
+from app.schemas.ai import (
+    AnswerQuestionRequest,
+    AnswerQuestionResponse,
+    InterviewPrepRequest,
+    InterviewPrepResponse,
+    TailorResumeRequest,
+    TailorResumeResponse,
 )
 from app.schemas.cover_letter import (
     CoverLetterCreate,
     CoverLetterResponse,
 )
-from app.schemas.ai import (
-    TailorResumeRequest,
-    TailorResumeResponse,
-    AnswerQuestionRequest,
-    AnswerQuestionResponse,
-    InterviewPrepRequest,
-    InterviewPrepResponse,
+from app.schemas.job import (
+    JobCreate,
+    JobResponse,
+    JobStatus,
+    JobUpdate,
+)
+from app.schemas.profile import (
+    ProfileCreate,
+    ProfileResponse,
+    ProfileUpdate,
+)
+from app.schemas.resume import (
+    ATSAnalysisRequest,
+    ATSAnalysisResponse,
+    ResumeCreate,
+    ResumeResponse,
+    ResumeUpdate,
+)
+from app.schemas.user import (
+    Token,
+    TokenData,
+    UserCreate,
+    UserLogin,
+    UserResponse,
 )
 
 __all__ = [

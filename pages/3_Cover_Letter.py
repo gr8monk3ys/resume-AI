@@ -1,15 +1,16 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from utils.file_parser import extract_text_from_upload
-from services.llm_service import get_llm_service
-from models.database import get_db_connection
 from models.auth_database import init_auth_database
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from models.database import get_db_connection
+from services.llm_service import get_llm_service
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
+from utils.file_parser import extract_text_from_upload
 
 st.set_page_config(page_title="Cover Letter Generator", page_icon="📝", layout="wide")
 
@@ -41,17 +42,17 @@ with tab1:
 
     with col1:
         st.subheader("Your Information")
-        user_name = st.text_input("Your Name", value=profile.get('name', ''))
+        user_name = st.text_input("Your Name", value=profile.get("name", ""))
         resume_file = st.file_uploader(
             "Upload Resume (Optional)",
-            type=['txt', 'pdf', 'docx'],
-            help="Upload your resume for better personalization"
+            type=["txt", "pdf", "docx"],
+            help="Upload your resume for better personalization",
         )
 
         resume_text_input = st.text_area(
             "Or paste your resume/key achievements",
             height=200,
-            placeholder="Key achievements and skills..."
+            placeholder="Key achievements and skills...",
         )
 
     with col2:
@@ -59,15 +60,10 @@ with tab1:
         company_name = st.text_input("Company Name*", placeholder="e.g., Google")
         position = st.text_input("Position Title*", placeholder="e.g., Software Engineer")
 
-        job_desc_file = st.file_uploader(
-            "Upload Job Description",
-            type=['txt', 'pdf', 'docx']
-        )
+        job_desc_file = st.file_uploader("Upload Job Description", type=["txt", "pdf", "docx"])
 
         job_desc_text = st.text_area(
-            "Or paste job description",
-            height=200,
-            placeholder="Paste the job description here..."
+            "Or paste job description", height=200, placeholder="Paste the job description here..."
         )
 
     if st.button("✨ Generate Cover Letter", type="primary"):
@@ -96,19 +92,14 @@ with tab1:
                         job_description=job_description,
                         company_name=company_name,
                         position=position,
-                        user_name=user_name if user_name else None
+                        user_name=user_name if user_name else None,
                     )
 
                     st.success("✅ Cover letter generated!")
 
                     # Display result
                     st.subheader("Your Cover Letter")
-                    st.text_area(
-                        "",
-                        value=cover_letter,
-                        height=400,
-                        key="generated_letter"
-                    )
+                    st.text_area("", value=cover_letter, height=400, key="generated_letter")
 
                     # Action buttons
                     col1, col2 = st.columns(2)
@@ -118,7 +109,7 @@ with tab1:
                             label="📥 Download Cover Letter",
                             data=cover_letter,
                             file_name=f"cover_letter_{company_name.replace(' ', '_')}.txt",
-                            mime="text/plain"
+                            mime="text/plain",
                         )
 
                     with col2:
@@ -126,19 +117,25 @@ with tab1:
                             # Get job application ID if exists
                             with get_db_connection() as conn:
                                 cursor = conn.cursor()
-                                cursor.execute('''
+                                cursor.execute(
+                                    """
                                     SELECT id FROM job_applications
                                     WHERE profile_id = ? AND company = ? AND position = ?
                                     ORDER BY created_at DESC LIMIT 1
-                                ''', (profile['id'], company_name, position))
+                                """,
+                                    (profile["id"], company_name, position),
+                                )
                                 job_app = cursor.fetchone()
 
-                                job_app_id = job_app['id'] if job_app else None
+                                job_app_id = job_app["id"] if job_app else None
 
-                                cursor.execute('''
+                                cursor.execute(
+                                    """
                                     INSERT INTO cover_letters (profile_id, job_application_id, content)
                                     VALUES (?, ?, ?)
-                                ''', (profile['id'], job_app_id, cover_letter))
+                                """,
+                                    (profile["id"], job_app_id, cover_letter),
+                                )
                                 conn.commit()
 
                             st.success("Cover letter saved!")
@@ -154,7 +151,12 @@ with tab2:
 
     email_type = st.selectbox(
         "Email Type",
-        ["Networking/Informational Interview", "Job Inquiry", "Follow-up After Application", "Thank You After Interview"]
+        [
+            "Networking/Informational Interview",
+            "Job Inquiry",
+            "Follow-up After Application",
+            "Thank You After Interview",
+        ],
     )
 
     col1, col2 = st.columns(2)
@@ -167,7 +169,7 @@ with tab2:
         your_background = st.text_area(
             "Brief Background (Optional)",
             height=100,
-            placeholder="e.g., Software engineer with 5 years experience in Python..."
+            placeholder="e.g., Software engineer with 5 years experience in Python...",
         )
 
     if st.button("Generate Email", type="primary"):
@@ -179,7 +181,7 @@ with tab2:
                         "Networking/Informational Interview": "informational interview",
                         "Job Inquiry": "job inquiry",
                         "Follow-up After Application": "follow-up on application",
-                        "Thank You After Interview": "thank you for interview"
+                        "Thank You After Interview": "thank you for interview",
                     }
 
                     purpose = purpose_map.get(email_type, "networking")
@@ -188,7 +190,7 @@ with tab2:
                         recipient_name=recipient_name,
                         company_name=recipient_company,
                         purpose=purpose,
-                        user_background=your_background if your_background else None
+                        user_background=your_background if your_background else None,
                     )
 
                     st.success("✅ Email generated!")
@@ -200,7 +202,7 @@ with tab2:
                         label="📥 Download Email",
                         data=email,
                         file_name=f"email_{email_type.replace(' ', '_').lower()}.txt",
-                        mime="text/plain"
+                        mime="text/plain",
                     )
 
                 except Exception as e:
@@ -214,34 +216,43 @@ with tab3:
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT cl.*, ja.company, ja.position
                 FROM cover_letters cl
                 LEFT JOIN job_applications ja ON cl.job_application_id = ja.id
                 WHERE cl.profile_id = ?
                 ORDER BY cl.created_at DESC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             letters = cursor.fetchall()
 
         if letters:
             st.write(f"**{len(letters)} saved cover letter(s)**")
 
             for letter in letters:
-                company = letter['company'] if letter['company'] else "Unknown Company"
-                position = letter['position'] if letter['position'] else "Unknown Position"
+                company = letter["company"] if letter["company"] else "Unknown Company"
+                position = letter["position"] if letter["position"] else "Unknown Position"
 
                 with st.expander(f"{company} - {position} (Created: {letter['created_at'][:10]})"):
-                    st.text_area("", value=letter['content'], height=300, key=f"letter_{letter['id']}", disabled=True)
+                    st.text_area(
+                        "",
+                        value=letter["content"],
+                        height=300,
+                        key=f"letter_{letter['id']}",
+                        disabled=True,
+                    )
 
                     col1, col2, col3 = st.columns([1, 1, 4])
 
                     with col1:
                         st.download_button(
                             label="📥 Download",
-                            data=letter['content'],
+                            data=letter["content"],
                             file_name=f"cover_letter_{company.replace(' ', '_')}.txt",
                             mime="text/plain",
-                            key=f"download_{letter['id']}"
+                            key=f"download_{letter['id']}",
                         )
 
                     with col2:
@@ -253,17 +264,28 @@ with tab3:
                             col_a, col_b = st.columns(2)
 
                             with col_a:
-                                if st.button("✅ Yes", key=f"yes_delete_letter_{letter['id']}", use_container_width=True):
+                                if st.button(
+                                    "✅ Yes",
+                                    key=f"yes_delete_letter_{letter['id']}",
+                                    use_container_width=True,
+                                ):
                                     with get_db_connection() as conn:
                                         cursor = conn.cursor()
-                                        cursor.execute('DELETE FROM cover_letters WHERE id = ?', (letter['id'],))
+                                        cursor.execute(
+                                            "DELETE FROM cover_letters WHERE id = ?",
+                                            (letter["id"],),
+                                        )
                                         conn.commit()
                                     st.session_state[delete_key] = False
                                     st.success("Cover letter deleted!")
                                     st.rerun()
 
                             with col_b:
-                                if st.button("❌ No", key=f"no_delete_letter_{letter['id']}", use_container_width=True):
+                                if st.button(
+                                    "❌ No",
+                                    key=f"no_delete_letter_{letter['id']}",
+                                    use_container_width=True,
+                                ):
                                     st.session_state[delete_key] = False
                                     st.rerun()
                         else:
@@ -272,7 +294,9 @@ with tab3:
                                 st.rerun()
 
         else:
-            st.info("No saved cover letters yet. Generate your first one in the 'Generate Letter' tab!")
+            st.info(
+                "No saved cover letters yet. Generate your first one in the 'Generate Letter' tab!"
+            )
 
     except Exception as e:
         st.error(f"Error loading cover letters: {str(e)}")
@@ -280,7 +304,8 @@ with tab3:
 # Sidebar
 with st.sidebar:
     st.header("💡 Cover Letter Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Structure:**
     1. Opening paragraph - Express interest
     2. Middle paragraphs - Highlight relevant experience
@@ -300,4 +325,5 @@ with st.sidebar:
     - Focusing on what you want
     - Typos and errors
     - Too long (>1 page)
-    """)
+    """
+    )
