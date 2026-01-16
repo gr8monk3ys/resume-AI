@@ -6,6 +6,14 @@ langchain
 langchain-community
 langchain-core
 
+# LLM Providers - OpenAI (default)
+langchain-openai
+
+# LLM Providers - Optional (uncomment to enable)
+# langchain-anthropic  # For Claude models
+# langchain-google-genai  # For Gemini models
+# langchain-ollama  # For local Ollama models
+
 # File parsing
 PyPDF2
 python-docx

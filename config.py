@@ -8,12 +8,28 @@ MAX_FILE_SIZE_MB = 10  # Maximum file size in MB
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 ALLOWED_FILE_TYPES = ['txt', 'pdf', 'docx']
 
-# OpenAI Settings
+# LLM Provider Settings
+# Supported providers: openai, anthropic, google, ollama, mock
+LLM_PROVIDER = os.getenv('LLM_PROVIDER', 'openai')
+
+# Provider-specific model defaults
+LLM_MODELS = {
+    'openai': os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo'),
+    'anthropic': os.getenv('ANTHROPIC_MODEL', 'claude-3-haiku-20240307'),
+    'google': os.getenv('GOOGLE_MODEL', 'gemini-1.5-flash'),
+    'ollama': os.getenv('OLLAMA_MODEL', 'llama3.2'),
+    'mock': 'mock',
+}
+
+# OpenAI Settings (legacy, kept for backwards compatibility)
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
 OPENAI_MAX_TOKENS = 2000
 OPENAI_TEMPERATURE_DEFAULT = 0.7
 OPENAI_TEMPERATURE_CREATIVE = 0.9
 OPENAI_REQUEST_TIMEOUT = int(os.getenv('OPENAI_REQUEST_TIMEOUT', '60'))  # Timeout in seconds
+
+# Ollama Settings
+OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 
 # Database Settings
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'resume_ai.db')

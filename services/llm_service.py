@@ -1,26 +1,13 @@
+"""
+Multi-provider LLM Service for ResuBoost AI.
+
+Supports: OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
+"""
 import os
+from abc import ABC, abstractmethod
 from typing import Optional
 from dotenv import load_dotenv
 from utils.cache import cached
-
-# Use modern LangChain imports
-try:
-    from langchain_openai import OpenAI
-except ImportError:
-    try:
-        from langchain_community.llms import OpenAI
-    except ImportError:
-        from langchain.llms import OpenAI
-
-try:
-    from langchain_core.prompts import PromptTemplate
-except ImportError:
-    from langchain.prompts import PromptTemplate
-
-try:
-    from langchain_core.output_parsers import StrOutputParser
-except ImportError:
-    StrOutputParser = None
 
 load_dotenv()
 
@@ -31,52 +18,253 @@ except ImportError:
     OPENAI_REQUEST_TIMEOUT = 60
 
 
-class LLMService:
-    """Service for managing LLM interactions."""
+class BaseLLMProvider(ABC):
+    """Abstract base class for LLM providers."""
+
+    @abstractmethod
+    def invoke(self, prompt: str) -> str:
+        """Invoke the LLM with a prompt and return the response."""
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the provider name."""
+        pass
+
+
+class OpenAIProvider(BaseLLMProvider):
+    """OpenAI GPT provider."""
 
     def __init__(self, model_name: str = "gpt-3.5-turbo", temperature: float = 0.7):
-        """
-        Initialize LLM service.
+        try:
+            from langchain_openai import OpenAI
+        except ImportError:
+            try:
+                from langchain_community.llms import OpenAI
+            except ImportError:
+                from langchain.llms import OpenAI
 
-        Args:
-            model_name: OpenAI model to use
-            temperature: Temperature for response generation
-
-        Raises:
-            ValueError: If OPENAI_API_KEY environment variable is not set
-        """
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
             raise ValueError(
                 "OPENAI_API_KEY environment variable is not set. "
-                "Please add it to your .env file: OPENAI_API_KEY=your_key_here"
+                "Please add it to your .env file."
             )
 
-        self.model_name = model_name
-        self.temperature = temperature
         self.llm = OpenAI(
             model_name=model_name,
             temperature=temperature,
             request_timeout=OPENAI_REQUEST_TIMEOUT
         )
 
-    def _invoke_chain(self, template: str, **kwargs) -> str:
+    def invoke(self, prompt: str) -> str:
+        return self.llm.invoke(prompt)
+
+    @property
+    def name(self) -> str:
+        return "openai"
+
+
+class AnthropicProvider(BaseLLMProvider):
+    """Anthropic Claude provider."""
+
+    def __init__(self, model_name: str = "claude-3-haiku-20240307", temperature: float = 0.7):
+        try:
+            from langchain_anthropic import ChatAnthropic
+        except ImportError:
+            raise ImportError(
+                "langchain-anthropic is required for Anthropic support. "
+                "Install with: pip install langchain-anthropic"
+            )
+
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        if not api_key:
+            raise ValueError(
+                "ANTHROPIC_API_KEY environment variable is not set. "
+                "Please add it to your .env file."
+            )
+
+        self.llm = ChatAnthropic(
+            model=model_name,
+            temperature=temperature,
+            timeout=OPENAI_REQUEST_TIMEOUT
+        )
+
+    def invoke(self, prompt: str) -> str:
+        response = self.llm.invoke(prompt)
+        return response.content if hasattr(response, 'content') else str(response)
+
+    @property
+    def name(self) -> str:
+        return "anthropic"
+
+
+class GoogleProvider(BaseLLMProvider):
+    """Google Gemini provider."""
+
+    def __init__(self, model_name: str = "gemini-1.5-flash", temperature: float = 0.7):
+        try:
+            from langchain_google_genai import ChatGoogleGenerativeAI
+        except ImportError:
+            raise ImportError(
+                "langchain-google-genai is required for Google support. "
+                "Install with: pip install langchain-google-genai"
+            )
+
+        api_key = os.getenv('GOOGLE_API_KEY')
+        if not api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY environment variable is not set. "
+                "Please add it to your .env file."
+            )
+
+        self.llm = ChatGoogleGenerativeAI(
+            model=model_name,
+            temperature=temperature,
+            google_api_key=api_key
+        )
+
+    def invoke(self, prompt: str) -> str:
+        response = self.llm.invoke(prompt)
+        return response.content if hasattr(response, 'content') else str(response)
+
+    @property
+    def name(self) -> str:
+        return "google"
+
+
+class OllamaProvider(BaseLLMProvider):
+    """Ollama local model provider."""
+
+    def __init__(self, model_name: str = "llama3.2", temperature: float = 0.7):
+        try:
+            from langchain_ollama import OllamaLLM
+        except ImportError:
+            try:
+                from langchain_community.llms import Ollama as OllamaLLM
+            except ImportError:
+                raise ImportError(
+                    "langchain-ollama is required for Ollama support. "
+                    "Install with: pip install langchain-ollama"
+                )
+
+        base_url = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
+
+        self.llm = OllamaLLM(
+            model=model_name,
+            temperature=temperature,
+            base_url=base_url
+        )
+
+    def invoke(self, prompt: str) -> str:
+        return self.llm.invoke(prompt)
+
+    @property
+    def name(self) -> str:
+        return "ollama"
+
+
+class MockProvider(BaseLLMProvider):
+    """Mock provider for testing (no API key required)."""
+
+    def __init__(self, **kwargs):
+        self.call_count = 0
+
+    def invoke(self, prompt: str) -> str:
+        self.call_count += 1
+        # Return reasonable mock responses based on prompt content
+        if "cover letter" in prompt.lower():
+            return "Dear Hiring Manager,\n\nI am writing to express my interest in this position. With my background and skills, I believe I would be an excellent fit for your team.\n\nSincerely,\nCandidate"
+        elif "resume" in prompt.lower() and "tailor" in prompt.lower():
+            return "PROFESSIONAL SUMMARY\nExperienced professional with relevant skills.\n\nEXPERIENCE\n- Achieved results in previous roles\n- Led initiatives that improved outcomes"
+        elif "interview" in prompt.lower():
+            return "Situation: In my previous role...\nTask: I was responsible for...\nAction: I implemented...\nResult: This led to a 20% improvement."
+        elif "keyword" in prompt.lower():
+            return "1. Add 'Python' to your skills section\n2. Include 'project management' in your experience\n3. Mention 'data analysis' in your summary"
+        elif "grammar" in prompt.lower():
+            return prompt.split("You are an expert")[0].strip()
+        else:
+            return f"Mock response for prompt ({len(prompt)} chars)"
+
+    @property
+    def name(self) -> str:
+        return "mock"
+
+
+def get_provider(
+    provider_name: Optional[str] = None,
+    model_name: Optional[str] = None,
+    temperature: float = 0.7
+) -> BaseLLMProvider:
+    """
+    Factory function to get an LLM provider.
+
+    Args:
+        provider_name: Provider to use (openai, anthropic, google, ollama, mock).
+                      Defaults to LLM_PROVIDER env var or 'openai'.
+        model_name: Model name (provider-specific). Defaults to provider's default.
+        temperature: Temperature for generation.
+
+    Returns:
+        An LLM provider instance.
+    """
+    provider = provider_name or os.getenv('LLM_PROVIDER', 'openai').lower()
+
+    providers = {
+        'openai': OpenAIProvider,
+        'anthropic': AnthropicProvider,
+        'google': GoogleProvider,
+        'ollama': OllamaProvider,
+        'mock': MockProvider,
+    }
+
+    if provider not in providers:
+        raise ValueError(
+            f"Unknown provider: {provider}. "
+            f"Available: {', '.join(providers.keys())}"
+        )
+
+    kwargs = {'temperature': temperature}
+    if model_name:
+        kwargs['model_name'] = model_name
+
+    return providers[provider](**kwargs)
+
+
+# Default model names per provider
+DEFAULT_MODELS = {
+    'openai': 'gpt-3.5-turbo',
+    'anthropic': 'claude-3-haiku-20240307',
+    'google': 'gemini-1.5-flash',
+    'ollama': 'llama3.2',
+    'mock': 'mock',
+}
+
+
+class LLMService:
+    """Service for managing LLM interactions with multi-provider support."""
+
+    def __init__(
+        self,
+        provider_name: Optional[str] = None,
+        model_name: Optional[str] = None,
+        temperature: float = 0.7
+    ):
         """
-        Invoke a prompt chain with the given template and variables.
+        Initialize LLM service.
 
         Args:
-            template: The prompt template string
-            **kwargs: Variables to substitute in the template
-
-        Returns:
-            The LLM response as a string
+            provider_name: LLM provider (openai, anthropic, google, ollama, mock)
+            model_name: Model to use (provider-specific)
+            temperature: Temperature for response generation
         """
-        prompt = PromptTemplate.from_template(template)
-        if StrOutputParser is not None:
-            chain = prompt | self.llm | StrOutputParser()
-        else:
-            chain = prompt | self.llm
-        result = chain.invoke(kwargs)
+        self.provider = get_provider(provider_name, model_name, temperature)
+        self.temperature = temperature
+
+    def _invoke(self, prompt: str) -> str:
+        """Invoke the LLM with a prompt."""
+        result = self.provider.invoke(prompt)
         return result if isinstance(result, str) else str(result)
 
     @cached(category='llm_grammar', ttl_seconds=7200)
@@ -85,36 +273,23 @@ class LLMService:
         Correct grammatical errors in text.
 
         Note: Results are cached for 2 hours to save API calls.
-
-        Args:
-            text: Text to correct
-
-        Returns:
-            Corrected text
         """
-        template = """
+        prompt = f"""
         {text}
 
         You are an expert proofreader. Please correct any grammatical errors in the text above.
         Maintain the original formatting and structure. Only fix grammar, spelling, and punctuation.
         """
-        return self._invoke_chain(template, text=text)
+        return self._invoke(prompt)
 
     @cached(category='llm_resume_opt', ttl_seconds=3600)
     def optimize_resume(self, resume: str, job_description: str) -> str:
         """
         Optimize resume based on job description.
 
-        Note: Results are cached for 1 hour to save API calls and improve performance.
-
-        Args:
-            resume: Current resume text
-            job_description: Target job description
-
-        Returns:
-            Optimized resume suggestions
+        Note: Results are cached for 1 hour to save API calls.
         """
-        template = """
+        prompt = f"""
         Job Description:
         {job_description}
 
@@ -129,7 +304,7 @@ class LLMService:
 
         Provide your suggestions in a clear, actionable format.
         """
-        return self._invoke_chain(template, job_description=job_description, resume=resume)
+        return self._invoke(prompt)
 
     def generate_cover_letter(
         self,
@@ -139,22 +314,10 @@ class LLMService:
         position: str,
         user_name: Optional[str] = None
     ) -> str:
-        """
-        Generate a personalized cover letter.
-
-        Args:
-            resume: User's resume text
-            job_description: Target job description
-            company_name: Company name
-            position: Position title
-            user_name: User's name (optional)
-
-        Returns:
-            Generated cover letter
-        """
+        """Generate a personalized cover letter."""
         name_line = f"My name is {user_name} and I am" if user_name else "I am"
 
-        template = """
+        prompt = f"""
         Resume:
         {resume}
 
@@ -176,14 +339,7 @@ class LLMService:
 
         Generate the complete cover letter:
         """
-        return self._invoke_chain(
-            template,
-            resume=resume,
-            job_description=job_description,
-            company_name=company_name,
-            position=position,
-            name_line=name_line
-        )
+        return self._invoke(prompt)
 
     def generate_networking_email(
         self,
@@ -192,21 +348,10 @@ class LLMService:
         purpose: str,
         user_background: Optional[str] = None
     ) -> str:
-        """
-        Generate a networking email.
-
-        Args:
-            recipient_name: Name of recipient
-            company_name: Company name
-            purpose: Purpose of email (e.g., "informational interview", "job inquiry")
-            user_background: Brief user background (optional)
-
-        Returns:
-            Generated email
-        """
+        """Generate a networking email."""
         background_text = f"\n\nMy Background:\n{user_background}" if user_background else ""
 
-        template = """
+        prompt = f"""
         Create a professional networking email with the following details:
 
         Recipient: {recipient_name}
@@ -222,25 +367,11 @@ class LLMService:
 
         Generate the email (include subject line):
         """
-        return self._invoke_chain(
-            template,
-            recipient_name=recipient_name,
-            company_name=company_name,
-            purpose=purpose,
-            background_text=background_text
-        )
+        return self._invoke(prompt)
 
     def enhance_achievement(self, achievement: str) -> str:
-        """
-        Enhance an achievement description with impact-focused language.
-
-        Args:
-            achievement: Original achievement description
-
-        Returns:
-            Enhanced achievement description
-        """
-        template = """
+        """Enhance an achievement description with impact-focused language."""
+        prompt = f"""
         Original achievement:
         {achievement}
 
@@ -252,7 +383,7 @@ class LLMService:
 
         Enhanced achievement:
         """
-        return self._invoke_chain(template, achievement=achievement)
+        return self._invoke(prompt)
 
     @cached(category='llm_tailor', ttl_seconds=3600)
     def tailor_resume(self, resume: str, job_description: str, company_name: str, position: str) -> str:
@@ -261,17 +392,8 @@ class LLMService:
 
         Unlike optimize_resume which gives suggestions, this actually rewrites
         the resume to better match the job description.
-
-        Args:
-            resume: Current resume text
-            job_description: Target job description
-            company_name: Target company name
-            position: Target position title
-
-        Returns:
-            Tailored resume text
         """
-        template = """
+        prompt = f"""
         You are an expert resume writer specializing in ATS optimization.
 
         ORIGINAL RESUME:
@@ -298,13 +420,7 @@ class LLMService:
 
         Output the complete tailored resume:
         """
-        return self._invoke_chain(
-            template,
-            resume=resume,
-            job_description=job_description,
-            company_name=company_name,
-            position=position
-        )
+        return self._invoke(prompt)
 
     def answer_application_question(
         self,
@@ -313,18 +429,7 @@ class LLMService:
         job_description: str,
         question_type: str = "general"
     ) -> str:
-        """
-        Generate an answer for common job application questions.
-
-        Args:
-            question: The application question to answer
-            resume: User's resume for context
-            job_description: Job description for context
-            question_type: Type of question (general, behavioral, motivation, salary)
-
-        Returns:
-            Generated answer
-        """
+        """Generate an answer for common job application questions."""
         type_instructions = {
             "general": "Provide a clear, concise answer that highlights relevant experience.",
             "behavioral": "Use the STAR method (Situation, Task, Action, Result) to structure the answer.",
@@ -336,7 +441,7 @@ class LLMService:
 
         instruction = type_instructions.get(question_type, type_instructions["general"])
 
-        template = """
+        prompt = f"""
         You are helping a job applicant answer an application question.
 
         APPLICANT'S RESUME:
@@ -360,13 +465,7 @@ class LLMService:
 
         ANSWER:
         """
-        return self._invoke_chain(
-            template,
-            question=question,
-            resume=resume,
-            job_description=job_description,
-            instruction=instruction
-        )
+        return self._invoke(prompt)
 
     def generate_interview_answer(
         self,
@@ -374,18 +473,8 @@ class LLMService:
         resume: str,
         job_description: str
     ) -> str:
-        """
-        Generate a sample interview answer using STAR method.
-
-        Args:
-            question: Interview question
-            resume: User's resume
-            job_description: Job description
-
-        Returns:
-            Sample answer using STAR method
-        """
-        template = """
+        """Generate a sample interview answer using STAR method."""
+        prompt = f"""
         You are an interview coach helping prepare for a job interview.
 
         CANDIDATE'S RESUME:
@@ -408,12 +497,7 @@ class LLMService:
 
         SAMPLE ANSWER:
         """
-        return self._invoke_chain(
-            template,
-            question=question,
-            resume=resume,
-            job_description=job_description
-        )
+        return self._invoke(prompt)
 
     @cached(category='llm_keyword_suggestions', ttl_seconds=3600)
     def suggest_keyword_additions(
@@ -422,20 +506,10 @@ class LLMService:
         job_description: str,
         missing_keywords: list
     ) -> str:
-        """
-        Generate AI-powered suggestions for naturally incorporating missing keywords.
-
-        Args:
-            resume: User's current resume
-            job_description: Target job description
-            missing_keywords: List of missing keywords to incorporate
-
-        Returns:
-            Detailed suggestions for adding keywords naturally
-        """
+        """Generate AI-powered suggestions for naturally incorporating missing keywords."""
         keywords_str = ", ".join(missing_keywords[:15])
 
-        template = """
+        prompt = f"""
         You are an expert resume writer and ATS optimization specialist.
 
         CURRENT RESUME:
@@ -445,7 +519,7 @@ class LLMService:
         {job_description}
 
         MISSING KEYWORDS TO ADD:
-        {keywords}
+        {keywords_str}
 
         TASK: Provide specific, actionable suggestions for naturally incorporating these missing keywords into the resume.
 
@@ -464,21 +538,25 @@ class LLMService:
 
         Provide 5-7 specific suggestions:
         """
-        return self._invoke_chain(
-            template,
-            resume=resume,
-            job_description=job_description,
-            keywords=keywords_str
-        )
+        return self._invoke(prompt)
 
 
 # Singleton instance
 _llm_service = None
 
 
-def get_llm_service() -> LLMService:
+def get_llm_service(
+    provider_name: Optional[str] = None,
+    model_name: Optional[str] = None
+) -> LLMService:
     """Get or create the LLM service singleton."""
     global _llm_service
     if _llm_service is None:
-        _llm_service = LLMService()
+        _llm_service = LLMService(provider_name, model_name)
     return _llm_service
+
+
+def reset_llm_service():
+    """Reset the singleton (useful for testing)."""
+    global _llm_service
+    _llm_service = None
