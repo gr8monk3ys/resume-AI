@@ -155,7 +155,7 @@ streamlit run app.py
 **Account Management:**
 - Create new accounts via the Register tab
 - Login/logout functionality
-- Password change capability (coming soon)
+- Password change capability
 
 ### Page-by-Page Guide
 
