@@ -1,9 +1,11 @@
 """
 Database configuration and session management.
 """
+
 import os
+
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.config import get_settings
@@ -28,6 +30,7 @@ if settings.database_url.startswith("sqlite"):
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.close()
+
 else:
     # PostgreSQL or other databases
     engine = create_engine(settings.database_url)
@@ -48,5 +51,6 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from app.models import user, profile, resume, job_application, cover_letter
+    from app.models import cover_letter, job_application, profile, resume, user
+
     Base.metadata.create_all(bind=engine)

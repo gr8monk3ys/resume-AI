@@ -1,17 +1,18 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from utils.file_parser import extract_text_from_upload
-from services.resume_analyzer import ATSAnalyzer
-from services.llm_service import get_llm_service
+from config import MAX_JOB_DESCRIPTION_LENGTH, MAX_RESUME_LENGTH
 from models.auth_database import init_auth_database
-from utils.rate_limiter import check_rate_limit
+from services.llm_service import get_llm_service
+from services.resume_analyzer import ATSAnalyzer
 from utils.auth import init_session_state, is_authenticated, show_auth_sidebar
-from config import MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH
+from utils.file_parser import extract_text_from_upload
+from utils.rate_limiter import check_rate_limit
 
 st.set_page_config(page_title="Keyword Gap Analysis", page_icon="🔍", layout="wide")
 
@@ -27,7 +28,9 @@ if not is_authenticated():
     st.stop()
 
 st.title("🔍 Keyword Gap Analysis")
-st.markdown("Compare your resume against job descriptions to identify missing keywords and improve your match rate")
+st.markdown(
+    "Compare your resume against job descriptions to identify missing keywords and improve your match rate"
+)
 
 # Initialize analyzer
 ats_analyzer = ATSAnalyzer()
@@ -43,29 +46,25 @@ with tab1:
     with col1:
         st.subheader("Your Resume")
         resume_file = st.file_uploader(
-            "Upload Resume",
-            type=['txt', 'pdf', 'docx'],
-            key="gap_resume"
+            "Upload Resume", type=["txt", "pdf", "docx"], key="gap_resume"
         )
         resume_text_input = st.text_area(
             "Or paste resume text",
             height=200,
             key="gap_resume_text",
-            placeholder="Paste your resume content here..."
+            placeholder="Paste your resume content here...",
         )
 
     with col2:
         st.subheader("Job Description")
         job_file = st.file_uploader(
-            "Upload Job Description",
-            type=['txt', 'pdf', 'docx'],
-            key="gap_job"
+            "Upload Job Description", type=["txt", "pdf", "docx"], key="gap_job"
         )
         job_text_input = st.text_area(
             "Or paste job description",
             height=200,
             key="gap_job_text",
-            placeholder="Paste the job description here..."
+            placeholder="Paste the job description here...",
         )
 
     if st.button("Analyze Keyword Gaps", type="primary", use_container_width=True):
@@ -89,10 +88,14 @@ with tab1:
 
         # Validate input lengths
         if len(resume_text) > MAX_RESUME_LENGTH:
-            st.error(f"Resume is too large ({len(resume_text):,} characters). Maximum: {MAX_RESUME_LENGTH:,}")
+            st.error(
+                f"Resume is too large ({len(resume_text):,} characters). Maximum: {MAX_RESUME_LENGTH:,}"
+            )
             st.stop()
         if len(job_text) > MAX_JOB_DESCRIPTION_LENGTH:
-            st.error(f"Job description is too large ({len(job_text):,} characters). Maximum: {MAX_JOB_DESCRIPTION_LENGTH:,}")
+            st.error(
+                f"Job description is too large ({len(job_text):,} characters). Maximum: {MAX_JOB_DESCRIPTION_LENGTH:,}"
+            )
             st.stop()
 
         with st.spinner("Analyzing keyword gaps..."):
@@ -101,13 +104,13 @@ with tab1:
                 analysis = ats_analyzer.analyze_keyword_gaps(resume_text, job_text)
 
                 # Store in session state for recommendations tab and AI suggestions
-                st.session_state['gap_analysis'] = analysis
-                st.session_state['resume_text'] = resume_text
-                st.session_state['job_text'] = job_text
+                st.session_state["gap_analysis"] = analysis
+                st.session_state["resume_text"] = resume_text
+                st.session_state["job_text"] = job_text
 
                 # Display Match Score
                 st.divider()
-                match_pct = analysis['match_percentage']
+                match_pct = analysis["match_percentage"]
 
                 # Color-coded match score
                 if match_pct >= 70:
@@ -126,11 +129,11 @@ with tab1:
                 with col1:
                     st.metric("Match Rate", f"{match_pct}%")
                 with col2:
-                    st.metric("Keywords Matched", analysis['matched_keywords'])
+                    st.metric("Keywords Matched", analysis["matched_keywords"])
                 with col3:
-                    st.metric("Keywords Missing", analysis['missing_count'])
+                    st.metric("Keywords Missing", analysis["missing_count"])
                 with col4:
-                    st.metric("Total Job Keywords", analysis['total_job_keywords'])
+                    st.metric("Total Job Keywords", analysis["total_job_keywords"])
 
                 st.markdown(f"### :{color}[{message}]")
 
@@ -138,85 +141,87 @@ with tab1:
 
                 # Found Keywords Section
                 st.subheader("Keywords Found in Your Resume")
-                found = analysis['found_keywords']
+                found = analysis["found_keywords"]
 
                 col1, col2 = st.columns(2)
                 with col1:
                     st.write("**Technical Skills Matched:**")
-                    if found['technical']:
-                        for skill in found['technical']:
+                    if found["technical"]:
+                        for skill in found["technical"]:
                             st.success(f"✓ {skill}")
                     else:
                         st.info("No technical skills matched")
 
                     st.write("**Action Verbs Found:**")
-                    if found['action_verbs']:
+                    if found["action_verbs"]:
                         cols = st.columns(3)
-                        for idx, verb in enumerate(found['action_verbs'][:9]):
+                        for idx, verb in enumerate(found["action_verbs"][:9]):
                             cols[idx % 3].write(f"• {verb}")
                     else:
                         st.info("No action verbs identified")
 
                 with col2:
                     st.write("**Soft Skills Matched:**")
-                    if found['soft_skills']:
-                        for skill in found['soft_skills']:
+                    if found["soft_skills"]:
+                        for skill in found["soft_skills"]:
                             st.success(f"✓ {skill}")
                     else:
                         st.info("No soft skills matched")
 
                     st.write("**Other Matching Keywords:**")
-                    if found['other_matches']:
+                    if found["other_matches"]:
                         cols = st.columns(4)
-                        for idx, kw in enumerate(found['other_matches'][:12]):
+                        for idx, kw in enumerate(found["other_matches"][:12]):
                             cols[idx % 4].write(f"• {kw}")
 
                 st.divider()
 
                 # Missing Keywords Section (THE GAPS)
                 st.subheader("Missing Keywords (Gaps to Close)")
-                missing = analysis['missing_keywords']
+                missing = analysis["missing_keywords"]
 
                 col1, col2 = st.columns(2)
                 with col1:
                     st.write("**Missing Technical Skills:**")
-                    if missing['technical']:
-                        for skill in missing['technical']:
+                    if missing["technical"]:
+                        for skill in missing["technical"]:
                             st.error(f"✗ {skill}")
                     else:
                         st.success("All required technical skills present!")
 
                     st.write("**Missing Action Verbs:**")
-                    if missing['action_verbs']:
+                    if missing["action_verbs"]:
                         cols = st.columns(3)
-                        for idx, verb in enumerate(missing['action_verbs'][:6]):
+                        for idx, verb in enumerate(missing["action_verbs"][:6]):
                             cols[idx % 3].write(f"• {verb}")
                     else:
                         st.success("Good use of action verbs!")
 
                 with col2:
                     st.write("**Missing Soft Skills:**")
-                    if missing['soft_skills']:
-                        for skill in missing['soft_skills']:
+                    if missing["soft_skills"]:
+                        for skill in missing["soft_skills"]:
                             st.error(f"✗ {skill}")
                     else:
                         st.success("All soft skills covered!")
 
                     st.write("**Important Job-Specific Terms Missing:**")
-                    if missing['important_job_terms']:
+                    if missing["important_job_terms"]:
                         cols = st.columns(3)
-                        for idx, term in enumerate(missing['important_job_terms'][:9]):
+                        for idx, term in enumerate(missing["important_job_terms"][:9]):
                             cols[idx % 3].write(f"• {term}")
                     else:
                         st.success("Job-specific terms well covered!")
 
                 # Unique Strengths
-                if analysis['unique_strengths']:
+                if analysis["unique_strengths"]:
                     st.divider()
                     st.subheader("Your Unique Strengths")
-                    st.info("These keywords are in your resume but not in the job description. They could be differentiators!")
+                    st.info(
+                        "These keywords are in your resume but not in the job description. They could be differentiators!"
+                    )
                     cols = st.columns(5)
-                    for idx, strength in enumerate(analysis['unique_strengths']):
+                    for idx, strength in enumerate(analysis["unique_strengths"]):
                         cols[idx % 5].write(f"• {strength}")
 
             except Exception as e:
@@ -225,28 +230,32 @@ with tab1:
 with tab2:
     st.header("Keyword Placement Recommendations")
 
-    if 'gap_analysis' not in st.session_state:
+    if "gap_analysis" not in st.session_state:
         st.info("Run a Gap Analysis first to see personalized recommendations")
         st.stop()
 
-    analysis = st.session_state['gap_analysis']
-    suggestions = analysis['placement_suggestions']
+    analysis = st.session_state["gap_analysis"]
+    suggestions = analysis["placement_suggestions"]
 
     if suggestions:
         for suggestion in suggestions:
-            with st.expander(f"**{suggestion['category']}** - {len(suggestion['keywords'])} keywords to add", expanded=True):
+            with st.expander(
+                f"**{suggestion['category']}** - {len(suggestion['keywords'])} keywords to add",
+                expanded=True,
+            ):
                 st.write("**Keywords to Add:**")
                 cols = st.columns(5)
-                for idx, kw in enumerate(suggestion['keywords']):
+                for idx, kw in enumerate(suggestion["keywords"]):
                     cols[idx % 5].markdown(f"`{kw}`")
 
                 st.write("")
                 st.write("**How to Add Them:**")
-                st.info(suggestion['suggestion'])
+                st.info(suggestion["suggestion"])
 
         st.divider()
         st.subheader("General Tips for Closing Keyword Gaps")
-        st.markdown("""
+        st.markdown(
+            """
         **1. Skills Section**
         - Add missing technical skills you genuinely possess
         - Include variations (e.g., "React" and "React.js")
@@ -263,31 +272,34 @@ with tab2:
         **4. Projects Section**
         - Highlight projects using relevant technologies
         - Describe outcomes using job-relevant terminology
-        """)
+        """
+        )
     else:
         st.success("Your resume already matches most keywords from the job description!")
         st.balloons()
 
 with tab3:
     st.header("AI-Powered Keyword Suggestions")
-    st.markdown("Get personalized suggestions for naturally incorporating missing keywords into your resume")
+    st.markdown(
+        "Get personalized suggestions for naturally incorporating missing keywords into your resume"
+    )
 
-    if 'gap_analysis' not in st.session_state:
+    if "gap_analysis" not in st.session_state:
         st.info("Run a Gap Analysis first to get AI-powered suggestions")
         st.stop()
 
-    if 'resume_text' not in st.session_state or 'job_text' not in st.session_state:
+    if "resume_text" not in st.session_state or "job_text" not in st.session_state:
         st.warning("Please run the Gap Analysis again to enable AI suggestions")
         st.stop()
 
-    analysis = st.session_state['gap_analysis']
-    missing = analysis['missing_keywords']
+    analysis = st.session_state["gap_analysis"]
+    missing = analysis["missing_keywords"]
 
     # Collect all missing keywords
     all_missing = (
-        missing.get('technical', []) +
-        missing.get('soft_skills', []) +
-        missing.get('important_job_terms', [])
+        missing.get("technical", [])
+        + missing.get("soft_skills", [])
+        + missing.get("important_job_terms", [])
     )
 
     if not all_missing:
@@ -310,16 +322,18 @@ with tab3:
             try:
                 llm_service = get_llm_service()
                 suggestions = llm_service.suggest_keyword_additions(
-                    resume=st.session_state['resume_text'],
-                    job_description=st.session_state['job_text'],
-                    missing_keywords=all_missing
+                    resume=st.session_state["resume_text"],
+                    job_description=st.session_state["job_text"],
+                    missing_keywords=all_missing,
                 )
 
                 st.subheader("Personalized Suggestions")
                 st.markdown(suggestions)
 
                 st.divider()
-                st.info("These are AI-generated suggestions. Review them carefully and only add keywords that accurately represent your skills and experience.")
+                st.info(
+                    "These are AI-generated suggestions. Review them carefully and only add keywords that accurately represent your skills and experience."
+                )
 
             except Exception as e:
                 st.error(f"Error generating suggestions: {str(e)}")
@@ -328,7 +342,8 @@ with tab3:
 # Sidebar tips
 with st.sidebar:
     st.header("About Keyword Analysis")
-    st.markdown("""
+    st.markdown(
+        """
     **Why Keywords Matter:**
     - ATS systems scan for keywords
     - Recruiters spend ~7 seconds on initial review
@@ -345,4 +360,5 @@ with st.sidebar:
     - Use exact phrases from posting
     - Be honest - only add skills you have
     - Include keyword variations
-    """)
+    """
+    )

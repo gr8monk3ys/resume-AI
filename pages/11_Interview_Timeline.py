@@ -1,14 +1,15 @@
-import streamlit as st
-import sys
 import os
-from datetime import datetime, date, timedelta
+import sys
+from datetime import date, datetime, timedelta
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from models.database import get_db_connection, init_database
 from models.auth_database import init_auth_database
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
+from models.database import get_db_connection, init_database
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
 
 st.set_page_config(page_title="Interview Timeline", page_icon="📅", layout="wide")
 
@@ -44,7 +45,7 @@ EVENT_TYPES = [
     "Offer Discussion",
     "Follow-up Sent",
     "Thank You Sent",
-    "Other"
+    "Other",
 ]
 
 EVENT_ICONS = {
@@ -61,7 +62,7 @@ EVENT_ICONS = {
     "Offer Discussion": "💰",
     "Follow-up Sent": "📧",
     "Thank You Sent": "🙏",
-    "Other": "📋"
+    "Other": "📋",
 }
 
 # Create tabs
@@ -73,14 +74,17 @@ with tab1:
     # Filter by application
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT id, company, position FROM job_applications
             WHERE profile_id = ?
             ORDER BY updated_at DESC
-        ''', (profile['id'],))
+        """,
+            (profile["id"],),
+        )
         applications = cursor.fetchall()
 
-    app_options = {f"{app['company']} - {app['position']}": app['id'] for app in applications}
+    app_options = {f"{app['company']} - {app['position']}": app["id"] for app in applications}
     app_options = {"All Applications": None, **app_options}
 
     selected_app = st.selectbox("Filter by Application", list(app_options.keys()))
@@ -94,21 +98,27 @@ with tab1:
             cursor = conn.cursor()
 
             if selected_app_id:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT ie.*, ja.company, ja.position
                     FROM interview_events ie
                     JOIN job_applications ja ON ie.job_application_id = ja.id
                     WHERE ja.profile_id = ? AND ie.job_application_id = ?
                     ORDER BY ie.event_date DESC, ie.created_at DESC
-                ''', (profile['id'], selected_app_id))
+                """,
+                    (profile["id"], selected_app_id),
+                )
             else:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT ie.*, ja.company, ja.position
                     FROM interview_events ie
                     JOIN job_applications ja ON ie.job_application_id = ja.id
                     WHERE ja.profile_id = ?
                     ORDER BY ie.event_date DESC, ie.created_at DESC
-                ''', (profile['id'],))
+                """,
+                    (profile["id"],),
+                )
 
             events = cursor.fetchall()
 
@@ -116,7 +126,7 @@ with tab1:
             # Group events by date
             events_by_date = {}
             for event in events:
-                event_date = event['event_date'] or 'No Date'
+                event_date = event["event_date"] or "No Date"
                 if event_date not in events_by_date:
                     events_by_date[event_date] = []
                 events_by_date[event_date].append(event)
@@ -126,39 +136,45 @@ with tab1:
                 st.subheader(f"📆 {event_date}")
 
                 for event in date_events:
-                    icon = EVENT_ICONS.get(event['event_type'], "📋")
+                    icon = EVENT_ICONS.get(event["event_type"], "📋")
 
                     with st.container():
                         col1, col2 = st.columns([4, 1])
 
                         with col1:
-                            st.markdown(f"""
+                            st.markdown(
+                                f"""
                             **{icon} {event['event_type']}** at **{event['company']}** - {event['position']}
-                            """)
+                            """
+                            )
 
-                            if event['event_time']:
+                            if event["event_time"]:
                                 st.caption(f"Time: {event['event_time']}")
 
-                            if event['interviewer_name']:
+                            if event["interviewer_name"]:
                                 interviewer_info = f"**Interviewer:** {event['interviewer_name']}"
-                                if event['interviewer_title']:
+                                if event["interviewer_title"]:
                                     interviewer_info += f" ({event['interviewer_title']})"
                                 st.write(interviewer_info)
 
-                            if event['notes']:
+                            if event["notes"]:
                                 with st.expander("View Notes"):
-                                    st.write(event['notes'])
+                                    st.write(event["notes"])
 
-                            if event['follow_up_date']:
-                                status = "Done" if event['follow_up_done'] else "Pending"
-                                color = "green" if event['follow_up_done'] else "orange"
-                                st.markdown(f"**Follow-up:** {event['follow_up_date']} (:{color}[{status}])")
+                            if event["follow_up_date"]:
+                                status = "Done" if event["follow_up_done"] else "Pending"
+                                color = "green" if event["follow_up_done"] else "orange"
+                                st.markdown(
+                                    f"**Follow-up:** {event['follow_up_date']} (:{color}[{status}])"
+                                )
 
                         with col2:
                             if st.button("🗑️", key=f"del_event_{event['id']}"):
                                 with get_db_connection() as conn:
                                     cursor = conn.cursor()
-                                    cursor.execute('DELETE FROM interview_events WHERE id = ?', (event['id'],))
+                                    cursor.execute(
+                                        "DELETE FROM interview_events WHERE id = ?", (event["id"],)
+                                    )
                                     conn.commit()
                                 st.rerun()
 
@@ -181,10 +197,12 @@ with tab2:
         app_select = st.selectbox(
             "Select Application*",
             [f"{app['company']} - {app['position']}" for app in applications],
-            key="event_app_select"
+            key="event_app_select",
         )
-        selected_idx = [f"{app['company']} - {app['position']}" for app in applications].index(app_select)
-        selected_job_id = applications[selected_idx]['id']
+        selected_idx = [f"{app['company']} - {app['position']}" for app in applications].index(
+            app_select
+        )
+        selected_job_id = applications[selected_idx]["id"]
 
         col1, col2 = st.columns(2)
 
@@ -195,10 +213,18 @@ with tab2:
 
         with col2:
             interviewer_name = st.text_input("Interviewer Name", placeholder="e.g., John Smith")
-            interviewer_title = st.text_input("Interviewer Title", placeholder="e.g., Engineering Manager")
-            interviewer_email = st.text_input("Interviewer Email", placeholder="e.g., john@company.com")
+            interviewer_title = st.text_input(
+                "Interviewer Title", placeholder="e.g., Engineering Manager"
+            )
+            interviewer_email = st.text_input(
+                "Interviewer Email", placeholder="e.g., john@company.com"
+            )
 
-        notes = st.text_area("Notes", height=150, placeholder="Key discussion points, questions asked, your answers...")
+        notes = st.text_area(
+            "Notes",
+            height=150,
+            placeholder="Key discussion points, questions asked, your answers...",
+        )
 
         st.subheader("Follow-up Reminder")
         col1, col2 = st.columns(2)
@@ -207,8 +233,7 @@ with tab2:
         with col2:
             if set_followup:
                 followup_date = st.date_input(
-                    "Follow-up Date",
-                    value=date.today() + timedelta(days=3)
+                    "Follow-up Date", value=date.today() + timedelta(days=3)
                 )
             else:
                 followup_date = None
@@ -219,23 +244,26 @@ with tab2:
             try:
                 with get_db_connection() as conn:
                     cursor = conn.cursor()
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         INSERT INTO interview_events
                         (job_application_id, event_type, event_date, event_time,
                          interviewer_name, interviewer_title, interviewer_email,
                          notes, follow_up_date)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        selected_job_id,
-                        event_type,
-                        event_date.isoformat(),
-                        event_time.strftime("%H:%M") if event_time else None,
-                        interviewer_name or None,
-                        interviewer_title or None,
-                        interviewer_email or None,
-                        notes or None,
-                        followup_date.isoformat() if followup_date else None
-                    ))
+                    """,
+                        (
+                            selected_job_id,
+                            event_type,
+                            event_date.isoformat(),
+                            event_time.strftime("%H:%M") if event_time else None,
+                            interviewer_name or None,
+                            interviewer_title or None,
+                            interviewer_email or None,
+                            notes or None,
+                            followup_date.isoformat() if followup_date else None,
+                        ),
+                    )
                     conn.commit()
 
                 st.success(f"Added {event_type} event for {app_select}!")
@@ -251,26 +279,29 @@ with tab3:
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT ie.*, ja.company, ja.position
                 FROM interview_events ie
                 JOIN job_applications ja ON ie.job_application_id = ja.id
                 WHERE ja.profile_id = ? AND ie.follow_up_date IS NOT NULL
                 ORDER BY ie.follow_up_done ASC, ie.follow_up_date ASC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             followups = cursor.fetchall()
 
         if followups:
             # Separate pending and completed
-            pending = [f for f in followups if not f['follow_up_done']]
-            completed = [f for f in followups if f['follow_up_done']]
+            pending = [f for f in followups if not f["follow_up_done"]]
+            completed = [f for f in followups if f["follow_up_done"]]
 
             # Pending follow-ups
             st.subheader(f"Pending ({len(pending)})")
 
             if pending:
                 for fu in pending:
-                    fu_date = datetime.strptime(fu['follow_up_date'], '%Y-%m-%d').date()
+                    fu_date = datetime.strptime(fu["follow_up_date"], "%Y-%m-%d").date()
                     days_until = (fu_date - date.today()).days
 
                     if days_until < 0:
@@ -301,14 +332,16 @@ with tab3:
                             with get_db_connection() as conn:
                                 cursor = conn.cursor()
                                 cursor.execute(
-                                    'UPDATE interview_events SET follow_up_done = 1 WHERE id = ?',
-                                    (fu['id'],)
+                                    "UPDATE interview_events SET follow_up_done = 1 WHERE id = ?",
+                                    (fu["id"],),
                                 )
                                 conn.commit()
                             st.rerun()
 
-                    if fu['interviewer_name']:
-                        st.caption(f"Contact: {fu['interviewer_name']} ({fu['interviewer_email'] or 'no email'})")
+                    if fu["interviewer_name"]:
+                        st.caption(
+                            f"Contact: {fu['interviewer_name']} ({fu['interviewer_email'] or 'no email'})"
+                        )
 
                     st.divider()
             else:
@@ -318,7 +351,9 @@ with tab3:
             if completed:
                 with st.expander(f"Completed Follow-ups ({len(completed)})"):
                     for fu in completed:
-                        st.write(f"**{fu['company']}** - {fu['event_type']} - {fu['follow_up_date']}")
+                        st.write(
+                            f"**{fu['company']}** - {fu['event_type']} - {fu['follow_up_date']}"
+                        )
         else:
             st.info("No follow-up reminders set. Add follow-ups when logging interview events.")
 
@@ -332,7 +367,8 @@ with tab4:
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT DISTINCT
                     ie.interviewer_name,
                     ie.interviewer_title,
@@ -345,36 +381,44 @@ with tab4:
                 JOIN job_applications ja ON ie.job_application_id = ja.id
                 WHERE ja.profile_id = ? AND ie.interviewer_name IS NOT NULL
                 ORDER BY ja.company, ie.event_date DESC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             contacts = cursor.fetchall()
 
         if contacts:
             # Group by company
             contacts_by_company = {}
             for contact in contacts:
-                company = contact['company']
+                company = contact["company"]
                 if company not in contacts_by_company:
                     contacts_by_company[company] = []
                 contacts_by_company[company].append(contact)
 
             for company, company_contacts in contacts_by_company.items():
-                with st.expander(f"**{company}** ({len(company_contacts)} contacts)", expanded=True):
+                with st.expander(
+                    f"**{company}** ({len(company_contacts)} contacts)", expanded=True
+                ):
                     for contact in company_contacts:
                         col1, col2 = st.columns([3, 2])
 
                         with col1:
                             st.write(f"**{contact['interviewer_name']}**")
-                            if contact['interviewer_title']:
-                                st.caption(contact['interviewer_title'])
+                            if contact["interviewer_title"]:
+                                st.caption(contact["interviewer_title"])
 
                         with col2:
-                            if contact['interviewer_email']:
-                                st.markdown(f"[{contact['interviewer_email']}](mailto:{contact['interviewer_email']})")
+                            if contact["interviewer_email"]:
+                                st.markdown(
+                                    f"[{contact['interviewer_email']}](mailto:{contact['interviewer_email']})"
+                                )
                             st.caption(f"{contact['event_type']} - {contact['event_date']}")
 
                         st.divider()
         else:
-            st.info("No interviewer contacts recorded yet. Add interviewer details when logging events.")
+            st.info(
+                "No interviewer contacts recorded yet. Add interviewer details when logging events."
+            )
 
     except Exception as e:
         st.error(f"Error loading contacts: {str(e)}")
@@ -382,7 +426,8 @@ with tab4:
 # Sidebar
 with st.sidebar:
     st.header("Timeline Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Best Practices:**
     - Log events right after they happen
     - Include interviewer names for networking
@@ -400,4 +445,5 @@ with st.sidebar:
     - Thank you email: Within 24 hours
     - Follow-up if no response: 1 week
     - Second follow-up: 2 weeks
-    """)
+    """
+    )

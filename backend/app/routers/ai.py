@@ -1,19 +1,21 @@
 """
 AI service router for LLM-powered features.
 """
+
 from fastapi import APIRouter, Depends, HTTPException
+
+from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.schemas.ai import (
-    TailorResumeRequest,
-    TailorResumeResponse,
     AnswerQuestionRequest,
     AnswerQuestionResponse,
-    InterviewPrepRequest,
-    InterviewPrepResponse,
     GrammarCorrectionRequest,
     GrammarCorrectionResponse,
+    InterviewPrepRequest,
+    InterviewPrepResponse,
+    TailorResumeRequest,
+    TailorResumeResponse,
 )
-from app.middleware.auth import get_current_user
 
 router = APIRouter(prefix="/api/ai", tags=["AI Services"])
 
@@ -95,7 +97,9 @@ async def interview_prep(
 
         return response
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate interview answer: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate interview answer: {str(e)}"
+        )
 
 
 @router.post("/grammar-check", response_model=GrammarCorrectionResponse)

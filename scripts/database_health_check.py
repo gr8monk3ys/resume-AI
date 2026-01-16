@@ -10,21 +10,20 @@ Usage:
     python scripts/database_health_check.py --json
 """
 
-import os
-import sys
-import sqlite3
-import json
 import argparse
+import json
+import os
+import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
-
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # Configuration
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 
 
 class DatabaseHealthChecker:
@@ -69,9 +68,9 @@ class DatabaseHealthChecker:
             )
 
         return {
-            'size_bytes': size_bytes,
-            'size_mb': round(size_mb, 2),
-            'size_gb': round(size_mb / 1024, 2)
+            "size_bytes": size_bytes,
+            "size_mb": round(size_mb, 2),
+            "size_gb": round(size_mb / 1024, 2),
         }
 
     def check_integrity(self) -> bool:
@@ -80,12 +79,12 @@ class DatabaseHealthChecker:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('PRAGMA integrity_check')
+            cursor.execute("PRAGMA integrity_check")
             result = cursor.fetchone()
 
             conn.close()
 
-            if result and result[0] == 'ok':
+            if result and result[0] == "ok":
                 return True
             else:
                 self.issues.append(f"Integrity check failed: {result}")
@@ -101,12 +100,12 @@ class DatabaseHealthChecker:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('PRAGMA journal_mode')
+            cursor.execute("PRAGMA journal_mode")
             mode = cursor.fetchone()[0]
 
             conn.close()
 
-            if mode.upper() != 'WAL':
+            if mode.upper() != "WAL":
                 self.recommendations.append(
                     f"Journal mode is '{mode}'. Consider using WAL mode for better concurrency: PRAGMA journal_mode=WAL"
                 )
@@ -138,11 +137,7 @@ class DatabaseHealthChecker:
                 cursor.execute(f'SELECT SUM(length(quote())) FROM "{table}"')
                 table_size = cursor.fetchone()[0] or 0
 
-                table_info.append({
-                    'name': table,
-                    'rows': row_count,
-                    'size_bytes': table_size
-                })
+                table_info.append({"name": table, "rows": row_count, "size_bytes": table_size})
 
             conn.close()
 
@@ -158,14 +153,16 @@ class DatabaseHealthChecker:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT name, tbl_name
                 FROM sqlite_master
                 WHERE type='index' AND name NOT LIKE 'sqlite_%'
                 ORDER BY tbl_name, name
-            """)
+            """
+            )
 
-            indexes = [{'name': row[0], 'table': row[1]} for row in cursor.fetchall()]
+            indexes = [{"name": row[0], "table": row[1]} for row in cursor.fetchall()]
 
             conn.close()
 
@@ -181,13 +178,15 @@ class DatabaseHealthChecker:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('PRAGMA foreign_keys')
+            cursor.execute("PRAGMA foreign_keys")
             enabled = cursor.fetchone()[0]
 
             conn.close()
 
             if not enabled:
-                self.warnings.append("Foreign keys are not enabled. Enable with: PRAGMA foreign_keys=ON")
+                self.warnings.append(
+                    "Foreign keys are not enabled. Enable with: PRAGMA foreign_keys=ON"
+                )
 
             return bool(enabled)
 
@@ -201,7 +200,7 @@ class DatabaseHealthChecker:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('PRAGMA page_size')
+            cursor.execute("PRAGMA page_size")
             page_size = cursor.fetchone()[0]
 
             conn.close()
@@ -225,10 +224,10 @@ class DatabaseHealthChecker:
             cursor = conn.cursor()
 
             # Get page count and freelist count
-            cursor.execute('PRAGMA page_count')
+            cursor.execute("PRAGMA page_count")
             page_count = cursor.fetchone()[0]
 
-            cursor.execute('PRAGMA freelist_count')
+            cursor.execute("PRAGMA freelist_count")
             freelist_count = cursor.fetchone()[0]
 
             conn.close()
@@ -258,68 +257,68 @@ class DatabaseHealthChecker:
             Dictionary with health check results
         """
         results = {
-            'database': self.db_name,
-            'path': self.db_path,
-            'timestamp': datetime.now().isoformat(),
-            'healthy': True,
-            'issues': [],
-            'warnings': [],
-            'recommendations': []
+            "database": self.db_name,
+            "path": self.db_path,
+            "timestamp": datetime.now().isoformat(),
+            "healthy": True,
+            "issues": [],
+            "warnings": [],
+            "recommendations": [],
         }
 
         # Check existence
         if not self.check_existence():
-            results['healthy'] = False
-            results['issues'] = self.issues
+            results["healthy"] = False
+            results["issues"] = self.issues
             return results
 
         # Check integrity
         integrity_ok = self.check_integrity()
-        results['integrity_ok'] = integrity_ok
+        results["integrity_ok"] = integrity_ok
 
         if not integrity_ok:
-            results['healthy'] = False
+            results["healthy"] = False
 
         # Check size
         size_info = self.check_size()
-        results['size'] = size_info
+        results["size"] = size_info
 
         # Check journal mode
         journal_mode = self.check_journal_mode()
-        results['journal_mode'] = journal_mode
+        results["journal_mode"] = journal_mode
 
         # Check foreign keys
         foreign_keys_enabled = self.check_foreign_keys()
-        results['foreign_keys_enabled'] = foreign_keys_enabled
+        results["foreign_keys_enabled"] = foreign_keys_enabled
 
         # Check page size
         page_size = self.check_page_size()
-        results['page_size'] = page_size
+        results["page_size"] = page_size
 
         # Check if vacuum needed
         vacuum_needed = self.check_vacuum_needed()
-        results['vacuum_recommended'] = vacuum_needed
+        results["vacuum_recommended"] = vacuum_needed
 
         # Get tables info if detailed
         if detailed:
             tables = self.check_tables()
-            results['tables'] = tables
+            results["tables"] = tables
 
             indexes = self.check_indexes()
-            results['indexes'] = indexes
+            results["indexes"] = indexes
 
         # Aggregate issues, warnings, recommendations
-        results['issues'] = self.issues
-        results['warnings'] = self.warnings
-        results['recommendations'] = self.recommendations
+        results["issues"] = self.issues
+        results["warnings"] = self.warnings
+        results["recommendations"] = self.recommendations
 
         # Set overall health status
         if self.issues:
-            results['healthy'] = False
+            results["healthy"] = False
         elif self.warnings:
-            results['health_status'] = 'warning'
+            results["health_status"] = "warning"
         else:
-            results['health_status'] = 'good'
+            results["health_status"] = "good"
 
         return results
 
@@ -331,7 +330,7 @@ def print_health_report(results: dict, detailed: bool = False):
     print("=" * 70)
 
     # Overall status
-    if results.get('healthy', False):
+    if results.get("healthy", False):
         print("✅ Status: HEALTHY")
     else:
         print("❌ Status: ISSUES FOUND")
@@ -341,53 +340,53 @@ def print_health_report(results: dict, detailed: bool = False):
     # Basic info
     print(f"📁 Path: {results['path']}")
 
-    if 'size' in results:
-        size = results['size']
+    if "size" in results:
+        size = results["size"]
         print(f"💾 Size: {size['size_bytes']:,} bytes ({size['size_mb']:.2f} MB)")
 
-    if 'integrity_ok' in results:
-        status = "✅ OK" if results['integrity_ok'] else "❌ FAILED"
+    if "integrity_ok" in results:
+        status = "✅ OK" if results["integrity_ok"] else "❌ FAILED"
         print(f"🔍 Integrity: {status}")
 
-    if 'journal_mode' in results:
+    if "journal_mode" in results:
         print(f"📝 Journal Mode: {results['journal_mode']}")
 
-    if 'foreign_keys_enabled' in results:
-        status = "✅ Enabled" if results['foreign_keys_enabled'] else "⚠️  Disabled"
+    if "foreign_keys_enabled" in results:
+        status = "✅ Enabled" if results["foreign_keys_enabled"] else "⚠️  Disabled"
         print(f"🔗 Foreign Keys: {status}")
 
-    if 'page_size' in results:
+    if "page_size" in results:
         print(f"📄 Page Size: {results['page_size']} bytes")
 
     # Tables (detailed)
-    if detailed and 'tables' in results:
+    if detailed and "tables" in results:
         print("\n📊 Tables:")
-        for table in results['tables']:
-            size_mb = table['size_bytes'] / (1024 * 1024)
+        for table in results["tables"]:
+            size_mb = table["size_bytes"] / (1024 * 1024)
             print(f"   • {table['name']}: {table['rows']:,} rows ({size_mb:.2f} MB)")
 
     # Indexes (detailed)
-    if detailed and 'indexes' in results:
+    if detailed and "indexes" in results:
         print(f"\n🔖 Indexes: {len(results['indexes'])}")
-        for index in results['indexes']:
+        for index in results["indexes"]:
             print(f"   • {index['name']} on {index['table']}")
 
     # Issues
-    if results.get('issues'):
+    if results.get("issues"):
         print("\n❌ Issues:")
-        for issue in results['issues']:
+        for issue in results["issues"]:
             print(f"   • {issue}")
 
     # Warnings
-    if results.get('warnings'):
+    if results.get("warnings"):
         print("\n⚠️  Warnings:")
-        for warning in results['warnings']:
+        for warning in results["warnings"]:
             print(f"   • {warning}")
 
     # Recommendations
-    if results.get('recommendations'):
+    if results.get("recommendations"):
         print("\n💡 Recommendations:")
-        for rec in results['recommendations']:
+        for rec in results["recommendations"]:
             print(f"   • {rec}")
 
     print("\n" + "=" * 70)
@@ -395,22 +394,12 @@ def print_health_report(results: dict, detailed: bool = False):
 
 def main():
     """Main health check function."""
-    parser = argparse.ArgumentParser(description='Check ResuBoost AI database health')
+    parser = argparse.ArgumentParser(description="Check ResuBoost AI database health")
     parser.add_argument(
-        '--detailed',
-        action='store_true',
-        help='Show detailed information (tables, indexes, etc.)'
+        "--detailed", action="store_true", help="Show detailed information (tables, indexes, etc.)"
     )
-    parser.add_argument(
-        '--json',
-        action='store_true',
-        help='Output results in JSON format'
-    )
-    parser.add_argument(
-        '--database',
-        type=str,
-        help='Check specific database (default: all)'
-    )
+    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
+    parser.add_argument("--database", type=str, help="Check specific database (default: all)")
 
     args = parser.parse_args()
 
@@ -433,7 +422,7 @@ def main():
             return
     else:
         # Check all databases
-        for db_file in data_path.glob('*.db'):
+        for db_file in data_path.glob("*.db"):
             databases.append((db_file.stem, str(db_file)))
 
     if not databases:
@@ -463,7 +452,7 @@ def main():
             print_health_report(results, detailed=args.detailed)
 
         # Summary
-        healthy_count = sum(1 for r in all_results if r.get('healthy', False))
+        healthy_count = sum(1 for r in all_results if r.get("healthy", False))
         total_count = len(all_results)
 
         print("\n" + "=" * 70)
@@ -471,7 +460,7 @@ def main():
         print("=" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
@@ -480,5 +469,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n\n❌ Health check failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -11,22 +11,21 @@ Usage:
     python scripts/backup_databases.py --verify
 """
 
+import argparse
 import os
-import sys
 import shutil
 import sqlite3
-import argparse
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # Configuration
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
-BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'backups')
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backups")
 DEFAULT_KEEP_DAYS = 30
 
 
@@ -52,7 +51,7 @@ def get_databases():
         print(f"⚠️  Data directory not found: {DATA_DIR}")
         return databases
 
-    for db_file in data_path.glob('*.db'):
+    for db_file in data_path.glob("*.db"):
         databases.append((db_file.stem, str(db_file)))
 
     return databases
@@ -73,12 +72,12 @@ def verify_database(db_path: str) -> bool:
         cursor = conn.cursor()
 
         # Run integrity check
-        cursor.execute('PRAGMA integrity_check')
+        cursor.execute("PRAGMA integrity_check")
         result = cursor.fetchone()
 
         conn.close()
 
-        if result and result[0] == 'ok':
+        if result and result[0] == "ok":
             return True
         else:
             print(f"❌ Integrity check failed for {db_path}: {result}")
@@ -108,7 +107,7 @@ def backup_database(db_name: str, db_path: str, verify: bool = False) -> bool:
             return False
 
         # Generate backup filename with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"{db_name}_{timestamp}.db"
         backup_path = os.path.join(BACKUP_DIR, backup_filename)
 
@@ -166,7 +165,7 @@ def cleanup_old_backups(keep_days: int = DEFAULT_KEEP_DAYS):
 
     print(f"\n🧹 Cleaning up backups older than {keep_days} days...")
 
-    for backup_file in Path(BACKUP_DIR).glob('*.db'):
+    for backup_file in Path(BACKUP_DIR).glob("*.db"):
         # Check file modification time
         file_mtime = backup_file.stat().st_mtime
 
@@ -194,7 +193,7 @@ def get_backup_stats():
         print("   No backups found")
         return
 
-    backup_files = list(Path(BACKUP_DIR).glob('*.db'))
+    backup_files = list(Path(BACKUP_DIR).glob("*.db"))
 
     if not backup_files:
         print("   No backups found")
@@ -212,7 +211,7 @@ def get_backup_stats():
     # Count by database type
     by_type = {}
     for backup_file in backup_files:
-        db_type = backup_file.name.split('_')[0]
+        db_type = backup_file.name.split("_")[0]
         by_type[db_type] = by_type.get(db_type, 0) + 1
 
     print(f"   Backups by type:")
@@ -222,27 +221,21 @@ def get_backup_stats():
 
 def main():
     """Main backup function."""
-    parser = argparse.ArgumentParser(description='Backup ResuBoost AI databases')
+    parser = argparse.ArgumentParser(description="Backup ResuBoost AI databases")
     parser.add_argument(
-        '--keep-days',
+        "--keep-days",
         type=int,
         default=DEFAULT_KEEP_DAYS,
-        help=f'Number of days to keep backups (default: {DEFAULT_KEEP_DAYS})'
+        help=f"Number of days to keep backups (default: {DEFAULT_KEEP_DAYS})",
     )
     parser.add_argument(
-        '--verify',
-        action='store_true',
-        help='Verify database integrity before and after backup'
+        "--verify", action="store_true", help="Verify database integrity before and after backup"
     )
+    parser.add_argument("--no-cleanup", action="store_true", help="Skip cleanup of old backups")
     parser.add_argument(
-        '--no-cleanup',
-        action='store_true',
-        help='Skip cleanup of old backups'
-    )
-    parser.add_argument(
-        '--stats-only',
-        action='store_true',
-        help='Only show backup statistics, do not create backups'
+        "--stats-only",
+        action="store_true",
+        help="Only show backup statistics, do not create backups",
     )
 
     args = parser.parse_args()
@@ -293,7 +286,7 @@ def main():
     print("=" * 60)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
@@ -302,5 +295,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\n\n❌ Backup failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

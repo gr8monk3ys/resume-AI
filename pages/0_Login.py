@@ -1,12 +1,20 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from utils.auth import init_session_state, login, logout, is_authenticated, register_user, get_current_user
 from models.auth_database import init_auth_database
+from utils.auth import (
+    get_current_user,
+    init_session_state,
+    is_authenticated,
+    login,
+    logout,
+    register_user,
+)
 
 # Import config with fallback
 try:
@@ -63,6 +71,7 @@ with tab1:
                         st.balloons()
                         # Wait a moment before redirecting
                         import time
+
                         time.sleep(1)
                         st.rerun()
                     else:
@@ -79,25 +88,32 @@ with tab2:
     # Show password requirements
     with st.expander("📋 Password Requirements", expanded=False):
         from utils.password_validator import generate_password_requirements_text
+
         st.markdown(generate_password_requirements_text())
 
     with st.form("register_form"):
         new_username = st.text_input("Username*", placeholder="Choose a username")
         new_email = st.text_input("Email*", placeholder="your.email@example.com")
         new_full_name = st.text_input("Full Name", placeholder="John Doe (optional)")
-        new_password = st.text_input("Password*", type="password", placeholder="Choose a strong password")
-        confirm_password = st.text_input("Confirm Password*", type="password", placeholder="Re-enter password")
+        new_password = st.text_input(
+            "Password*", type="password", placeholder="Choose a strong password"
+        )
+        confirm_password = st.text_input(
+            "Confirm Password*", type="password", placeholder="Re-enter password"
+        )
 
-        register_submitted = st.form_submit_button("📝 Create Account", type="primary", use_container_width=True)
+        register_submitted = st.form_submit_button(
+            "📝 Create Account", type="primary", use_container_width=True
+        )
 
         if register_submitted:
+            from utils.input_sanitizer import sanitize_email, sanitize_text_input, sanitize_username
             from utils.password_validator import (
-                validate_password_strength,
-                validate_password_confirmation,
                 get_password_strength_label,
-                suggest_password_improvements
+                suggest_password_improvements,
+                validate_password_confirmation,
+                validate_password_strength,
             )
-            from utils.input_sanitizer import sanitize_username, sanitize_email, sanitize_text_input
 
             # Validation
             errors = []
@@ -121,7 +137,9 @@ with tab2:
                     errors.append(email_error)
 
             # Sanitize full name
-            new_full_name = sanitize_text_input(new_full_name, max_length=100) if new_full_name else None
+            new_full_name = (
+                sanitize_text_input(new_full_name, max_length=100) if new_full_name else None
+            )
 
             if not new_password:
                 errors.append("Password is required")
@@ -152,7 +170,9 @@ with tab2:
                     st.error(f"❌ {error}")
             else:
                 # Try to register
-                success, message = register_user(new_username, new_email, new_password, new_full_name or None)
+                success, message = register_user(
+                    new_username, new_email, new_password, new_full_name or None
+                )
 
                 if success:
                     st.success(f"✅ {message}")
@@ -166,7 +186,8 @@ with tab2:
 # Sidebar
 with st.sidebar:
     st.header("🔐 Authentication")
-    st.markdown("""
+    st.markdown(
+        """
     **ResuBoost AI** now supports multiple users!
 
     **Features:**
@@ -179,7 +200,8 @@ with st.sidebar:
     1. Create an account using the Register tab
     2. Log in with your credentials
     3. Start optimizing your job search!
-    """)
+    """
+    )
 
     st.markdown("---")
     st.caption("Need help? Check the documentation")

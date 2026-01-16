@@ -1,9 +1,11 @@
 """
 Job application schemas.
 """
-from datetime import datetime, date
-from typing import Optional
+
+from datetime import date, datetime
 from enum import Enum
+from typing import Optional
+
 from pydantic import BaseModel
 
 

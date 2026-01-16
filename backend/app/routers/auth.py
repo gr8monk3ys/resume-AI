@@ -1,23 +1,25 @@
 """
 Authentication router.
 """
+
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
-from app.models.profile import Profile
-from app.schemas.user import UserCreate, UserResponse, Token
 from app.middleware.auth import (
-    get_password_hash,
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
     get_current_user,
+    get_password_hash,
+    verify_password,
 )
+from app.models.profile import Profile
+from app.models.user import User
+from app.schemas.user import Token, UserCreate, UserResponse
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -28,15 +30,13 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Check if username exists
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered"
         )
 
     # Check if email exists
     if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     # Create user
@@ -63,10 +63,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
-):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Login and get access token."""
     user = db.query(User).filter(User.username == form_data.username).first()
 
@@ -79,8 +76,7 @@ async def login(
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is deactivated"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is deactivated"
         )
 
     # Update last login
@@ -92,11 +88,7 @@ async def login(
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
 
-    return Token(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer"
-    )
+    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
 @router.post("/refresh", response_model=Token)
@@ -106,15 +98,13 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
 
     if token_data is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
 
     user = db.query(User).filter(User.id == token_data.user_id).first()
     if not user or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive"
         )
 
     # Create new tokens
@@ -123,9 +113,7 @@ async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     new_refresh_token = create_refresh_token(new_token_data)
 
     return Token(
-        access_token=new_access_token,
-        refresh_token=new_refresh_token,
-        token_type="bearer"
+        access_token=new_access_token, refresh_token=new_refresh_token, token_type="bearer"
     )
 
 

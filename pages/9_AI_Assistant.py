@@ -1,17 +1,18 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from utils.file_parser import extract_text_from_upload
-from services.llm_service import get_llm_service
-from models.database import get_db_connection
+from config import MAX_JOB_DESCRIPTION_LENGTH, MAX_RESUME_LENGTH
 from models.auth_database import init_auth_database
+from models.database import get_db_connection
+from services.llm_service import get_llm_service
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
+from utils.file_parser import extract_text_from_upload
 from utils.rate_limiter import check_rate_limit
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
-from config import MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH
 
 st.set_page_config(page_title="AI Assistant", page_icon="🤖", layout="wide")
 
@@ -43,10 +44,12 @@ tab1, tab2, tab3 = st.tabs(["✨ Resume Tailor", "❓ Question Answerer", "🎤 
 
 with tab1:
     st.header("✨ AI Resume Tailor")
-    st.markdown("""
+    st.markdown(
+        """
     Generate a tailored version of your resume for a specific job.
     The AI will rewrite your resume to better match the job description while keeping all your information accurate.
-    """)
+    """
+    )
 
     col1, col2 = st.columns(2)
 
@@ -56,22 +59,25 @@ with tab1:
         # Option to load saved resume
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, version_name, content FROM resumes
                 WHERE profile_id = ?
                 ORDER BY created_at DESC
-            ''', (profile['id'],))
+            """,
+                (profile["id"],),
+            )
             saved_resumes = cursor.fetchall()
 
         resume_source = st.radio(
-            "Resume Source",
-            ["Upload File", "Paste Text", "Use Saved Resume"],
-            horizontal=True
+            "Resume Source", ["Upload File", "Paste Text", "Use Saved Resume"], horizontal=True
         )
 
         resume_text = ""
         if resume_source == "Upload File":
-            resume_file = st.file_uploader("Upload Resume", type=['txt', 'pdf', 'docx'], key="tailor_resume")
+            resume_file = st.file_uploader(
+                "Upload Resume", type=["txt", "pdf", "docx"], key="tailor_resume"
+            )
             if resume_file:
                 resume_text = extract_text_from_upload(resume_file)
         elif resume_source == "Paste Text":
@@ -81,11 +87,13 @@ with tab1:
                 selected_resume = st.selectbox(
                     "Select saved resume",
                     options=saved_resumes,
-                    format_func=lambda x: x['version_name']
+                    format_func=lambda x: x["version_name"],
                 )
                 if selected_resume:
-                    resume_text = selected_resume['content']
-                    st.text_area("Resume content", value=resume_text[:500] + "...", height=150, disabled=True)
+                    resume_text = selected_resume["content"]
+                    st.text_area(
+                        "Resume content", value=resume_text[:500] + "...", height=150, disabled=True
+                    )
             else:
                 st.info("No saved resumes found. Upload or paste your resume.")
 
@@ -95,18 +103,20 @@ with tab1:
         position = st.text_input("Position Title*", placeholder="e.g., Software Engineer")
 
         job_desc_source = st.radio(
-            "Job Description Source",
-            ["Paste Text", "Upload File"],
-            horizontal=True
+            "Job Description Source", ["Paste Text", "Upload File"], horizontal=True
         )
 
         job_description = ""
         if job_desc_source == "Upload File":
-            job_file = st.file_uploader("Upload Job Description", type=['txt', 'pdf', 'docx'], key="tailor_job")
+            job_file = st.file_uploader(
+                "Upload Job Description", type=["txt", "pdf", "docx"], key="tailor_job"
+            )
             if job_file:
                 job_description = extract_text_from_upload(job_file)
         else:
-            job_description = st.text_area("Paste job description", height=200, key="tailor_job_text")
+            job_description = st.text_area(
+                "Paste job description", height=200, key="tailor_job_text"
+            )
 
     # Generate button
     if st.button("✨ Generate Tailored Resume", type="primary", use_container_width=True):
@@ -117,9 +127,13 @@ with tab1:
         elif not company_name or not position:
             st.error("Please enter company name and position")
         elif len(resume_text) > MAX_RESUME_LENGTH:
-            st.error(f"Resume is too large ({len(resume_text):,} chars). Max: {MAX_RESUME_LENGTH:,}")
+            st.error(
+                f"Resume is too large ({len(resume_text):,} chars). Max: {MAX_RESUME_LENGTH:,}"
+            )
         elif len(job_description) > MAX_JOB_DESCRIPTION_LENGTH:
-            st.error(f"Job description is too large ({len(job_description):,} chars). Max: {MAX_JOB_DESCRIPTION_LENGTH:,}")
+            st.error(
+                f"Job description is too large ({len(job_description):,} chars). Max: {MAX_JOB_DESCRIPTION_LENGTH:,}"
+            )
         else:
             if not check_rate_limit(max_requests=10, window_seconds=60):
                 st.stop()
@@ -130,7 +144,7 @@ with tab1:
                         resume=resume_text,
                         job_description=job_description,
                         company_name=company_name,
-                        position=position
+                        position=position,
                     )
 
                     st.success("✅ Tailored resume generated!")
@@ -147,7 +161,7 @@ with tab1:
                             "📥 Download",
                             data=tailored_resume,
                             file_name=f"resume_{company_name.replace(' ', '_')}_{position.replace(' ', '_')}.txt",
-                            mime="text/plain"
+                            mime="text/plain",
                         )
 
                     with col2:
@@ -156,25 +170,33 @@ with tab1:
                             version_name = f"{company_name} - {position}"
                             with get_db_connection() as conn:
                                 cursor = conn.cursor()
-                                cursor.execute('''
+                                cursor.execute(
+                                    """
                                     INSERT INTO resumes (profile_id, version_name, content)
                                     VALUES (?, ?, ?)
-                                ''', (profile['id'], version_name, tailored_resume))
+                                """,
+                                    (profile["id"], version_name, tailored_resume),
+                                )
                                 conn.commit()
                             st.success(f"Saved as '{version_name}'!")
 
                     with col3:
-                        st.button("📋 Copy to Clipboard", on_click=lambda: st.write("Use Ctrl+A, Ctrl+C in the text area above"))
+                        st.button(
+                            "📋 Copy to Clipboard",
+                            on_click=lambda: st.write("Use Ctrl+A, Ctrl+C in the text area above"),
+                        )
 
                 except Exception as e:
                     st.error(f"Error generating tailored resume: {str(e)}")
 
 with tab2:
     st.header("❓ Application Question Answerer")
-    st.markdown("""
+    st.markdown(
+        """
     Get AI-generated answers for common job application questions.
     The AI uses your resume and the job description to create personalized, relevant answers.
-    """)
+    """
+    )
 
     # Common questions
     common_questions = [
@@ -192,7 +214,7 @@ with tab2:
         "What is your greatest strength?",
         "Describe a time you failed and what you learned.",
         "How do you handle tight deadlines?",
-        "Tell us about a time you resolved a conflict."
+        "Tell us about a time you resolved a conflict.",
     ]
 
     col1, col2 = st.columns(2)
@@ -205,7 +227,7 @@ with tab2:
             "Your Resume",
             ["Use Saved Resume", "Paste Text"],
             horizontal=True,
-            key="qa_resume_source"
+            key="qa_resume_source",
         )
 
         qa_resume = ""
@@ -213,17 +235,21 @@ with tab2:
             qa_selected = st.selectbox(
                 "Select resume",
                 options=saved_resumes,
-                format_func=lambda x: x['version_name'],
-                key="qa_resume_select"
+                format_func=lambda x: x["version_name"],
+                key="qa_resume_select",
             )
             if qa_selected:
-                qa_resume = qa_selected['content']
+                qa_resume = qa_selected["content"]
         else:
             qa_resume = st.text_area("Your resume", height=150, key="qa_resume_text")
 
         # Job description
-        qa_job_desc = st.text_area("Job Description", height=150, key="qa_job_desc",
-                                   placeholder="Paste the job description for context...")
+        qa_job_desc = st.text_area(
+            "Job Description",
+            height=150,
+            key="qa_job_desc",
+            placeholder="Paste the job description for context...",
+        )
 
     with col2:
         st.subheader("Question")
@@ -238,7 +264,7 @@ with tab2:
         question_type = st.selectbox(
             "Question Type",
             ["general", "behavioral", "motivation", "salary", "weakness", "strength"],
-            help="This helps the AI format the answer appropriately"
+            help="This helps the AI format the answer appropriately",
         )
 
     if st.button("💡 Generate Answer", type="primary", use_container_width=True):
@@ -256,7 +282,7 @@ with tab2:
                         question=question,
                         resume=qa_resume,
                         job_description=qa_job_desc or "General position",
-                        question_type=question_type
+                        question_type=question_type,
                     )
 
                     st.success("✅ Answer generated!")
@@ -270,7 +296,7 @@ with tab2:
                             "📥 Download Answer",
                             data=f"Question: {question}\n\nAnswer:\n{answer}",
                             file_name="application_answer.txt",
-                            mime="text/plain"
+                            mime="text/plain",
                         )
                     with col2:
                         word_count = len(answer.split())
@@ -281,9 +307,11 @@ with tab2:
 
 with tab3:
     st.header("🎤 Interview Prep")
-    st.markdown("""
+    st.markdown(
+        """
     Practice your interview answers with AI-generated sample responses using the STAR method.
-    """)
+    """
+    )
 
     # Common interview questions
     interview_questions = [
@@ -300,7 +328,7 @@ with tab3:
         "Tell me about a time you disagreed with a coworker.",
         "Describe your ideal work environment.",
         "How do you prioritize your work?",
-        "Tell me about a time you went above and beyond."
+        "Tell me about a time you went above and beyond.",
     ]
 
     col1, col2 = st.columns(2)
@@ -309,10 +337,7 @@ with tab3:
         st.subheader("Your Background")
 
         int_resume_source = st.radio(
-            "Resume",
-            ["Use Saved", "Paste"],
-            horizontal=True,
-            key="int_resume_source"
+            "Resume", ["Use Saved", "Paste"], horizontal=True, key="int_resume_source"
         )
 
         int_resume = ""
@@ -320,11 +345,11 @@ with tab3:
             int_selected = st.selectbox(
                 "Select",
                 options=saved_resumes,
-                format_func=lambda x: x['version_name'],
-                key="int_resume_select"
+                format_func=lambda x: x["version_name"],
+                key="int_resume_select",
             )
             if int_selected:
-                int_resume = int_selected['content']
+                int_resume = int_selected["content"]
         else:
             int_resume = st.text_area("Resume", height=150, key="int_resume_text")
 
@@ -353,7 +378,7 @@ with tab3:
                     answer = llm_service.generate_interview_answer(
                         question=int_question,
                         resume=int_resume,
-                        job_description=int_job_desc or "General position"
+                        job_description=int_job_desc or "General position",
                     )
 
                     st.success("✅ Sample answer generated!")
@@ -361,13 +386,15 @@ with tab3:
                     st.subheader(f"💬 Question: {int_question}")
                     st.text_area("Sample Answer (STAR Method)", value=answer, height=300)
 
-                    st.info("""
+                    st.info(
+                        """
                     **STAR Method Reminder:**
                     - **S**ituation: Set the scene
                     - **T**ask: Describe your responsibility
                     - **A**ction: Explain what you did
                     - **R**esult: Share the outcome
-                    """)
+                    """
+                    )
 
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
@@ -375,7 +402,8 @@ with tab3:
 # Sidebar
 with st.sidebar:
     st.header("💡 Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Resume Tailor:**
     - Use your base resume as a starting point
     - The AI preserves your facts while optimizing for the job
@@ -390,4 +418,5 @@ with st.sidebar:
     - Practice answering out loud
     - Time yourself (aim for 1-2 minutes per answer)
     - Prepare 2-3 stories for behavioral questions
-    """)
+    """
+    )

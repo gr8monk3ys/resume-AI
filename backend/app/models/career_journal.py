@@ -1,8 +1,10 @@
 """
 Career journal model for tracking achievements.
 """
-from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey
+
+from datetime import date, datetime
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base

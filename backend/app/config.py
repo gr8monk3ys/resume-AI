@@ -1,9 +1,11 @@
 """
 Application configuration using Pydantic Settings.
 """
+
 from functools import lru_cache
-from pydantic_settings import BaseSettings
 from typing import Optional
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):

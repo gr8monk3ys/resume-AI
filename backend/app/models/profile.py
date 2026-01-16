@@ -1,8 +1,10 @@
 """
 Profile model for user information.
 """
+
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -27,6 +29,12 @@ class Profile(Base):
     # Relationships
     user = relationship("User", back_populates="profile")
     resumes = relationship("Resume", back_populates="profile", cascade="all, delete-orphan")
-    job_applications = relationship("JobApplication", back_populates="profile", cascade="all, delete-orphan")
-    cover_letters = relationship("CoverLetter", back_populates="profile", cascade="all, delete-orphan")
-    journal_entries = relationship("CareerJournalEntry", back_populates="profile", cascade="all, delete-orphan")
+    job_applications = relationship(
+        "JobApplication", back_populates="profile", cascade="all, delete-orphan"
+    )
+    cover_letters = relationship(
+        "CoverLetter", back_populates="profile", cascade="all, delete-orphan"
+    )
+    journal_entries = relationship(
+        "CareerJournalEntry", back_populates="profile", cascade="all, delete-orphan"
+    )

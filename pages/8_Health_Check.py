@@ -1,7 +1,8 @@
-import streamlit as st
-import sys
 import os
+import sys
 from datetime import datetime
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -25,6 +26,7 @@ if not is_authenticated():
 st.title("🏥 System Health Check")
 st.markdown("Monitor the health and status of ResuBoost AI")
 
+
 # Status indicators
 def show_status(check_name: str, is_healthy: bool, details: str = ""):
     """Display a status indicator."""
@@ -35,6 +37,7 @@ def show_status(check_name: str, is_healthy: bool, details: str = ""):
 
     if details:
         st.caption(details)
+
 
 # Run health checks
 col1, col2 = st.columns(2)
@@ -50,7 +53,7 @@ with col1:
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) as count FROM profiles")
-            profile_count = cursor.fetchone()['count']
+            profile_count = cursor.fetchone()["count"]
 
         show_status("Database", True, f"{profile_count} profile(s)")
     except Exception as e:
@@ -69,7 +72,7 @@ with col1:
     try:
         from utils.file_parser import parse_file
 
-        test_text = parse_file(b"test", 'txt')
+        test_text = parse_file(b"test", "txt")
         show_status("File Parser", test_text == "test", "TXT, PDF, DOCX supported")
     except Exception as e:
         show_status("File Parser", False, f"Error: {str(e)}")
@@ -90,8 +93,8 @@ with col2:
     try:
         import os
 
-        api_key = os.getenv('OPENAI_API_KEY')
-        if api_key and api_key.startswith('sk-'):
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key and api_key.startswith("sk-"):
             show_status("OpenAI API Key", True, "Key configured")
         else:
             show_status("OpenAI API Key", False, "Key not found or invalid")
@@ -129,13 +132,18 @@ col1, col2, col3 = st.columns(3)
 with col1:
     try:
         import sys
-        st.metric("Python Version", f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+
+        st.metric(
+            "Python Version",
+            f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        )
     except:
         st.metric("Python Version", "Unknown")
 
 with col2:
     try:
         import streamlit
+
         st.metric("Streamlit Version", streamlit.__version__)
     except:
         st.metric("Streamlit Version", "Unknown")
@@ -143,6 +151,7 @@ with col2:
 with col3:
     try:
         import config
+
         st.metric("App Version", config.APP_VERSION)
     except:
         st.metric("App Version", "1.0.0")
@@ -159,29 +168,35 @@ try:
 
         # Get counts - use whitelist to prevent SQL injection
         stats = {}
-        ALLOWED_TABLES = {'profiles', 'resumes', 'job_applications', 'cover_letters', 'career_journal'}
+        ALLOWED_TABLES = {
+            "profiles",
+            "resumes",
+            "job_applications",
+            "cover_letters",
+            "career_journal",
+        }
 
         for table in ALLOWED_TABLES:
             # Table name is from whitelist, safe to use in query
             cursor.execute(f"SELECT COUNT(*) as count FROM {table}")
-            stats[table] = cursor.fetchone()['count']
+            stats[table] = cursor.fetchone()["count"]
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
     with col1:
-        st.metric("Profiles", stats['profiles'])
+        st.metric("Profiles", stats["profiles"])
 
     with col2:
-        st.metric("Resumes", stats['resumes'])
+        st.metric("Resumes", stats["resumes"])
 
     with col3:
-        st.metric("Applications", stats['job_applications'])
+        st.metric("Applications", stats["job_applications"])
 
     with col4:
-        st.metric("Cover Letters", stats['cover_letters'])
+        st.metric("Cover Letters", stats["cover_letters"])
 
     with col5:
-        st.metric("Achievements", stats['career_journal'])
+        st.metric("Achievements", stats["career_journal"])
 
 except Exception as e:
     st.error(f"Could not load database statistics: {str(e)}")
@@ -196,7 +211,8 @@ if st.button("🔄 Refresh"):
 # Sidebar
 with st.sidebar:
     st.header("🏥 Health Check")
-    st.markdown("""
+    st.markdown(
+        """
     This page monitors:
     - Core system components
     - Configuration status
@@ -209,7 +225,8 @@ with st.sidebar:
     1. Verify .env file exists
     2. Check requirements installed
     3. Run `python3 test_app.py`
-    """)
+    """
+    )
 
     st.markdown("---")
 

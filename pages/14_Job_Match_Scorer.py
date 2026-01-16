@@ -1,15 +1,16 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from utils.file_parser import extract_text_from_upload
-from services.resume_analyzer import JobMatchScorer
+from config import MAX_JOB_DESCRIPTION_LENGTH, MAX_RESUME_LENGTH
 from models.auth_database import init_auth_database
+from services.resume_analyzer import JobMatchScorer
 from utils.auth import init_session_state, is_authenticated, show_auth_sidebar
-from config import MAX_RESUME_LENGTH, MAX_JOB_DESCRIPTION_LENGTH
+from utils.file_parser import extract_text_from_upload
 
 st.set_page_config(page_title="Job Match Scorer", page_icon="🎯", layout="wide")
 
@@ -37,30 +38,24 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Your Resume")
-    resume_file = st.file_uploader(
-        "Upload Resume",
-        type=['txt', 'pdf', 'docx'],
-        key="match_resume"
-    )
+    resume_file = st.file_uploader("Upload Resume", type=["txt", "pdf", "docx"], key="match_resume")
     resume_text_input = st.text_area(
         "Or paste resume text",
         height=200,
         key="match_resume_text",
-        placeholder="Paste your resume content here..."
+        placeholder="Paste your resume content here...",
     )
 
 with col2:
     st.subheader("Job Description")
     job_file = st.file_uploader(
-        "Upload Job Description",
-        type=['txt', 'pdf', 'docx'],
-        key="match_job"
+        "Upload Job Description", type=["txt", "pdf", "docx"], key="match_job"
     )
     job_text_input = st.text_area(
         "Or paste job description",
         height=200,
         key="match_job_text",
-        placeholder="Paste the job description here..."
+        placeholder="Paste the job description here...",
     )
 
 if st.button("Calculate Match Score", type="primary", use_container_width=True):
@@ -84,10 +79,14 @@ if st.button("Calculate Match Score", type="primary", use_container_width=True):
 
     # Validate lengths
     if len(resume_text) > MAX_RESUME_LENGTH:
-        st.error(f"Resume is too large ({len(resume_text):,} characters). Maximum: {MAX_RESUME_LENGTH:,}")
+        st.error(
+            f"Resume is too large ({len(resume_text):,} characters). Maximum: {MAX_RESUME_LENGTH:,}"
+        )
         st.stop()
     if len(job_text) > MAX_JOB_DESCRIPTION_LENGTH:
-        st.error(f"Job description is too large ({len(job_text):,} characters). Maximum: {MAX_JOB_DESCRIPTION_LENGTH:,}")
+        st.error(
+            f"Job description is too large ({len(job_text):,} characters). Maximum: {MAX_JOB_DESCRIPTION_LENGTH:,}"
+        )
         st.stop()
 
     with st.spinner("Analyzing your match..."):
@@ -95,15 +94,15 @@ if st.button("Calculate Match Score", type="primary", use_container_width=True):
             result = scorer.calculate_match_score(resume_text, job_text)
 
             # Store for display
-            st.session_state['match_result'] = result
+            st.session_state["match_result"] = result
 
         except Exception as e:
             st.error(f"Error calculating match: {str(e)}")
             st.stop()
 
 # Display results
-if 'match_result' in st.session_state:
-    result = st.session_state['match_result']
+if "match_result" in st.session_state:
+    result = st.session_state["match_result"]
 
     st.divider()
 
@@ -111,23 +110,26 @@ if 'match_result' in st.session_state:
     col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
-        score = result['overall_score']
-        color = result['match_color']
+        score = result["overall_score"]
+        color = result["match_color"]
 
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div style="text-align: center; padding: 20px; background-color: #f0f2f6; border-radius: 10px;">
             <h1 style="font-size: 72px; margin: 0; color: {'#28a745' if color == 'green' else '#ffc107' if color == 'orange' else '#dc3545'};">
                 {score}%
             </h1>
             <h2 style="margin: 10px 0;">{result['match_level']}</h2>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     # Apply Recommendation
-    rec = result['apply_recommendation']
-    if rec['should_apply'] == True:
+    rec = result["apply_recommendation"]
+    if rec["should_apply"] == True:
         st.success(f"**{rec['confidence']} Confidence**: {rec['message']}")
-    elif rec['should_apply'] == 'Maybe':
+    elif rec["should_apply"] == "Maybe":
         st.warning(f"**{rec['confidence']} Confidence**: {rec['message']}")
     else:
         st.error(f"**{rec['confidence']} Confidence**: {rec['message']}")
@@ -137,23 +139,23 @@ if 'match_result' in st.session_state:
     # Score Breakdown
     st.header("Score Breakdown")
 
-    breakdown = result['breakdown']
-    weights = result['weights']
+    breakdown = result["breakdown"]
+    weights = result["weights"]
 
     # Create metrics row
     cols = st.columns(5)
 
     categories = [
-        ('skills', 'Technical Skills', '💻'),
-        ('experience', 'Experience', '📈'),
-        ('education', 'Education', '🎓'),
-        ('keywords', 'Keywords', '🔑'),
-        ('soft_skills', 'Soft Skills', '🤝')
+        ("skills", "Technical Skills", "💻"),
+        ("experience", "Experience", "📈"),
+        ("education", "Education", "🎓"),
+        ("keywords", "Keywords", "🔑"),
+        ("soft_skills", "Soft Skills", "🤝"),
     ]
 
     for col, (key, label, icon) in zip(cols, categories):
         with col:
-            cat_score = breakdown[key]['score']
+            cat_score = breakdown[key]["score"]
             weight_pct = int(weights[key] * 100)
 
             # Color based on score
@@ -168,7 +170,7 @@ if 'match_result' in st.session_state:
                 f"{icon} {label}",
                 f"{cat_score:.0f}%",
                 f"Weight: {weight_pct}%",
-                delta_color=delta_color
+                delta_color=delta_color,
             )
 
     st.divider()
@@ -176,27 +178,27 @@ if 'match_result' in st.session_state:
     # Detailed Analysis
     st.header("Detailed Analysis")
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "💻 Skills", "📈 Experience", "🎓 Education", "🔑 Keywords", "🤝 Soft Skills"
-    ])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        ["💻 Skills", "📈 Experience", "🎓 Education", "🔑 Keywords", "🤝 Soft Skills"]
+    )
 
     with tab1:
-        skills = breakdown['skills']
+        skills = breakdown["skills"]
         st.subheader(f"Technical Skills Match: {skills['score']:.0f}%")
 
         col1, col2 = st.columns(2)
         with col1:
             st.write("**Matched Skills:**")
-            if skills['matched']:
-                for skill in skills['matched']:
+            if skills["matched"]:
+                for skill in skills["matched"]:
                     st.success(f"✓ {skill}")
             else:
                 st.info("No specific technical skills matched")
 
         with col2:
             st.write("**Missing Skills:**")
-            if skills['missing']:
-                for skill in skills['missing']:
+            if skills["missing"]:
+                for skill in skills["missing"]:
                     st.error(f"✗ {skill}")
             else:
                 st.success("All required skills present!")
@@ -204,7 +206,7 @@ if 'match_result' in st.session_state:
         st.caption(f"Total skills required in job: {skills['total_required']}")
 
     with tab2:
-        exp = breakdown['experience']
+        exp = breakdown["experience"]
         st.subheader(f"Experience Match: {exp['score']:.0f}%")
 
         col1, col2 = st.columns(2)
@@ -218,15 +220,15 @@ if 'match_result' in st.session_state:
             st.write(f"- Required Level: **{exp['job_level'].title()}**")
             st.write(f"- Required Years: **{exp['required_years']}+** years")
 
-        if exp['resume_level'] == exp['job_level']:
+        if exp["resume_level"] == exp["job_level"]:
             st.success("Experience level matches job requirements!")
-        elif exp['score'] >= 70:
+        elif exp["score"] >= 70:
             st.info("Experience level is close to requirements")
         else:
             st.warning("Experience level may not fully match requirements")
 
     with tab3:
-        edu = breakdown['education']
+        edu = breakdown["education"]
         st.subheader(f"Education Match: {edu['score']:.0f}%")
 
         col1, col2 = st.columns(2)
@@ -238,44 +240,46 @@ if 'match_result' in st.session_state:
             st.write("**Job Requirement:**")
             st.write(f"Required level: **{edu['required_education'].title()}**")
 
-        if edu['meets_requirement']:
+        if edu["meets_requirement"]:
             st.success("Education meets or exceeds requirements!")
-        elif edu['score'] >= 75:
+        elif edu["score"] >= 75:
             st.info("Education is close to requirements - may be acceptable")
         else:
             st.warning("Education may not meet stated requirements")
 
     with tab4:
-        kw = breakdown['keywords']
+        kw = breakdown["keywords"]
         st.subheader(f"Keyword Match: {kw['score']:.0f}%")
 
         st.metric("Keyword Overlap", f"{kw['overlap_percentage']}%")
-        st.write(f"Matched **{kw['matched_count']}** out of **{kw['total_job_keywords']}** job keywords")
+        st.write(
+            f"Matched **{kw['matched_count']}** out of **{kw['total_job_keywords']}** job keywords"
+        )
 
-        if kw['overlap_percentage'] >= 70:
+        if kw["overlap_percentage"] >= 70:
             st.success("Strong keyword alignment with job description!")
-        elif kw['overlap_percentage'] >= 50:
+        elif kw["overlap_percentage"] >= 50:
             st.info("Moderate keyword match - consider adding more job-specific terms")
         else:
             st.warning("Low keyword overlap - review job description and update resume")
 
     with tab5:
-        soft = breakdown['soft_skills']
+        soft = breakdown["soft_skills"]
         st.subheader(f"Soft Skills Match: {soft['score']:.0f}%")
 
         col1, col2 = st.columns(2)
         with col1:
             st.write("**Matched Soft Skills:**")
-            if soft['matched']:
-                for skill in soft['matched']:
+            if soft["matched"]:
+                for skill in soft["matched"]:
                     st.success(f"✓ {skill}")
             else:
                 st.info("No specific soft skills matched")
 
         with col2:
             st.write("**Missing Soft Skills:**")
-            if soft['missing']:
-                for skill in soft['missing']:
+            if soft["missing"]:
+                for skill in soft["missing"]:
                     st.warning(f"○ {skill}")
             else:
                 st.success("All soft skills present!")
@@ -285,7 +289,7 @@ if 'match_result' in st.session_state:
     # Recommendations
     st.header("Recommendations")
 
-    for i, rec in enumerate(result['recommendations'], 1):
+    for i, rec in enumerate(result["recommendations"], 1):
         st.write(f"{i}. {rec}")
 
     # Action buttons
@@ -307,7 +311,8 @@ if 'match_result' in st.session_state:
 # Sidebar
 with st.sidebar:
     st.header("How Scoring Works")
-    st.markdown("""
+    st.markdown(
+        """
     **Score Components:**
     - **Technical Skills (30%)**: Match required technologies
     - **Experience (25%)**: Level and years alignment
@@ -326,4 +331,5 @@ with st.sidebar:
     - Score 50%+ for most roles
     - Senior roles may accept 60%+
     - Entry roles more flexible
-    """)
+    """
+    )

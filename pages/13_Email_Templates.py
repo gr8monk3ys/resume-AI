@@ -1,15 +1,16 @@
-import streamlit as st
-import sys
 import os
+import sys
+
+import streamlit as st
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from services.llm_service import get_llm_service
-from models.database import get_db_connection
 from models.auth_database import init_auth_database
+from models.database import get_db_connection
+from services.llm_service import get_llm_service
+from utils.auth import get_current_profile, init_session_state, is_authenticated, show_auth_sidebar
 from utils.rate_limiter import check_rate_limit
-from utils.auth import init_session_state, is_authenticated, get_current_profile, show_auth_sidebar
 
 st.set_page_config(page_title="Email Templates", page_icon="📧", layout="wide")
 
@@ -44,7 +45,7 @@ I'm very interested in contributing to {company}'s success and would welcome the
 Please don't hesitate to reach out if you need any additional information from me.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Thank You - After Phone Screen": {
         "subject": "Thank You - {position} Phone Screen",
@@ -57,7 +58,7 @@ After our conversation, I'm even more excited about the possibility of joining {
 I look forward to the next steps in the process. Please let me know if there's any additional information I can provide.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Follow Up - After No Response": {
         "subject": "Following Up - {position} Application",
@@ -72,7 +73,7 @@ I understand you're likely reviewing many qualified candidates, and I appreciate
 Thank you for your time, and I look forward to hearing from you.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Follow Up - After Interview": {
         "subject": "Following Up - {position} Interview",
@@ -87,7 +88,7 @@ I would be grateful for any update you might have on the timeline for next steps
 Thank you again for your time and consideration.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Networking - Cold Outreach": {
         "subject": "Connecting About Opportunities at {company}",
@@ -103,7 +104,7 @@ Thank you for considering my request.
 
 Best regards,
 {your_name}
-{your_linkedin}"""
+{your_linkedin}""",
     },
     "Networking - Warm Introduction": {
         "subject": "Introduction from {mutual_connection}",
@@ -118,7 +119,7 @@ I would love the opportunity to chat briefly about your experience and any advic
 Thank you for your time, and I look forward to connecting.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Salary Negotiation - Counter Offer": {
         "subject": "Re: {position} Offer - Discussion",
@@ -135,7 +136,7 @@ I'm flexible and open to discussing creative solutions that work for both sides,
 I'm very committed to joining {company} and look forward to finding a package that works for both of us.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Accepting Offer": {
         "subject": "Offer Acceptance - {position}",
@@ -150,7 +151,7 @@ I'm genuinely excited to join the team and contribute to {company}'s continued s
 Thank you again for this opportunity. I look forward to working with everyone.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Declining Offer - Gracefully": {
         "subject": "Re: {position} Offer",
@@ -165,7 +166,7 @@ I hope our paths cross again in the future, and I wish you and the team continue
 Thank you again for your time and consideration.
 
 Best regards,
-{your_name}"""
+{your_name}""",
     },
     "Withdrawal - From Process": {
         "subject": "Withdrawing Application - {position}",
@@ -180,8 +181,8 @@ I want to express my sincere gratitude for the time you and the team have invest
 I hope we might have the opportunity to connect again in the future.
 
 Best regards,
-{your_name}"""
-    }
+{your_name}""",
+    },
 }
 
 # Tabs
@@ -204,7 +205,9 @@ with tab1:
             filtered_templates[name] = template
         elif selected_category == "Negotiation" and ("Salary" in name or "Offer" in name):
             filtered_templates[name] = template
-        elif selected_category == "Other" and not any(cat in name for cat in ["Thank You", "Follow Up", "Networking", "Salary"]):
+        elif selected_category == "Other" and not any(
+            cat in name for cat in ["Thank You", "Follow Up", "Networking", "Salary"]
+        ):
             filtered_templates[name] = template
 
     # Display templates
@@ -214,23 +217,24 @@ with tab1:
         template = filtered_templates[selected_template]
 
         st.subheader("Subject Line")
-        st.code(template['subject'])
+        st.code(template["subject"])
 
         st.subheader("Email Body")
-        st.text_area("Template Preview", value=template['body'], height=300, disabled=True)
+        st.text_area("Template Preview", value=template["body"], height=300, disabled=True)
 
         st.divider()
         st.subheader("Customize Your Email")
 
         # Extract placeholders
         import re
-        placeholders = set(re.findall(r'\{(\w+)\}', template['subject'] + template['body']))
+
+        placeholders = set(re.findall(r"\{(\w+)\}", template["subject"] + template["body"]))
 
         # Pre-fill with profile data where applicable
         placeholder_mapping = {
-            'your_name': profile.get('name', ''),
-            'your_linkedin': profile.get('linkedin', ''),
-            'your_email': profile.get('email', '')
+            "your_name": profile.get("name", ""),
+            "your_linkedin": profile.get("linkedin", ""),
+            "your_email": profile.get("email", ""),
         }
 
         col1, col2 = st.columns(2)
@@ -239,18 +243,20 @@ with tab1:
         placeholder_list = sorted(list(placeholders))
         for i, placeholder in enumerate(placeholder_list):
             with col1 if i % 2 == 0 else col2:
-                display_name = placeholder.replace('_', ' ').title()
-                default_value = placeholder_mapping.get(placeholder, '')
-                values[placeholder] = st.text_input(display_name, value=default_value, key=f"ph_{placeholder}")
+                display_name = placeholder.replace("_", " ").title()
+                default_value = placeholder_mapping.get(placeholder, "")
+                values[placeholder] = st.text_input(
+                    display_name, value=default_value, key=f"ph_{placeholder}"
+                )
 
         # Generate customized email
         if st.button("Generate Email", type="primary"):
-            customized_subject = template['subject']
-            customized_body = template['body']
+            customized_subject = template["subject"]
+            customized_body = template["body"]
 
             for key, value in values.items():
-                customized_subject = customized_subject.replace(f'{{{key}}}', value or f'[{key}]')
-                customized_body = customized_body.replace(f'{{{key}}}', value or f'[{key}]')
+                customized_subject = customized_subject.replace(f"{{{key}}}", value or f"[{key}]")
+                customized_body = customized_body.replace(f"{{{key}}}", value or f"[{key}]")
 
             st.subheader("Your Customized Email")
             st.text_input("Subject", value=customized_subject, key="final_subject")
@@ -262,7 +268,7 @@ with tab1:
                 "📋 Download Email",
                 data=full_email,
                 file_name=f"email_{selected_template.lower().replace(' ', '_')}.txt",
-                mime="text/plain"
+                mime="text/plain",
             )
 
 with tab2:
@@ -276,8 +282,8 @@ with tab2:
             "Networking - Job Inquiry",
             "Thank You - Post Interview",
             "Follow Up - Application Status",
-            "Custom Request"
-        ]
+            "Custom Request",
+        ],
     )
 
     col1, col2 = st.columns(2)
@@ -291,13 +297,13 @@ with tab2:
         your_background = st.text_area(
             "Your Background (brief)",
             height=100,
-            placeholder="e.g., 5 years as a backend developer, expertise in Python and cloud systems..."
+            placeholder="e.g., 5 years as a backend developer, expertise in Python and cloud systems...",
         )
 
     additional_context = st.text_area(
         "Additional Context",
         height=100,
-        placeholder="Any specific details you want included in the email..."
+        placeholder="Any specific details you want included in the email...",
     )
 
     if st.button("Generate AI Email", type="primary"):
@@ -314,16 +320,21 @@ with tab2:
 
                 # Determine purpose based on email type
                 if "Networking" in email_type:
-                    purpose = "informational interview" if "Informational" in email_type else "job inquiry"
+                    purpose = (
+                        "informational interview"
+                        if "Informational" in email_type
+                        else "job inquiry"
+                    )
                     email = llm_service.generate_networking_email(
                         recipient_name=recipient_name,
                         company_name=company_name,
                         purpose=f"{purpose} for {position}" if position else purpose,
-                        user_background=your_background
+                        user_background=your_background,
                     )
                 else:
                     # Use a custom prompt for other types
                     from services.llm_service import LLMService
+
                     service = get_llm_service()
 
                     prompt = f"""Generate a professional {email_type} email with the following details:
@@ -345,7 +356,7 @@ with tab2:
                     "📋 Download Email",
                     data=email,
                     file_name="ai_generated_email.txt",
-                    mime="text/plain"
+                    mime="text/plain",
                 )
 
             except Exception as e:
@@ -362,7 +373,7 @@ with tab3:
     custom_body = st.text_area(
         "Email Body",
         height=300,
-        placeholder="Write your email here...\n\nTip: Use {placeholder} syntax for reusable fields like {company} or {position}"
+        placeholder="Write your email here...\n\nTip: Use {placeholder} syntax for reusable fields like {company} or {position}",
     )
 
     col1, col2 = st.columns(2)
@@ -374,13 +385,14 @@ with tab3:
                 "📋 Download Email",
                 data=full_email,
                 file_name="custom_email.txt",
-                mime="text/plain"
+                mime="text/plain",
             )
 
     st.divider()
 
     st.subheader("Email Writing Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Structure:**
     1. **Opening**: Personalized greeting with context
     2. **Purpose**: Clear reason for the email
@@ -394,12 +406,14 @@ with tab3:
     - Be specific about what you want
     - Make it easy to respond (suggest times, ask yes/no questions)
     - Proofread before sending
-    """)
+    """
+    )
 
 # Sidebar
 with st.sidebar:
     st.header("Email Tips")
-    st.markdown("""
+    st.markdown(
+        """
     **Subject Lines:**
     - Be specific and clear
     - Include role/company name
@@ -420,4 +434,5 @@ with st.sidebar:
     - Generic (personalize!)
     - No clear ask
     - Typos/wrong names
-    """)
+    """
+    )

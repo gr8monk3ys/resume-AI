@@ -1,16 +1,18 @@
 """
 Cover letters router.
 """
+
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
-from app.models.profile import Profile
-from app.models.cover_letter import CoverLetter
-from app.schemas.cover_letter import CoverLetterCreate, CoverLetterResponse, CoverLetterGenerate
 from app.middleware.auth import get_current_user
+from app.models.cover_letter import CoverLetter
+from app.models.profile import Profile
+from app.models.user import User
+from app.schemas.cover_letter import CoverLetterCreate, CoverLetterGenerate, CoverLetterResponse
 
 router = APIRouter(prefix="/api/cover-letters", tags=["Cover Letters"])
 
@@ -28,14 +30,16 @@ def get_user_profile(user: User, db: Session) -> Profile:
 
 @router.get("", response_model=List[CoverLetterResponse])
 async def list_cover_letters(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """List all cover letters for current user."""
     profile = get_user_profile(current_user, db)
-    cover_letters = db.query(CoverLetter).filter(
-        CoverLetter.profile_id == profile.id
-    ).order_by(CoverLetter.updated_at.desc()).all()
+    cover_letters = (
+        db.query(CoverLetter)
+        .filter(CoverLetter.profile_id == profile.id)
+        .order_by(CoverLetter.updated_at.desc())
+        .all()
+    )
     return cover_letters
 
 
@@ -43,7 +47,7 @@ async def list_cover_letters(
 async def create_cover_letter(
     data: CoverLetterCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a new cover letter."""
     profile = get_user_profile(current_user, db)
@@ -64,7 +68,7 @@ async def create_cover_letter(
 async def generate_cover_letter(
     data: CoverLetterGenerate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Generate a cover letter using AI."""
     from app.services.llm_service import get_llm_service
@@ -96,15 +100,16 @@ async def generate_cover_letter(
 async def get_cover_letter(
     cover_letter_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Get a specific cover letter."""
     profile = get_user_profile(current_user, db)
 
-    cover_letter = db.query(CoverLetter).filter(
-        CoverLetter.id == cover_letter_id,
-        CoverLetter.profile_id == profile.id
-    ).first()
+    cover_letter = (
+        db.query(CoverLetter)
+        .filter(CoverLetter.id == cover_letter_id, CoverLetter.profile_id == profile.id)
+        .first()
+    )
 
     if not cover_letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")
@@ -116,15 +121,16 @@ async def get_cover_letter(
 async def delete_cover_letter(
     cover_letter_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Delete a cover letter."""
     profile = get_user_profile(current_user, db)
 
-    cover_letter = db.query(CoverLetter).filter(
-        CoverLetter.id == cover_letter_id,
-        CoverLetter.profile_id == profile.id
-    ).first()
+    cover_letter = (
+        db.query(CoverLetter)
+        .filter(CoverLetter.id == cover_letter_id, CoverLetter.profile_id == profile.id)
+        .first()
+    )
 
     if not cover_letter:
         raise HTTPException(status_code=404, detail="Cover letter not found")

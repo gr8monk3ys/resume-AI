@@ -2,13 +2,14 @@
 LLM Service for AI-powered features.
 Ported from Streamlit version to work with FastAPI.
 """
-import os
-from typing import Optional
-from functools import lru_cache
 
-from langchain_openai import OpenAI
-from langchain_core.prompts import PromptTemplate
+import os
+from functools import lru_cache
+from typing import Optional
+
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import OpenAI
 
 from app.config import get_settings
 
@@ -26,7 +27,7 @@ class LLMService:
             model_name: OpenAI model to use (defaults to config)
             temperature: Temperature for response generation
         """
-        api_key = settings.openai_api_key or os.getenv('OPENAI_API_KEY')
+        api_key = settings.openai_api_key or os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError(
                 "OPENAI_API_KEY environment variable is not set. "
@@ -84,7 +85,7 @@ class LLMService:
         job_description: str,
         company_name: str,
         position: str,
-        user_name: Optional[str] = None
+        user_name: Optional[str] = None,
     ) -> str:
         """Generate a personalized cover letter."""
         name_line = f"My name is {user_name} and I am" if user_name else "I am"
@@ -117,15 +118,11 @@ class LLMService:
             job_description=job_description,
             company_name=company_name,
             position=position,
-            name_line=name_line
+            name_line=name_line,
         )
 
     def tailor_resume(
-        self,
-        resume: str,
-        job_description: str,
-        company_name: str = "",
-        position: str = ""
+        self, resume: str, job_description: str, company_name: str = "", position: str = ""
     ) -> str:
         """Generate a tailored version of the resume for a specific job."""
         template = """
@@ -160,15 +157,11 @@ class LLMService:
             resume=resume,
             job_description=job_description,
             company_name=company_name or "Target Company",
-            position=position or "Target Position"
+            position=position or "Target Position",
         )
 
     def answer_application_question(
-        self,
-        question: str,
-        resume: str,
-        job_description: str,
-        question_type: str = "general"
+        self, question: str, resume: str, job_description: str, question_type: str = "general"
     ) -> str:
         """Generate an answer for common job application questions."""
         type_instructions = {
@@ -177,7 +170,7 @@ class LLMService:
             "motivation": "Express genuine enthusiasm while connecting your background to the role.",
             "salary": "Provide a diplomatic response that shows flexibility while knowing your worth.",
             "weakness": "Give an honest weakness with clear steps you're taking to improve.",
-            "strength": "Highlight a relevant strength with specific examples from your experience."
+            "strength": "Highlight a relevant strength with specific examples from your experience.",
         }
 
         instruction = type_instructions.get(question_type, type_instructions["general"])
@@ -211,15 +204,10 @@ class LLMService:
             question=question,
             resume=resume,
             job_description=job_description,
-            instruction=instruction
+            instruction=instruction,
         )
 
-    def generate_interview_answer(
-        self,
-        question: str,
-        resume: str,
-        job_description: str
-    ) -> str:
+    def generate_interview_answer(self, question: str, resume: str, job_description: str) -> str:
         """Generate a sample interview answer using STAR method."""
         template = """
         You are an interview coach helping prepare for a job interview.
@@ -245,10 +233,7 @@ class LLMService:
         SAMPLE ANSWER:
         """
         return self._invoke_chain(
-            template,
-            question=question,
-            resume=resume,
-            job_description=job_description
+            template, question=question, resume=resume, job_description=job_description
         )
 
 

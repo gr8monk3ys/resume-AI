@@ -1,16 +1,18 @@
 """
 Jobs router for job application tracking.
 """
+
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
-from app.models.profile import Profile
-from app.models.job_application import JobApplication
-from app.schemas.job import JobCreate, JobUpdate, JobResponse, JobStatus
 from app.middleware.auth import get_current_user
+from app.models.job_application import JobApplication
+from app.models.profile import Profile
+from app.models.user import User
+from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
@@ -31,7 +33,7 @@ async def list_jobs(
     status_filter: Optional[JobStatus] = Query(None, alias="status"),
     search: Optional[str] = None,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """List all job applications for current user."""
     profile = get_user_profile(current_user, db)
@@ -44,8 +46,8 @@ async def list_jobs(
     if search:
         search_term = f"%{search}%"
         query = query.filter(
-            (JobApplication.company.ilike(search_term)) |
-            (JobApplication.position.ilike(search_term))
+            (JobApplication.company.ilike(search_term))
+            | (JobApplication.position.ilike(search_term))
         )
 
     jobs = query.order_by(JobApplication.updated_at.desc()).all()
@@ -54,8 +56,7 @@ async def list_jobs(
 
 @router.get("/stats")
 async def get_job_stats(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get job application statistics."""
     profile = get_user_profile(current_user, db)
@@ -88,7 +89,7 @@ async def get_job_stats(
 async def create_job(
     job_data: JobCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Create a new job application."""
     profile = get_user_profile(current_user, db)
@@ -114,17 +115,16 @@ async def create_job(
 
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
-    job_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get a specific job application."""
     profile = get_user_profile(current_user, db)
 
-    job = db.query(JobApplication).filter(
-        JobApplication.id == job_id,
-        JobApplication.profile_id == profile.id
-    ).first()
+    job = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == job_id, JobApplication.profile_id == profile.id)
+        .first()
+    )
 
     if not job:
         raise HTTPException(status_code=404, detail="Job application not found")
@@ -137,15 +137,16 @@ async def update_job(
     job_id: int,
     job_data: JobUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Update a job application."""
     profile = get_user_profile(current_user, db)
 
-    job = db.query(JobApplication).filter(
-        JobApplication.id == job_id,
-        JobApplication.profile_id == profile.id
-    ).first()
+    job = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == job_id, JobApplication.profile_id == profile.id)
+        .first()
+    )
 
     if not job:
         raise HTTPException(status_code=404, detail="Job application not found")
@@ -165,17 +166,16 @@ async def update_job(
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job(
-    job_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Delete a job application."""
     profile = get_user_profile(current_user, db)
 
-    job = db.query(JobApplication).filter(
-        JobApplication.id == job_id,
-        JobApplication.profile_id == profile.id
-    ).first()
+    job = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == job_id, JobApplication.profile_id == profile.id)
+        .first()
+    )
 
     if not job:
         raise HTTPException(status_code=404, detail="Job application not found")
@@ -189,15 +189,16 @@ async def update_job_status(
     job_id: int,
     new_status: JobStatus,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Quick status update for a job application."""
     profile = get_user_profile(current_user, db)
 
-    job = db.query(JobApplication).filter(
-        JobApplication.id == job_id,
-        JobApplication.profile_id == profile.id
-    ).first()
+    job = (
+        db.query(JobApplication)
+        .filter(JobApplication.id == job_id, JobApplication.profile_id == profile.id)
+        .first()
+    )
 
     if not job:
         raise HTTPException(status_code=404, detail="Job application not found")

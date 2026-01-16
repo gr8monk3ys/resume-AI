@@ -1,8 +1,10 @@
 """
 Job application model for tracking applications.
 """
-from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, ForeignKey
+
+from datetime import date, datetime
+
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -18,7 +20,9 @@ class JobApplication(Base):
     company = Column(String, nullable=False)
     position = Column(String, nullable=False)
     job_description = Column(Text, nullable=True)
-    status = Column(String, default="Bookmarked", index=True)  # Bookmarked, Applied, Phone Screen, Interview, Offer, Rejected
+    status = Column(
+        String, default="Bookmarked", index=True
+    )  # Bookmarked, Applied, Phone Screen, Interview, Offer, Rejected
     application_date = Column(Date, nullable=True)
     deadline = Column(Date, nullable=True)
     location = Column(String, nullable=True)
