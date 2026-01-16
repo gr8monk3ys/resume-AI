@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ResuBoost AI is a Streamlit-based job search toolkit powered by OpenAI, designed as an open-source alternative to Simplify.jobs. Features include resume optimization, job tracking (Kanban board), cover letter generation, interview prep, and multi-user authentication.
+ResuBoost AI is a Streamlit-based job search toolkit with multi-provider LLM support, designed as an open-source alternative to Simplify.jobs. Features include resume optimization, job tracking (Kanban board), cover letter generation, interview prep, and multi-user authentication.
+
+**Supported LLM Providers:** OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
 
 ## Commands
 
@@ -40,7 +42,7 @@ pylint services/ utils/ models/
 - **auth_database.py** - Auth DB (`data/auth.db`): users table with bcrypt hashing.
 
 ### Services Layer (`services/`)
-- **llm_service.py** - `LLMService` class wrapping LangChain/OpenAI. Get singleton via `get_llm_service()`. Methods: `tailor_resume()`, `answer_application_question()`, `generate_interview_answer()`, `optimize_resume()`, `generate_cover_letter()`, `correct_grammar()`
+- **llm_service.py** - Multi-provider `LLMService` class. Get singleton via `get_llm_service()`. Supports OpenAI, Anthropic, Google, Ollama, and Mock (for testing). Methods: `tailor_resume()`, `answer_application_question()`, `generate_interview_answer()`, `optimize_resume()`, `generate_cover_letter()`, `correct_grammar()`
 - **resume_analyzer.py** - `ATSAnalyzer` class for resume scoring (0-100). Use `extract_keywords()` for keyword extraction.
 
 ### Utilities (`utils/`)
@@ -74,14 +76,30 @@ result = service.tailor_resume(resume, job_description)
 
 ## Environment Variables
 
-Required in `.env`:
-```
+**LLM Provider Configuration** (choose one):
+```bash
+# Provider selection (default: openai)
+LLM_PROVIDER=openai  # Options: openai, anthropic, google, ollama, mock
+
+# OpenAI
 OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-3.5-turbo
+
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=your_key_here
+ANTHROPIC_MODEL=claude-3-haiku-20240307
+
+# Google (Gemini)
+GOOGLE_API_KEY=your_key_here
+GOOGLE_MODEL=gemini-1.5-flash
+
+# Ollama (local)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 ```
 
-Optional:
+**Other Settings:**
 ```
-OPENAI_MODEL=gpt-3.5-turbo
 OPENAI_REQUEST_TIMEOUT=60
 AUTH_MAX_RECENT_FAILURES=5
 AUTH_LOCKOUT_THRESHOLD=10
