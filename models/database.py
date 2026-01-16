@@ -1,9 +1,10 @@
-import sqlite3
 import os
+import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'resume_ai.db')
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "resume_ai.db")
+
 
 def init_database():
     """Initialize the database with required tables."""
@@ -13,7 +14,7 @@ def init_database():
     cursor = conn.cursor()
 
     # Enable foreign keys immediately on connection
-    cursor.execute('PRAGMA foreign_keys=ON')
+    cursor.execute("PRAGMA foreign_keys=ON")
 
     # Check if profiles table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='profiles'")
@@ -24,13 +25,14 @@ def init_database():
         cursor.execute("PRAGMA table_info(profiles)")
         columns = [col[1] for col in cursor.fetchall()]
 
-        if 'user_id' not in columns:
+        if "user_id" not in columns:
             # Migrate: Add user_id column to existing profiles table
-            cursor.execute('ALTER TABLE profiles ADD COLUMN user_id INTEGER')
+            cursor.execute("ALTER TABLE profiles ADD COLUMN user_id INTEGER")
             conn.commit()
 
     # User Profile table (linked to authentication user)
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE,
@@ -43,13 +45,15 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    ''')
+    """
+    )
 
     # Create indexes for faster lookups
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id)')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id)")
 
     # Resumes table
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS resumes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id INTEGER,
@@ -61,10 +65,12 @@ def init_database():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
         )
-    ''')
+    """
+    )
 
     # Job Applications table
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS job_applications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id INTEGER,
@@ -81,10 +87,12 @@ def init_database():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
         )
-    ''')
+    """
+    )
 
     # Career Journal table
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS career_journal (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id INTEGER,
@@ -96,10 +104,12 @@ def init_database():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
         )
-    ''')
+    """
+    )
 
     # Cover Letters table
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS cover_letters (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id INTEGER,
@@ -110,10 +120,12 @@ def init_database():
             FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
             FOREIGN KEY (job_application_id) REFERENCES job_applications(id) ON DELETE SET NULL
         )
-    ''')
+    """
+    )
 
     # Job Offers table (for offer comparison)
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS job_offers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profile_id INTEGER,
@@ -142,10 +154,12 @@ def init_database():
             FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
             FOREIGN KEY (job_application_id) REFERENCES job_applications(id) ON DELETE SET NULL
         )
-    ''')
+    """
+    )
 
     # Interview Events table (for timeline tracking)
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS interview_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             job_application_id INTEGER NOT NULL,
@@ -162,20 +176,34 @@ def init_database():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (job_application_id) REFERENCES job_applications(id) ON DELETE CASCADE
         )
-    ''')
+    """
+    )
 
     # Create indexes for frequently queried columns
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_resumes_profile_id ON resumes(profile_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_job_applications_profile_id ON job_applications(profile_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_job_applications_status ON job_applications(status)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_career_journal_profile_id ON career_journal(profile_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_cover_letters_profile_id ON cover_letters(profile_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_interview_events_job_id ON interview_events(job_application_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_interview_events_follow_up ON interview_events(follow_up_date)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_job_offers_profile_id ON job_offers(profile_id)')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_resumes_profile_id ON resumes(profile_id)")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_job_applications_profile_id ON job_applications(profile_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_job_applications_status ON job_applications(status)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_career_journal_profile_id ON career_journal(profile_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_cover_letters_profile_id ON cover_letters(profile_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_interview_events_job_id ON interview_events(job_application_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_interview_events_follow_up ON interview_events(follow_up_date)"
+    )
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_job_offers_profile_id ON job_offers(profile_id)")
 
     conn.commit()
     conn.close()
+
 
 @contextmanager
 def get_db_connection():
@@ -191,13 +219,13 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
 
     # Enable WAL mode for better concurrency
-    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute("PRAGMA journal_mode=WAL")
 
     # Set busy timeout (10 seconds)
-    conn.execute('PRAGMA busy_timeout=10000')
+    conn.execute("PRAGMA busy_timeout=10000")
 
     # Enable foreign keys
-    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute("PRAGMA foreign_keys=ON")
 
     try:
         yield conn
@@ -207,6 +235,7 @@ def get_db_connection():
         raise e
     finally:
         conn.close()
+
 
 def get_or_create_profile_for_user(user_id: int, name: str = "New User", email: str = ""):
     """
@@ -228,17 +257,21 @@ def get_or_create_profile_for_user(user_id: int, name: str = "New User", email: 
 
         # Use INSERT OR IGNORE to handle race conditions atomically
         # If user_id already exists (UNIQUE constraint), this is a no-op
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT OR IGNORE INTO profiles (user_id, name, email)
             VALUES (?, ?, ?)
-        ''', (user_id, name, email))
+        """,
+            (user_id, name, email),
+        )
         conn.commit()
 
         # Now fetch the profile (either existing or newly created)
-        cursor.execute('SELECT * FROM profiles WHERE user_id = ?', (user_id,))
+        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (user_id,))
         profile = cursor.fetchone()
 
         return dict(profile)
+
 
 def get_or_create_default_profile():
     """
@@ -249,16 +282,19 @@ def get_or_create_default_profile():
     """
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM profiles WHERE user_id IS NULL LIMIT 1')
+        cursor.execute("SELECT * FROM profiles WHERE user_id IS NULL LIMIT 1")
         profile = cursor.fetchone()
 
         if not profile:
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO profiles (user_id, name, email)
                 VALUES (?, ?, ?)
-            ''', (None, 'Default User', ''))
+            """,
+                (None, "Default User", ""),
+            )
             conn.commit()
-            cursor.execute('SELECT * FROM profiles WHERE id = ?', (cursor.lastrowid,))
+            cursor.execute("SELECT * FROM profiles WHERE id = ?", (cursor.lastrowid,))
             profile = cursor.fetchone()
 
         return dict(profile)

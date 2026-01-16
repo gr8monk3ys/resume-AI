@@ -9,8 +9,10 @@ This module provides a simple decorator for Streamlit pages that:
 - Redirects to login if not authenticated
 """
 
-import streamlit as st
 from functools import wraps
+
+import streamlit as st
+
 from models.auth_database import init_auth_database
 from utils.auth import init_session_state, is_authenticated, show_auth_sidebar
 
@@ -41,6 +43,7 @@ def require_authentication(page_function):
     Returns:
         Wrapped function that requires authentication
     """
+
     @wraps(page_function)
     def wrapper(*args, **kwargs):
         # Initialize authentication
@@ -78,6 +81,7 @@ def public_page(page_function):
     Returns:
         Wrapped function with auth initialized but not required
     """
+
     @wraps(page_function)
     def wrapper(*args, **kwargs):
         # Initialize authentication (but don't require it)

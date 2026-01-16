@@ -1,12 +1,15 @@
 """
 Rate limiting utilities to prevent API abuse
 """
+
 from __future__ import annotations
 
 import time
 from collections import defaultdict
 from typing import Dict, Optional
+
 import streamlit as st
+
 
 class RateLimiter:
     """
@@ -27,7 +30,7 @@ class RateLimiter:
 
     def _get_request_log(self) -> list:
         """Get request log from session state."""
-        if 'rate_limit_log' not in st.session_state:
+        if "rate_limit_log" not in st.session_state:
             st.session_state.rate_limit_log = []
         return st.session_state.rate_limit_log
 
@@ -86,10 +89,9 @@ class RateLimiter:
         time_until_reset = int(self.window_seconds - (time.time() - oldest_request))
         return max(0, time_until_reset)
 
+
 def check_rate_limit(
-    max_requests: int = 20,
-    window_seconds: int = 60,
-    operation: str = "AI generation"
+    max_requests: int = 20, window_seconds: int = 60, operation: str = "AI generation"
 ) -> bool:
     """
     Convenient function to check rate limit with default settings.
@@ -117,6 +119,7 @@ def check_rate_limit(
 
     return True
 
+
 # Pre-configured rate limiters for different operations
 class RateLimiters:
     """Pre-configured rate limiters for different operations."""
@@ -126,6 +129,7 @@ class RateLimiters:
         """Rate limiter for AI generation (expensive)."""
         try:
             from config import RATE_LIMIT_AI_CALLS, RATE_LIMIT_WINDOW
+
             return RateLimiter(RATE_LIMIT_AI_CALLS, RATE_LIMIT_WINDOW)
         except ImportError:
             return RateLimiter(20, 60)  # Default: 20 per minute
@@ -139,6 +143,7 @@ class RateLimiters:
     def database_write() -> RateLimiter:
         """Rate limiter for database writes."""
         return RateLimiter(30, 60)  # 30 per minute
+
 
 def show_rate_limit_info():
     """Display rate limit information in sidebar."""

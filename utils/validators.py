@@ -1,9 +1,12 @@
 """
 Input validation utilities
 """
+
 import re
 from typing import Optional, Tuple
+
 from config import MAX_FILE_SIZE_BYTES
+
 
 def validate_email(email: str) -> Tuple[bool, Optional[str]]:
     """
@@ -15,10 +18,11 @@ def validate_email(email: str) -> Tuple[bool, Optional[str]]:
     if not email:
         return True, None  # Empty is OK
 
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if re.match(pattern, email):
         return True, None
     return False, "Invalid email format"
+
 
 def validate_url(url: str, allow_empty: bool = True) -> Tuple[bool, Optional[str]]:
     """
@@ -31,10 +35,11 @@ def validate_url(url: str, allow_empty: bool = True) -> Tuple[bool, Optional[str
         return (True, None) if allow_empty else (False, "URL cannot be empty")
 
     # Basic URL validation
-    pattern = r'^https?://[^\s]+$'
+    pattern = r"^https?://[^\s]+$"
     if re.match(pattern, url):
         return True, None
     return False, "Invalid URL format (must start with http:// or https://)"
+
 
 def validate_file_size(file_obj) -> Tuple[bool, Optional[str]]:
     """
@@ -56,23 +61,26 @@ def validate_file_size(file_obj) -> Tuple[bool, Optional[str]]:
     except Exception as e:
         return False, f"Error checking file size: {str(e)}"
 
+
 def validate_linkedin_url(url: str) -> Tuple[bool, Optional[str]]:
     """Validate LinkedIn URL format."""
     if not url:
         return True, None
 
-    if 'linkedin.com/in/' in url or 'linkedin.com/company/' in url:
+    if "linkedin.com/in/" in url or "linkedin.com/company/" in url:
         return validate_url(url, allow_empty=True)
     return False, "LinkedIn URL should contain 'linkedin.com/in/' or 'linkedin.com/company/'"
+
 
 def validate_github_url(url: str) -> Tuple[bool, Optional[str]]:
     """Validate GitHub URL format."""
     if not url:
         return True, None
 
-    if 'github.com/' in url:
+    if "github.com/" in url:
         return validate_url(url, allow_empty=True)
     return False, "GitHub URL should contain 'github.com/'"
+
 
 def sanitize_input(text: str, max_length: Optional[int] = None) -> str:
     """
@@ -89,12 +97,13 @@ def sanitize_input(text: str, max_length: Optional[int] = None) -> str:
         return ""
 
     # Remove null bytes and other control characters
-    sanitized = text.replace('\x00', '').strip()
+    sanitized = text.replace("\x00", "").strip()
 
     if max_length and len(sanitized) > max_length:
         sanitized = sanitized[:max_length]
 
     return sanitized
+
 
 def validate_phone(phone: str) -> Tuple[bool, Optional[str]]:
     """
@@ -107,13 +116,14 @@ def validate_phone(phone: str) -> Tuple[bool, Optional[str]]:
         return True, None
 
     # Remove common formatting characters
-    cleaned = re.sub(r'[\s\-\(\)\+\.]', '', phone)
+    cleaned = re.sub(r"[\s\-\(\)\+\.]", "", phone)
 
     # Check if it's mostly digits (allow for country codes)
-    if len(cleaned) >= 10 and cleaned.replace('+', '').isdigit():
+    if len(cleaned) >= 10 and cleaned.replace("+", "").isdigit():
         return True, None
 
     return False, "Phone number should contain at least 10 digits"
+
 
 def validate_salary(salary: int) -> Tuple[bool, Optional[str]]:
     """Validate salary amount."""

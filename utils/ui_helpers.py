@@ -1,15 +1,18 @@
 """
 UI helper functions for Streamlit
 """
-import streamlit as st
+
 from typing import Callable, Optional
+
+import streamlit as st
+
 
 def confirm_delete(
     item_name: str,
     item_id: str,
     on_confirm: Callable,
     button_label: str = "🗑️ Delete",
-    confirm_label: str = "⚠️ Confirm Delete"
+    confirm_label: str = "⚠️ Confirm Delete",
 ) -> bool:
     """
     Show a confirmation dialog for delete operations.
@@ -51,6 +54,7 @@ def confirm_delete(
 
         return False
 
+
 def show_success(message: str, duration: int = 3):
     """
     Show a success message that persists across reruns.
@@ -70,6 +74,7 @@ def show_success(message: str, duration: int = 3):
     else:
         if success_key in st.session_state:
             del st.session_state[success_key]
+
 
 def show_error_with_suggestion(error: Exception, suggestions: Optional[list] = None):
     """
@@ -111,6 +116,7 @@ def show_error_with_suggestion(error: Exception, suggestions: Optional[list] = N
     with st.expander("🔧 Technical Details"):
         st.code(f"{type(error).__name__}: {error_str}")
 
+
 def format_file_size(size_bytes: int) -> str:
     """
     Format file size in human-readable format.
@@ -121,11 +127,12 @@ def format_file_size(size_bytes: int) -> str:
     Returns:
         Formatted string (e.g., "2.5 MB")
     """
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} TB"
+
 
 def show_loading(message: str = "Processing..."):
     """

@@ -6,27 +6,24 @@ error message generation.
 """
 
 import logging
-import traceback
-from typing import Optional, Tuple
-from datetime import datetime
 import os
-
+import traceback
+from datetime import datetime
+from typing import Optional, Tuple
 
 # Configure logging
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # Create logger
-logger = logging.getLogger('resuboost_ai')
+logger = logging.getLogger("resuboost_ai")
 
 # Only add handlers if they haven't been added yet (prevents duplicates on module reload)
 if not logger.handlers:
     logger.setLevel(logging.INFO)
 
     # File handler for all logs
-    file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     file_handler = logging.FileHandler(
         os.path.join(LOG_DIR, f'app_{datetime.now().strftime("%Y%m%d")}.log')
@@ -51,7 +48,9 @@ if not logger.handlers:
 class ResuBoostError(Exception):
     """Base exception for all ResuBoost AI errors."""
 
-    def __init__(self, message: str, user_message: Optional[str] = None, details: Optional[dict] = None):
+    def __init__(
+        self, message: str, user_message: Optional[str] = None, details: Optional[dict] = None
+    ):
         """
         Initialize ResuBoost error.
 
@@ -67,10 +66,7 @@ class ResuBoostError(Exception):
 
     def log(self):
         """Log this error."""
-        logger.error(
-            f"{self.__class__.__name__}: {self.message}",
-            extra=self.details
-        )
+        logger.error(f"{self.__class__.__name__}: {self.message}", extra=self.details)
 
 
 class AuthenticationError(ResuBoostError):
@@ -78,9 +74,7 @@ class AuthenticationError(ResuBoostError):
 
     def __init__(self, message: str = "Authentication failed", **kwargs):
         super().__init__(
-            message,
-            user_message="Invalid username or password. Please try again.",
-            **kwargs
+            message, user_message="Invalid username or password. Please try again.", **kwargs
         )
 
 
@@ -89,9 +83,7 @@ class AuthorizationError(ResuBoostError):
 
     def __init__(self, message: str = "Authorization failed", **kwargs):
         super().__init__(
-            message,
-            user_message="You don't have permission to perform this action.",
-            **kwargs
+            message, user_message="You don't have permission to perform this action.", **kwargs
         )
 
 
@@ -102,8 +94,8 @@ class ValidationError(ResuBoostError):
         super().__init__(
             message,
             user_message=message,  # Validation errors are user-friendly
-            details={'field': field} if field else {},
-            **kwargs
+            details={"field": field} if field else {},
+            **kwargs,
         )
 
 
@@ -114,7 +106,7 @@ class DatabaseError(ResuBoostError):
         super().__init__(
             message,
             user_message="A database error occurred. Please try again or contact support.",
-            **kwargs
+            **kwargs,
         )
 
 
@@ -125,7 +117,7 @@ class OpenAIError(ResuBoostError):
         super().__init__(
             message,
             user_message="AI service is temporarily unavailable. Please try again later.",
-            **kwargs
+            **kwargs,
         )
 
 
@@ -136,8 +128,8 @@ class FileProcessingError(ResuBoostError):
         super().__init__(
             message,
             user_message=f"Error processing file{': ' + filename if filename else ''}. Please check the file and try again.",
-            details={'filename': filename} if filename else {},
-            **kwargs
+            details={"filename": filename} if filename else {},
+            **kwargs,
         )
 
 
@@ -147,9 +139,13 @@ class RateLimitError(ResuBoostError):
     def __init__(self, message: str, wait_seconds: int = 0, **kwargs):
         super().__init__(
             message,
-            user_message=f"Too many attempts. Please wait {wait_seconds} seconds and try again." if wait_seconds else "Too many attempts. Please try again later.",
-            details={'wait_seconds': wait_seconds},
-            **kwargs
+            user_message=(
+                f"Too many attempts. Please wait {wait_seconds} seconds and try again."
+                if wait_seconds
+                else "Too many attempts. Please try again later."
+            ),
+            details={"wait_seconds": wait_seconds},
+            **kwargs,
         )
 
 
@@ -181,11 +177,11 @@ def handle_exception(exc: Exception, context: str = "") -> Tuple[str, str]:
         return (exc.user_message, log_message)
 
     # Handle known third-party exceptions
-    if 'openai' in str(type(exc).__module__).lower():
+    if "openai" in str(type(exc).__module__).lower():
         logger.error(f"OpenAI API Error in {context}: {str(exc)}")
         return ("AI service is temporarily unavailable. Please try again later.", log_message)
 
-    if 'sqlite3' in str(type(exc).__module__).lower():
+    if "sqlite3" in str(type(exc).__module__).lower():
         logger.error(f"Database Error in {context}: {str(exc)}")
         return ("A database error occurred. Please try again.", log_message)
 
@@ -242,11 +238,7 @@ def log_error(message: str, exception: Optional[Exception] = None, **kwargs):
         ... )
     """
     if exception:
-        logger.error(
-            f"{message}: {str(exception)}",
-            exc_info=True,
-            extra=kwargs
-        )
+        logger.error(f"{message}: {str(exception)}", exc_info=True, extra=kwargs)
     else:
         logger.error(message, extra=kwargs)
 
@@ -294,19 +286,19 @@ def get_user_friendly_message(error_type: str) -> str:
         'A database error occurred. Please try again.'
     """
     messages = {
-        'database': 'A database error occurred. Please try again.',
-        'network': 'Network error. Please check your connection and try again.',
-        'validation': 'Please check your input and try again.',
-        'authentication': 'Invalid username or password.',
-        'authorization': "You don't have permission to perform this action.",
-        'rate_limit': 'Too many attempts. Please wait and try again.',
-        'file_upload': 'Error uploading file. Please check the file and try again.',
-        'ai_service': 'AI service is temporarily unavailable. Please try again later.',
-        'not_found': 'The requested resource was not found.',
-        'server_error': 'An unexpected server error occurred. Please try again or contact support.',
+        "database": "A database error occurred. Please try again.",
+        "network": "Network error. Please check your connection and try again.",
+        "validation": "Please check your input and try again.",
+        "authentication": "Invalid username or password.",
+        "authorization": "You don't have permission to perform this action.",
+        "rate_limit": "Too many attempts. Please wait and try again.",
+        "file_upload": "Error uploading file. Please check the file and try again.",
+        "ai_service": "AI service is temporarily unavailable. Please try again later.",
+        "not_found": "The requested resource was not found.",
+        "server_error": "An unexpected server error occurred. Please try again or contact support.",
     }
 
-    return messages.get(error_type, 'An error occurred. Please try again.')
+    return messages.get(error_type, "An error occurred. Please try again.")
 
 
 def validate_and_execute(validation_func, execute_func, *args, **kwargs):
@@ -378,16 +370,11 @@ def retry_on_error(func, max_attempts: int = 3, delay: float = 1.0, *args, **kwa
         except Exception as e:
             last_exception = e
             if attempt < max_attempts - 1:
-                wait_time = delay * (2 ** attempt)
-                logger.warning(
-                    f"Attempt {attempt + 1} failed, retrying in {wait_time}s: {str(e)}"
-                )
+                wait_time = delay * (2**attempt)
+                logger.warning(f"Attempt {attempt + 1} failed, retrying in {wait_time}s: {str(e)}")
                 time.sleep(wait_time)
             else:
-                logger.error(
-                    f"All {max_attempts} attempts failed: {str(e)}",
-                    exc_info=True
-                )
+                logger.error(f"All {max_attempts} attempts failed: {str(e)}", exc_info=True)
 
     raise last_exception
 
@@ -407,7 +394,7 @@ def cleanup_old_logs(days: int = 30):
 
     cutoff_time = time.time() - (days * 24 * 60 * 60)
 
-    for log_file in Path(LOG_DIR).glob('*.log'):
+    for log_file in Path(LOG_DIR).glob("*.log"):
         if log_file.stat().st_mtime < cutoff_time:
             try:
                 log_file.unlink()
@@ -419,24 +406,24 @@ def cleanup_old_logs(days: int = 30):
 # Export all error handling utilities
 __all__ = [
     # Exception classes
-    'ResuBoostError',
-    'AuthenticationError',
-    'AuthorizationError',
-    'ValidationError',
-    'DatabaseError',
-    'OpenAIError',
-    'FileProcessingError',
-    'RateLimitError',
+    "ResuBoostError",
+    "AuthenticationError",
+    "AuthorizationError",
+    "ValidationError",
+    "DatabaseError",
+    "OpenAIError",
+    "FileProcessingError",
+    "RateLimitError",
     # Error handling functions
-    'handle_exception',
-    'safe_execute',
-    'log_error',
-    'log_warning',
-    'log_info',
-    'get_user_friendly_message',
-    'validate_and_execute',
-    'retry_on_error',
-    'cleanup_old_logs',
+    "handle_exception",
+    "safe_execute",
+    "log_error",
+    "log_warning",
+    "log_info",
+    "get_user_friendly_message",
+    "validate_and_execute",
+    "retry_on_error",
+    "cleanup_old_logs",
     # Logger
-    'logger',
+    "logger",
 ]

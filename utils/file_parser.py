@@ -1,6 +1,6 @@
 import io
-from typing import Optional
 from contextlib import contextmanager
+from typing import Optional
 
 
 @contextmanager
@@ -16,9 +16,9 @@ def _bytes_io_context(data: bytes):
 def parse_txt(file_content: bytes) -> str:
     """Parse text file content."""
     try:
-        return file_content.decode('utf-8')
+        return file_content.decode("utf-8")
     except UnicodeDecodeError:
-        return file_content.decode('latin-1')
+        return file_content.decode("latin-1")
 
 
 def parse_pdf(file_content: bytes) -> str:
@@ -35,9 +35,11 @@ def parse_pdf(file_content: bytes) -> str:
                 if page_text:
                     text.append(page_text)
 
-            return '\n'.join(text)
+            return "\n".join(text)
     except ImportError:
-        raise ImportError("PyPDF2 is required to parse PDF files. Install it with: pip install PyPDF2")
+        raise ImportError(
+            "PyPDF2 is required to parse PDF files. Install it with: pip install PyPDF2"
+        )
     except Exception as e:
         raise ValueError(f"Error parsing PDF file: {str(e)}")
 
@@ -55,9 +57,11 @@ def parse_docx(file_content: bytes) -> str:
                 if paragraph.text:
                     text.append(paragraph.text)
 
-            return '\n'.join(text)
+            return "\n".join(text)
     except ImportError:
-        raise ImportError("python-docx is required to parse DOCX files. Install it with: pip install python-docx")
+        raise ImportError(
+            "python-docx is required to parse DOCX files. Install it with: pip install python-docx"
+        )
     except Exception as e:
         raise ValueError(f"Error parsing DOCX file: {str(e)}")
 
@@ -65,9 +69,9 @@ def parse_docx(file_content: bytes) -> str:
 # Supported file types and their parsers
 # Note: .doc (legacy Word format) is NOT supported - python-docx only supports .docx
 SUPPORTED_PARSERS = {
-    'txt': parse_txt,
-    'pdf': parse_pdf,
-    'docx': parse_docx,
+    "txt": parse_txt,
+    "pdf": parse_pdf,
+    "docx": parse_docx,
 }
 
 
@@ -89,10 +93,10 @@ def parse_file(file_content: bytes, file_type: str) -> str:
         Legacy .doc files (Microsoft Word 97-2003) are NOT supported.
         Please convert to .docx format before uploading.
     """
-    file_type = file_type.lower().strip('.')
+    file_type = file_type.lower().strip(".")
 
     # Provide helpful error for legacy .doc files
-    if file_type == 'doc':
+    if file_type == "doc":
         raise ValueError(
             "Legacy .doc format (Word 97-2003) is not supported. "
             "Please save your document as .docx (Word 2007+) and try again."
@@ -100,10 +104,11 @@ def parse_file(file_content: bytes, file_type: str) -> str:
 
     parser = SUPPORTED_PARSERS.get(file_type)
     if not parser:
-        supported = ', '.join(SUPPORTED_PARSERS.keys())
+        supported = ", ".join(SUPPORTED_PARSERS.keys())
         raise ValueError(f"Unsupported file type: {file_type}. Supported types: {supported}")
 
     return parser(file_content)
+
 
 def extract_text_from_upload(uploaded_file, validate_size: bool = True) -> Optional[str]:
     """
@@ -128,14 +133,17 @@ def extract_text_from_upload(uploaded_file, validate_size: bool = True) -> Optio
     if validate_size:
         try:
             from config import MAX_FILE_SIZE_BYTES
+
             file_size = len(file_content)
             if file_size > MAX_FILE_SIZE_BYTES:
                 size_mb = file_size / (1024 * 1024)
                 max_mb = MAX_FILE_SIZE_BYTES / (1024 * 1024)
-                raise ValueError(f"File size ({size_mb:.1f}MB) exceeds maximum allowed size ({max_mb}MB)")
+                raise ValueError(
+                    f"File size ({size_mb:.1f}MB) exceeds maximum allowed size ({max_mb}MB)"
+                )
         except ImportError:
             pass  # If config not available, skip validation
 
-    file_extension = uploaded_file.name.split('.')[-1]
+    file_extension = uploaded_file.name.split(".")[-1]
 
     return parse_file(file_content, file_extension)

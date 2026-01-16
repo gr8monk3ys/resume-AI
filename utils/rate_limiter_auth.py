@@ -13,18 +13,18 @@ Configuration (via config.py or environment variables):
 - AUTH_CLEANUP_DAYS: Days to keep failed attempts (default: 30)
 """
 
-import sqlite3
 import os
-from datetime import datetime, timedelta
+import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timedelta
 
 # Import config settings with fallbacks
 try:
     from config import (
+        AUTH_CLEANUP_DAYS,
+        AUTH_LOCKOUT_THRESHOLD,
         AUTH_MAX_RECENT_FAILURES,
         AUTH_RATE_LIMIT_WINDOW_MINUTES,
-        AUTH_LOCKOUT_THRESHOLD,
-        AUTH_CLEANUP_DAYS
     )
 except ImportError:
     AUTH_MAX_RECENT_FAILURES = 5
@@ -33,7 +33,8 @@ except ImportError:
     AUTH_CLEANUP_DAYS = 30
 
 # Use same auth database
-AUTH_DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'auth.db')
+AUTH_DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "auth.db")
+
 
 @contextmanager
 def get_auth_db_connection():
@@ -42,7 +43,7 @@ def get_auth_db_connection():
     conn.row_factory = sqlite3.Row
 
     # Enable foreign keys
-    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute("PRAGMA foreign_keys=ON")
 
     try:
         yield conn
@@ -53,13 +54,15 @@ def get_auth_db_connection():
     finally:
         conn.close()
 
+
 def init_rate_limiting_table():
     """Initialize the failed_login_attempts table."""
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
 
         # Create failed login attempts table
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS failed_login_attempts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
@@ -67,16 +70,20 @@ def init_rate_limiting_table():
                 ip_address TEXT,
                 user_agent TEXT
             )
-        ''')
+        """
+        )
 
         # Create index for faster lookups
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_username_time
             ON failed_login_attempts(username, attempt_time)
-        ''')
+        """
+        )
 
         # Create account lockout table
-        cursor.execute('''
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS account_lockouts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -84,9 +91,11 @@ def init_rate_limiting_table():
                 lockout_reason TEXT,
                 unlocked_at TIMESTAMP
             )
-        ''')
+        """
+        )
 
         conn.commit()
+
 
 def record_failed_login(username: str, ip_address: str = None, user_agent: str = None):
     """
@@ -99,11 +108,15 @@ def record_failed_login(username: str, ip_address: str = None, user_agent: str =
     """
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO failed_login_attempts (username, attempt_time, ip_address, user_agent)
             VALUES (?, ?, ?, ?)
-        ''', (username, datetime.now(), ip_address, user_agent))
+        """,
+            (username, datetime.now(), ip_address, user_agent),
+        )
         conn.commit()
+
 
 def get_recent_failed_attempts(username: str, minutes: int = 15) -> int:
     """
@@ -120,14 +133,18 @@ def get_recent_failed_attempts(username: str, minutes: int = 15) -> int:
         cursor = conn.cursor()
         cutoff_time = datetime.now() - timedelta(minutes=minutes)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT COUNT(*) as count
             FROM failed_login_attempts
             WHERE username = ? AND attempt_time > ?
-        ''', (username, cutoff_time))
+        """,
+            (username, cutoff_time),
+        )
 
         result = cursor.fetchone()
-        return result['count'] if result else 0
+        return result["count"] if result else 0
+
 
 def get_total_failed_attempts(username: str) -> int:
     """
@@ -141,14 +158,18 @@ def get_total_failed_attempts(username: str) -> int:
     """
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT COUNT(*) as count
             FROM failed_login_attempts
             WHERE username = ?
-        ''', (username,))
+        """,
+            (username,),
+        )
 
         result = cursor.fetchone()
-        return result['count'] if result else 0
+        return result["count"] if result else 0
+
 
 def is_account_locked(username: str) -> tuple:
     """
@@ -162,16 +183,20 @@ def is_account_locked(username: str) -> tuple:
     """
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT locked_at, lockout_reason, unlocked_at
             FROM account_lockouts
             WHERE username = ? AND unlocked_at IS NULL
-        ''', (username,))
+        """,
+            (username,),
+        )
 
         result = cursor.fetchone()
         if result:
-            return (True, result['lockout_reason'], None)  # Permanent lock
+            return (True, result["lockout_reason"], None)  # Permanent lock
         return (False, None, None)
+
 
 def lock_account(username: str, reason: str = "Too many failed login attempts"):
     """
@@ -185,16 +210,22 @@ def lock_account(username: str, reason: str = "Too many failed login attempts"):
         cursor = conn.cursor()
 
         # Check if already locked
-        cursor.execute('SELECT id FROM account_lockouts WHERE username = ? AND unlocked_at IS NULL',
-                      (username,))
+        cursor.execute(
+            "SELECT id FROM account_lockouts WHERE username = ? AND unlocked_at IS NULL",
+            (username,),
+        )
         if cursor.fetchone():
             return  # Already locked
 
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO account_lockouts (username, locked_at, lockout_reason)
             VALUES (?, ?, ?)
-        ''', (username, datetime.now(), reason))
+        """,
+            (username, datetime.now(), reason),
+        )
         conn.commit()
+
 
 def unlock_account(username: str):
     """
@@ -205,12 +236,16 @@ def unlock_account(username: str):
     """
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             UPDATE account_lockouts
             SET unlocked_at = ?
             WHERE username = ? AND unlocked_at IS NULL
-        ''', (datetime.now(), username))
+        """,
+            (datetime.now(), username),
+        )
         conn.commit()
+
 
 def clear_failed_attempts(username: str):
     """
@@ -221,11 +256,15 @@ def clear_failed_attempts(username: str):
     """
     with get_auth_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             DELETE FROM failed_login_attempts
             WHERE username = ?
-        ''', (username,))
+        """,
+            (username,),
+        )
         conn.commit()
+
 
 def check_login_allowed(username: str) -> tuple:
     """
@@ -259,27 +298,33 @@ def check_login_allowed(username: str) -> tuple:
         with get_auth_db_connection() as conn:
             cursor = conn.cursor()
             cutoff_time = datetime.now() - timedelta(minutes=AUTH_RATE_LIMIT_WINDOW_MINUTES)
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT attempt_time
                 FROM failed_login_attempts
                 WHERE username = ? AND attempt_time > ?
                 ORDER BY attempt_time ASC
                 LIMIT 1
-            ''', (username, cutoff_time))
+            """,
+                (username, cutoff_time),
+            )
 
             oldest_attempt = cursor.fetchone()
             if oldest_attempt:
-                oldest_time = datetime.fromisoformat(oldest_attempt['attempt_time'])
+                oldest_time = datetime.fromisoformat(oldest_attempt["attempt_time"])
                 wait_until = oldest_time + timedelta(minutes=AUTH_RATE_LIMIT_WINDOW_MINUTES)
                 wait_seconds = int((wait_until - datetime.now()).total_seconds())
                 wait_minutes = wait_seconds // 60
 
-                return (False,
-                       f"Too many failed attempts. Try again in {wait_minutes} minute(s).",
-                       wait_seconds)
+                return (
+                    False,
+                    f"Too many failed attempts. Try again in {wait_minutes} minute(s).",
+                    wait_seconds,
+                )
 
     # Login allowed
     return (True, "", 0)
+
 
 def cleanup_old_attempts(days: int = None):
     """
@@ -294,14 +339,18 @@ def cleanup_old_attempts(days: int = None):
         cursor = conn.cursor()
         cutoff_time = datetime.now() - timedelta(days=days)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             DELETE FROM failed_login_attempts
             WHERE attempt_time < ?
-        ''', (cutoff_time,))
+        """,
+            (cutoff_time,),
+        )
 
         deleted = cursor.rowcount
         conn.commit()
         return deleted
+
 
 # Initialize table on import
 try:
