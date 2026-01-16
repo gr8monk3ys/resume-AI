@@ -6,9 +6,9 @@ security vulnerabilities like XSS, SQL injection, and malicious file uploads.
 """
 
 import html
+import os
 import re
 from typing import Optional, Tuple
-import os
 
 
 def escape_html(text: str) -> str:
@@ -60,7 +60,7 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
         text = escape_html(text)
 
     # Remove null bytes
-    text = text.replace('\x00', '')
+    text = text.replace("\x00", "")
 
     # Strip leading/trailing whitespace
     text = text.strip()
@@ -90,8 +90,8 @@ def strip_html_tags(text: str) -> str:
 
     # Remove HTML tags - use a more robust pattern
     # Handle malformed tags by also looking for unclosed tags
-    text = re.sub(r'<[^>]*>', '', text)
-    text = re.sub(r'<[^>]*$', '', text)  # Handle unclosed tags at end
+    text = re.sub(r"<[^>]*>", "", text)
+    text = re.sub(r"<[^>]*$", "", text)  # Handle unclosed tags at end
 
     return text.strip()
 
@@ -131,11 +131,14 @@ def sanitize_username(username: str) -> Tuple[bool, Optional[str]]:
         return (False, "Username must be less than 30 characters")
 
     # Pattern check (alphanumeric, underscore, hyphen)
-    if not re.match(r'^[a-z][a-z0-9_-]*$', username):
-        return (False, "Username must start with a letter and contain only letters, numbers, underscores, or hyphens")
+    if not re.match(r"^[a-z][a-z0-9_-]*$", username):
+        return (
+            False,
+            "Username must start with a letter and contain only letters, numbers, underscores, or hyphens",
+        )
 
     # Reserved usernames
-    reserved = ['admin', 'root', 'system', 'api', 'test', 'demo', 'null', 'undefined']
+    reserved = ["admin", "root", "system", "api", "test", "demo", "null", "undefined"]
     if username in reserved:
         return (False, "This username is reserved")
 
@@ -164,7 +167,7 @@ def sanitize_email(email: str) -> Tuple[bool, Optional[str]]:
     email = email.lower().strip()
 
     # Basic email pattern
-    pattern = r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$'
+    pattern = r"^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
     if not re.match(pattern, email):
         return (False, "Invalid email format")
 
@@ -173,11 +176,11 @@ def sanitize_email(email: str) -> Tuple[bool, Optional[str]]:
         return (False, "Email address too long")
 
     # Check for common typos
-    common_domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com']
+    common_domains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"]
     suspicious_patterns = [
-        r'@gmial\.com$',  # Gmail typo
-        r'@yahooo\.com$',  # Yahoo typo
-        r'@outlok\.com$',  # Outlook typo
+        r"@gmial\.com$",  # Gmail typo
+        r"@yahooo\.com$",  # Yahoo typo
+        r"@outlok\.com$",  # Outlook typo
     ]
 
     for pattern in suspicious_patterns:
@@ -187,7 +190,9 @@ def sanitize_email(email: str) -> Tuple[bool, Optional[str]]:
     return (True, None)
 
 
-def sanitize_filename(filename: str, allowed_extensions: Optional[list] = None) -> Tuple[bool, Optional[str]]:
+def sanitize_filename(
+    filename: str, allowed_extensions: Optional[list] = None
+) -> Tuple[bool, Optional[str]]:
     """
     Validate and sanitize uploaded filename.
 
@@ -208,11 +213,11 @@ def sanitize_filename(filename: str, allowed_extensions: Optional[list] = None) 
         return (False, "Filename cannot be empty")
 
     # Remove path traversal attempts
-    if '..' in filename or '/' in filename or '\\' in filename:
+    if ".." in filename or "/" in filename or "\\" in filename:
         return (False, "Invalid filename characters")
 
     # Check for null bytes
-    if '\x00' in filename:
+    if "\x00" in filename:
         return (False, "Invalid filename")
 
     # Get file extension
@@ -229,7 +234,7 @@ def sanitize_filename(filename: str, allowed_extensions: Optional[list] = None) 
         return (False, "Filename too long")
 
     # Check for executable extensions
-    dangerous_extensions = ['.exe', '.bat', '.cmd', '.sh', '.py', '.js', '.vbs', '.scr']
+    dangerous_extensions = [".exe", ".bat", ".cmd", ".sh", ".py", ".js", ".vbs", ".scr"]
     if ext in dangerous_extensions:
         return (False, "Executable files not allowed")
 
@@ -258,17 +263,17 @@ def sanitize_url(url: str) -> Tuple[bool, Optional[str]]:
     url = url.strip()
 
     # Check for dangerous protocols
-    dangerous_protocols = ['javascript:', 'data:', 'vbscript:', 'file:']
+    dangerous_protocols = ["javascript:", "data:", "vbscript:", "file:"]
     for protocol in dangerous_protocols:
         if url.lower().startswith(protocol):
             return (False, "Invalid URL protocol")
 
     # Must start with http:// or https://
-    if not url.startswith(('http://', 'https://')):
+    if not url.startswith(("http://", "https://")):
         return (False, "URL must start with http:// or https://")
 
     # Basic URL pattern
-    pattern = r'^https?://[a-z0-9.-]+\.[a-z]{2,}(/[^\s]*)?$'
+    pattern = r"^https?://[a-z0-9.-]+\.[a-z]{2,}(/[^\s]*)?$"
     if not re.match(pattern, url, re.IGNORECASE):
         return (False, "Invalid URL format")
 
@@ -299,10 +304,10 @@ def sanitize_phone(phone: str) -> Tuple[bool, Optional[str]]:
         return (True, None)  # Phone is optional
 
     # Remove common separators
-    cleaned = re.sub(r'[\s\-\(\)\.]', '', phone)
+    cleaned = re.sub(r"[\s\-\(\)\.]", "", phone)
 
     # Allow + at start for international
-    if cleaned.startswith('+'):
+    if cleaned.startswith("+"):
         cleaned = cleaned[1:]
 
     # Should be numeric after cleaning
@@ -336,11 +341,11 @@ def sanitize_sql_like_pattern(pattern: str) -> str:
         "test\\%\\_"
     """
     # Escape special LIKE characters
-    pattern = pattern.replace('\\', '\\\\')  # Escape backslash first
-    pattern = pattern.replace('%', '\\%')
-    pattern = pattern.replace('_', '\\_')
-    pattern = pattern.replace('[', '\\[')
-    pattern = pattern.replace(']', '\\]')
+    pattern = pattern.replace("\\", "\\\\")  # Escape backslash first
+    pattern = pattern.replace("%", "\\%")
+    pattern = pattern.replace("_", "\\_")
+    pattern = pattern.replace("[", "\\[")
+    pattern = pattern.replace("]", "\\]")
 
     return pattern
 
@@ -401,13 +406,13 @@ def sanitize_search_query(query: str, max_length: int = 200) -> str:
         return ""
 
     # Remove HTML tags
-    query = re.sub(r'<[^>]+>', '', query)
+    query = re.sub(r"<[^>]+>", "", query)
 
     # Limit length
     query = query[:max_length]
 
     # Remove null bytes and control characters
-    query = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', query)
+    query = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", query)
 
     # Strip whitespace
     query = query.strip()
@@ -434,19 +439,19 @@ def validate_profile_update(data: dict) -> Tuple[bool, dict]:
     errors = {}
 
     # Validate email if provided
-    if 'email' in data and data['email']:
-        valid, error = sanitize_email(data['email'])
+    if "email" in data and data["email"]:
+        valid, error = sanitize_email(data["email"])
         if not valid:
-            errors['email'] = error
+            errors["email"] = error
 
     # Validate phone if provided
-    if 'phone' in data and data['phone']:
-        valid, error = sanitize_phone(data['phone'])
+    if "phone" in data and data["phone"]:
+        valid, error = sanitize_phone(data["phone"])
         if not valid:
-            errors['phone'] = error
+            errors["phone"] = error
 
     # Validate URLs
-    for field in ['linkedin', 'github', 'portfolio']:
+    for field in ["linkedin", "github", "portfolio"]:
         if field in data and data[field]:
             valid, error = sanitize_url(data[field])
             if not valid:
@@ -454,10 +459,10 @@ def validate_profile_update(data: dict) -> Tuple[bool, dict]:
 
     # Validate text fields
     text_fields = {
-        'name': 100,
-        'full_name': 100,
-        'location': 100,
-        'title': 100,
+        "name": 100,
+        "full_name": 100,
+        "location": 100,
+        "title": 100,
     }
 
     for field, max_len in text_fields.items():
@@ -469,16 +474,16 @@ def validate_profile_update(data: dict) -> Tuple[bool, dict]:
 
 # Export all sanitization functions
 __all__ = [
-    'escape_html',
-    'strip_html_tags',
-    'sanitize_text_input',
-    'sanitize_username',
-    'sanitize_email',
-    'sanitize_filename',
-    'sanitize_url',
-    'sanitize_phone',
-    'sanitize_sql_like_pattern',
-    'validate_json_field',
-    'sanitize_search_query',
-    'validate_profile_update',
+    "escape_html",
+    "strip_html_tags",
+    "sanitize_text_input",
+    "sanitize_username",
+    "sanitize_email",
+    "sanitize_filename",
+    "sanitize_url",
+    "sanitize_phone",
+    "sanitize_sql_like_pattern",
+    "validate_json_field",
+    "sanitize_search_query",
+    "validate_profile_update",
 ]

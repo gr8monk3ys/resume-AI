@@ -5,22 +5,17 @@ This module provides caching mechanisms to improve performance by reducing
 redundant API calls and expensive computations.
 """
 
-import os
-import json
 import hashlib
-from datetime import datetime, timedelta
-from typing import Optional, Any, Callable
-from functools import wraps
+import json
+import os
 import sqlite3
 from contextlib import contextmanager
-
+from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any, Callable, Optional
 
 # Cache database path
-CACHE_DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)),
-    'data',
-    'cache.db'
-)
+CACHE_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "cache.db")
 
 # Sentinel object to distinguish "not in cache" from "cached None"
 _CACHE_MISS = object()
@@ -45,10 +40,11 @@ def init_cache_database():
     cursor = conn.cursor()
 
     # Enable foreign keys (for consistency, though not used in cache)
-    cursor.execute('PRAGMA foreign_keys=ON')
+    cursor.execute("PRAGMA foreign_keys=ON")
 
     # Cache table
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS cache (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
@@ -56,11 +52,12 @@ def init_cache_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NOT NULL
         )
-    ''')
+    """
+    )
 
     # Index for faster cleanup
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_expires_at ON cache(expires_at)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_category ON cache(category)')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_expires_at ON cache(expires_at)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_category ON cache(category)")
 
     conn.commit()
     conn.close()
@@ -73,11 +70,11 @@ def get_cache_db_connection():
     conn.row_factory = sqlite3.Row
 
     # Enable WAL mode for better concurrency
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA busy_timeout=10000')
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=10000")
 
     # Enable foreign keys (for consistency, though not used in cache)
-    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute("PRAGMA foreign_keys=ON")
 
     try:
         yield conn
@@ -122,19 +119,16 @@ def generate_cache_key(*args, **kwargs) -> str:
     serializable_kwargs = {k: _make_serializable(v) for k, v in kwargs.items()}
 
     # Create a string representation of all arguments
-    key_data = {
-        'args': serializable_args,
-        'kwargs': serializable_kwargs
-    }
+    key_data = {"args": serializable_args, "kwargs": serializable_kwargs}
 
     # Convert to JSON string (sorted for consistency)
     key_string = json.dumps(key_data, sort_keys=True)
 
-    # Generate MD5 hash
-    return hashlib.md5(key_string.encode()).hexdigest()
+    # Generate MD5 hash (not used for security, just cache key generation)
+    return hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()
 
 
-def cache_get(key: str, category: str = 'general') -> Any:
+def cache_get(key: str, category: str = "general") -> Any:
     """
     Retrieve value from cache.
 
@@ -159,16 +153,19 @@ def cache_get(key: str, category: str = 'general') -> Any:
             cursor = conn.cursor()
 
             # Get cached value if not expired
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT value FROM cache
                 WHERE key = ? AND category = ? AND expires_at > datetime('now')
-            ''', (key, category))
+            """,
+                (key, category),
+            )
 
             result = cursor.fetchone()
 
             if result:
                 # Deserialize value
-                return json.loads(result['value'])
+                return json.loads(result["value"])
 
             return _CACHE_MISS
 
@@ -178,7 +175,7 @@ def cache_get(key: str, category: str = 'general') -> Any:
         return _CACHE_MISS
 
 
-def cache_set(key: str, value: Any, category: str = 'general', ttl_seconds: int = 3600):
+def cache_set(key: str, value: Any, category: str = "general", ttl_seconds: int = 3600):
     """
     Store value in cache.
 
@@ -204,17 +201,20 @@ def cache_set(key: str, value: Any, category: str = 'general', ttl_seconds: int 
             cursor = conn.cursor()
 
             # Insert or replace cache entry
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO cache (key, value, category, expires_at)
                 VALUES (?, ?, ?, ?)
-            ''', (key, value_json, category, expires_at))
+            """,
+                (key, value_json, category, expires_at),
+            )
 
     except Exception as e:
         # Cache errors should not break the application
         print(f"Cache set error: {e}")
 
 
-def cache_delete(key: str, category: str = 'general'):
+def cache_delete(key: str, category: str = "general"):
     """
     Delete value from cache.
 
@@ -230,7 +230,7 @@ def cache_delete(key: str, category: str = 'general'):
     try:
         with get_cache_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM cache WHERE key = ? AND category = ?', (key, category))
+            cursor.execute("DELETE FROM cache WHERE key = ? AND category = ?", (key, category))
 
     except Exception as e:
         print(f"Cache delete error: {e}")
@@ -254,9 +254,9 @@ def cache_clear(category: Optional[str] = None):
             cursor = conn.cursor()
 
             if category:
-                cursor.execute('DELETE FROM cache WHERE category = ?', (category,))
+                cursor.execute("DELETE FROM cache WHERE category = ?", (category,))
             else:
-                cursor.execute('DELETE FROM cache')
+                cursor.execute("DELETE FROM cache")
 
     except Exception as e:
         print(f"Cache clear error: {e}")
@@ -304,30 +304,32 @@ def get_cache_stats() -> dict:
             cursor = conn.cursor()
 
             # Total entries
-            cursor.execute('SELECT COUNT(*) as count FROM cache')
-            total_entries = cursor.fetchone()['count']
+            cursor.execute("SELECT COUNT(*) as count FROM cache")
+            total_entries = cursor.fetchone()["count"]
 
             # Active entries (not expired)
             cursor.execute("SELECT COUNT(*) as count FROM cache WHERE expires_at > datetime('now')")
-            active_entries = cursor.fetchone()['count']
+            active_entries = cursor.fetchone()["count"]
 
             # Expired entries
             expired_entries = total_entries - active_entries
 
             # Entries by category
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT category, COUNT(*) as count
                 FROM cache
                 WHERE expires_at > datetime('now')
                 GROUP BY category
-            ''')
-            by_category = {row['category']: row['count'] for row in cursor.fetchall()}
+            """
+            )
+            by_category = {row["category"]: row["count"] for row in cursor.fetchall()}
 
             return {
-                'total_entries': total_entries,
-                'active_entries': active_entries,
-                'expired_entries': expired_entries,
-                'by_category': by_category
+                "total_entries": total_entries,
+                "active_entries": active_entries,
+                "expired_entries": expired_entries,
+                "by_category": by_category,
             }
 
     except Exception as e:
@@ -336,7 +338,7 @@ def get_cache_stats() -> dict:
 
 
 # Decorator for automatic caching
-def cached(category: str = 'general', ttl_seconds: int = 3600, key_prefix: str = ''):
+def cached(category: str = "general", ttl_seconds: int = 3600, key_prefix: str = ""):
     """
     Decorator to automatically cache function results.
 
@@ -357,6 +359,7 @@ def cached(category: str = 'general', ttl_seconds: int = 3600, key_prefix: str =
         ...     # Expensive calculation
         ...     return score
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -382,8 +385,7 @@ def cached(category: str = 'general', ttl_seconds: int = 3600, key_prefix: str =
         # Add cache control methods to function
         wrapper.cache_clear = lambda: cache_clear(category)
         wrapper.cache_delete = lambda *args, **kwargs: cache_delete(
-            f"{key_prefix}{func.__name__}_{generate_cache_key(*args, **kwargs)}",
-            category
+            f"{key_prefix}{func.__name__}_{generate_cache_key(*args, **kwargs)}", category
         )
 
         return wrapper
@@ -488,18 +490,18 @@ def memory_cache_clear():
 
 # Export all caching utilities
 __all__ = [
-    'init_cache_database',
-    'generate_cache_key',
-    'cache_get',
-    'cache_set',
-    'cache_delete',
-    'cache_clear',
-    'cleanup_expired_cache',
-    'get_cache_stats',
-    'cached',
-    'MemoryCache',
-    'memory_cache_get',
-    'memory_cache_set',
-    'memory_cache_delete',
-    'memory_cache_clear',
+    "init_cache_database",
+    "generate_cache_key",
+    "cache_get",
+    "cache_set",
+    "cache_delete",
+    "cache_clear",
+    "cleanup_expired_cache",
+    "get_cache_stats",
+    "cached",
+    "MemoryCache",
+    "memory_cache_get",
+    "memory_cache_set",
+    "memory_cache_delete",
+    "memory_cache_clear",
 ]

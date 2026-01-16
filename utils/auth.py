@@ -1,11 +1,14 @@
 """
 Authentication utilities for multi-user support
 """
-import os
+
 import logging
+import os
 from datetime import datetime, timedelta
+
 import streamlit as st
-from models.auth_database import init_auth_database, authenticate_user, create_user, get_user_by_id
+
+from models.auth_database import authenticate_user, create_user, get_user_by_id, init_auth_database
 from models.database import get_or_create_profile_for_user
 
 logger = logging.getLogger(__name__)
@@ -16,17 +19,17 @@ SESSION_TIMEOUT_MINUTES = int(os.getenv("SESSION_TIMEOUT_MINUTES", "30"))
 
 def init_session_state():
     """Initialize session state variables for authentication."""
-    if 'authenticated' not in st.session_state:
+    if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
-    if 'user' not in st.session_state:
+    if "user" not in st.session_state:
         st.session_state.user = None
-    if 'user_id' not in st.session_state:
+    if "user_id" not in st.session_state:
         st.session_state.user_id = None
-    if 'profile' not in st.session_state:
+    if "profile" not in st.session_state:
         st.session_state.profile = None
-    if 'session_created_at' not in st.session_state:
+    if "session_created_at" not in st.session_state:
         st.session_state.session_created_at = None
-    if 'last_activity' not in st.session_state:
+    if "last_activity" not in st.session_state:
         st.session_state.last_activity = None
 
 
@@ -42,10 +45,10 @@ def _check_session_timeout() -> bool:
     Returns:
         True if session is valid, False if timed out
     """
-    if not st.session_state.get('authenticated'):
+    if not st.session_state.get("authenticated"):
         return True  # Not authenticated, no timeout check needed
 
-    last_activity = st.session_state.get('last_activity')
+    last_activity = st.session_state.get("last_activity")
     if not last_activity:
         return True  # No activity tracked yet
 
@@ -71,18 +74,21 @@ def check_and_refresh_session() -> bool:
     """
     init_session_state()
 
-    if not st.session_state.get('authenticated'):
+    if not st.session_state.get("authenticated"):
         return False
 
     # Check for session timeout
     if not _check_session_timeout():
         from utils.audit_logger import log_event
-        user = st.session_state.get('user', {})
+
+        user = st.session_state.get("user", {})
         log_event(
-            event_type='session_timeout',
-            action='session_expired',
-            user_id=user.get('id'),
-            details={'message': f"Session timed out after {SESSION_TIMEOUT_MINUTES} minutes of inactivity"}
+            event_type="session_timeout",
+            action="session_expired",
+            user_id=user.get("id"),
+            details={
+                "message": f"Session timed out after {SESSION_TIMEOUT_MINUTES} minutes of inactivity"
+            },
         )
         # Set flag to show timeout message
         st.session_state._session_timed_out = True
@@ -92,6 +98,7 @@ def check_and_refresh_session() -> bool:
     # Refresh activity timestamp
     _update_activity()
     return True
+
 
 def login(username: str, password: str) -> tuple:
     """
@@ -104,12 +111,12 @@ def login(username: str, password: str) -> tuple:
     Returns:
         tuple: (success: bool, message: str)
     """
+    from utils.audit_logger import log_login, log_login_failed
     from utils.rate_limiter_auth import (
         check_login_allowed,
+        clear_failed_attempts,
         record_failed_login,
-        clear_failed_attempts
     )
-    from utils.audit_logger import log_login, log_login_failed
 
     # Check if login is allowed (rate limiting)
     allowed, reason, wait_seconds = check_login_allowed(username)
@@ -125,12 +132,12 @@ def login(username: str, password: str) -> tuple:
         clear_failed_attempts(username)
 
         # Log successful login
-        log_login(user['id'], username)
+        log_login(user["id"], username)
 
         # Set session state
         st.session_state.authenticated = True
         st.session_state.user = user
-        st.session_state.user_id = user['id']
+        st.session_state.user_id = user["id"]
 
         # Set session timestamps for timeout tracking
         st.session_state.session_created_at = datetime.now()
@@ -138,9 +145,7 @@ def login(username: str, password: str) -> tuple:
 
         # Get or create profile for this user
         profile = get_or_create_profile_for_user(
-            user['id'],
-            name=user['full_name'] or user['username'],
-            email=user['email']
+            user["id"], name=user["full_name"] or user["username"], email=user["email"]
         )
         st.session_state.profile = profile
 
@@ -150,6 +155,7 @@ def login(username: str, password: str) -> tuple:
         record_failed_login(username)
         log_login_failed(username, "Invalid credentials")
         return (False, "Invalid username or password")
+
 
 def logout(reason: str = "user_initiated"):
     """
@@ -161,9 +167,9 @@ def logout(reason: str = "user_initiated"):
     from utils.audit_logger import log_logout
 
     # Log logout if user is authenticated
-    if st.session_state.get('authenticated') and st.session_state.get('user'):
+    if st.session_state.get("authenticated") and st.session_state.get("user"):
         user = st.session_state.user
-        log_logout(user['id'], user['username'])
+        log_logout(user["id"], user["username"])
         if reason != "user_initiated":
             logger.info(f"User {user['username']} logged out due to: {reason}")
 
@@ -175,21 +181,26 @@ def logout(reason: str = "user_initiated"):
     st.session_state.session_created_at = None
     st.session_state.last_activity = None
 
+
 def is_authenticated() -> bool:
     """Check if user is authenticated."""
-    return st.session_state.get('authenticated', False)
+    return st.session_state.get("authenticated", False)
+
 
 def get_current_user():
     """Get current authenticated user."""
-    return st.session_state.get('user', None)
+    return st.session_state.get("user", None)
+
 
 def get_current_user_id():
     """Get current user ID."""
-    return st.session_state.get('user_id', None)
+    return st.session_state.get("user_id", None)
+
 
 def get_current_profile():
     """Get current user's profile."""
-    return st.session_state.get('profile', None)
+    return st.session_state.get("profile", None)
+
 
 def require_auth(func):
     """
@@ -202,12 +213,13 @@ def require_auth(func):
         def my_page():
             st.write("This page requires login")
     """
+
     def wrapper(*args, **kwargs):
         init_session_state()
 
         # Check session validity (includes timeout check)
         if not check_and_refresh_session():
-            if st.session_state.get('_session_timed_out'):
+            if st.session_state.get("_session_timed_out"):
                 st.warning("⚠️ Your session has expired due to inactivity. Please log in again.")
                 st.session_state._session_timed_out = False
             else:
@@ -218,6 +230,7 @@ def require_auth(func):
         return func(*args, **kwargs)
 
     return wrapper
+
 
 def show_auth_sidebar():
     """Show authentication info in sidebar."""
@@ -230,7 +243,7 @@ def show_auth_sidebar():
             user = get_current_user()
             st.success(f"✅ Logged in as **{user['username']}**")
 
-            if user.get('full_name'):
+            if user.get("full_name"):
                 st.caption(f"👤 {user['full_name']}")
 
             if st.button("🚪 Logout", use_container_width=True):
@@ -239,6 +252,7 @@ def show_auth_sidebar():
         else:
             st.info("🔒 Not logged in")
             st.caption("Use the Login page to sign in")
+
 
 def register_user(username: str, email: str, password: str, full_name: str = None) -> tuple:
     """
@@ -258,7 +272,10 @@ def register_user(username: str, email: str, password: str, full_name: str = Non
     except Exception as e:
         return False, f"Registration failed: {str(e)}"
 
-def create_admin_user(username: str = "admin", password: str = None, email: str = "admin@resuboost.ai"):
+
+def create_admin_user(
+    username: str = "admin", password: str = None, email: str = "admin@resuboost.ai"
+):
     """
     Create admin user if it doesn't exist.
 
@@ -270,16 +287,16 @@ def create_admin_user(username: str = "admin", password: str = None, email: str 
     Returns:
         tuple: (success: bool, password: str or None)
     """
+    import logging
     import secrets
     import string
-    import logging
 
     logger = logging.getLogger(__name__)
 
     # Generate secure password if not provided
     if password is None:
         alphabet = string.ascii_letters + string.digits + string.punctuation
-        password = ''.join(secrets.choice(alphabet) for i in range(16))
+        password = "".join(secrets.choice(alphabet) for i in range(16))
         generated = True
     else:
         generated = False
@@ -290,7 +307,7 @@ def create_admin_user(username: str = "admin", password: str = None, email: str 
             email=email,
             password=password,
             full_name="Administrator",
-            is_admin=True
+            is_admin=True,
         )
         return (True, password if generated else None)
     except ValueError:
