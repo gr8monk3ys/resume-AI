@@ -1,6 +1,43 @@
+[project]
+name = "resume-ai"
+version = "1.0.0"
+description = "AI-powered resume analysis and optimization tool"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Core dependencies
+    "openai",
+    "streamlit",
+    "python-dotenv",
+    "langchain",
+    "langchain-community",
+    "langchain-core",
+    # LLM Providers
+    "langchain-openai",
+    # File parsing
+    "PyPDF2",
+    "python-docx",
+    # Authentication & Security
+    "bcrypt",
+]
+
+[dependency-groups]
+dev = [
+    "black>=23.12.0",
+    "pylint>=3.0.0",
+    "isort>=5.13.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "bandit>=1.7.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py310', 'py311', 'py312']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -33,7 +70,7 @@ python_functions = "test_*"
 addopts = "-v --tb=short"
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
