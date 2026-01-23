@@ -49,6 +49,7 @@ class CareerJournalResponse(BaseModel):
             # Parse comma-separated or JSON tags
             if entry.tags.startswith("["):
                 import json
+
                 try:
                     tags_list = json.loads(entry.tags)
                 except json.JSONDecodeError:

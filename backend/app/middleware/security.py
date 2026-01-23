@@ -18,7 +18,6 @@ from fastapi import Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-
 # Request ID header name
 REQUEST_ID_HEADER = "X-Request-ID"
 
@@ -230,7 +229,10 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
 
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "Invalid request", "detail": "Request blocked by security filter"},
+                    content={
+                        "error": "Invalid request",
+                        "detail": "Request blocked by security filter",
+                    },
                 )
 
             # Store violations in request state for audit logging

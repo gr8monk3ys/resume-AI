@@ -20,7 +20,6 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-
 from app.schemas.job_import import (
     BulkImportResponse,
     GitHubRepoFilter,
@@ -187,8 +186,7 @@ class JobImporter:
 
         # Remove timestamps older than 1 minute
         self._request_timestamps[source] = [
-            ts for ts in self._request_timestamps[source]
-            if (now - ts).total_seconds() < 60
+            ts for ts in self._request_timestamps[source] if (now - ts).total_seconds() < 60
         ]
 
         if len(self._request_timestamps[source]) >= limit:
@@ -222,14 +220,10 @@ class JobImporter:
                     response = await client.get(url, headers=request_headers)
 
                     if response.status_code == 429:
-                        raise RateLimitError(
-                            f"Rate limited by {urlparse(url).netloc}"
-                        )
+                        raise RateLimitError(f"Rate limited by {urlparse(url).netloc}")
 
                     if response.status_code == 403:
-                        raise AccessDeniedError(
-                            f"Access denied by {urlparse(url).netloc}"
-                        )
+                        raise AccessDeniedError(f"Access denied by {urlparse(url).netloc}")
 
                     if response.status_code == 404:
                         raise JobImportError(
@@ -537,7 +531,7 @@ class JobImporter:
         # Title is usually in the posting-headline
         title_match = re.search(
             r'<h2[^>]*class=["\'][^"\']*posting-headline[^"\']*["\'][^>]*>.*?'
-            r'<span[^>]*>([^<]+)</span>',
+            r"<span[^>]*>([^<]+)</span>",
             html,
             re.DOTALL | re.IGNORECASE,
         )
@@ -668,7 +662,7 @@ class JobImporter:
         # Title
         title_match = re.search(
             r'<h1[^>]*class=["\'][^"\']*jobsearch-JobInfoHeader-title[^"\']*["\'][^>]*>'
-            r'<span[^>]*>([^<]+)</span>',
+            r"<span[^>]*>([^<]+)</span>",
             html,
             re.IGNORECASE,
         )
@@ -676,7 +670,7 @@ class JobImporter:
 
         # Company
         company_match = re.search(
-            r'<div[^>]*data-company-name[^>]*>.*?<a[^>]*>([^<]+)</a>',
+            r"<div[^>]*data-company-name[^>]*>.*?<a[^>]*>([^<]+)</a>",
             html,
             re.DOTALL | re.IGNORECASE,
         )
@@ -685,7 +679,7 @@ class JobImporter:
         # Location
         location_match = re.search(
             r'<div[^>]*class=["\'][^"\']*jobsearch-JobInfoHeader-subtitle[^"\']*["\'][^>]*>'
-            r'.*?<div[^>]*>([^<]+)</div>',
+            r".*?<div[^>]*>([^<]+)</div>",
             html,
             re.DOTALL | re.IGNORECASE,
         )

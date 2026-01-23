@@ -1970,11 +1970,11 @@ function extractKeywordsFromText(text: string): string[] {
 
   // Also extract capitalized words that might be technologies or skills
   const words = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || []
-  const uniqueWords = [...new Set(words)]
+  const uniqueWords = Array.from(new Set(words))
     .filter((word) => word.length > 2 && !['The', 'And', 'For', 'With', 'Our', 'You', 'Your'].includes(word))
     .slice(0, 10)
 
-  return [...new Set([...found, ...uniqueWords])]
+  return Array.from(new Set([...found, ...uniqueWords]))
 }
 
 function getSuggestedPlacement(keyword: string): string {

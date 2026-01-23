@@ -428,7 +428,7 @@ function generateActivityLog(jobs: JobApplication[]): ActivityLogEntry[] {
     .map((job) => ({
       id: job.id,
       timestamp: job.updated_at,
-      type: job.status === 'Offer' ? 'offer' : job.status === 'Interview' ? 'interview' : job.status === 'Applied' ? 'application' : 'status_change',
+      type: (job.status === 'Offer' ? 'offer' : job.status === 'Interview' ? 'interview' : job.status === 'Applied' ? 'application' : 'status_change') as ActivityLogEntry['type'],
       description: `${job.status === 'Applied' ? 'Applied to' : `Status changed to ${job.status} for`} ${job.position}`,
       company: job.company,
       position: job.position,

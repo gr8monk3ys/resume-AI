@@ -2,8 +2,6 @@
 AI service router for LLM-powered features.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.schemas.ai import (
@@ -32,11 +30,14 @@ from app.schemas.ats import (
     ExtractKeywordsRequest,
     ExtractKeywordsResponse,
     KeywordBreakdown,
-    KeywordSuggestion as ATSKeywordSuggestion,
-    KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest,
-    KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse,
+)
+from app.schemas.ats import KeywordSuggestion as ATSKeywordSuggestion
+from app.schemas.ats import KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest
+from app.schemas.ats import KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse
+from app.schemas.ats import (
     SectionScores,
 )
+from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter(prefix="/api/ai", tags=["AI Services"])
 
@@ -248,9 +249,7 @@ async def get_keyword_suggestions(
             matched_keywords=matched_keywords,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}")
 
 
 @router.post("/job-match-score", response_model=JobMatchScoreResponse)
@@ -323,9 +322,7 @@ async def ats_analyze(
             keyword_breakdown=KeywordBreakdown(**result.keyword_breakdown),
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to analyze resume: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to analyze resume: {str(e)}")
 
 
 @router.post("/extract-keywords", response_model=ExtractKeywordsResponse)
@@ -352,19 +349,14 @@ async def extract_keywords(
         analyzer = get_ats_analyzer()
         keywords = analyzer.extract_keywords(request.text)
 
-        total = sum(
-            len(v) if isinstance(v, list) else 0
-            for v in keywords.values()
-        )
+        total = sum(len(v) if isinstance(v, list) else 0 for v in keywords.values())
 
         return ExtractKeywordsResponse(
             keywords=ExtractedKeywords(**keywords),
             total_keywords=total,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to extract keywords: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to extract keywords: {str(e)}")
 
 
 @router.post("/ats-keyword-suggestions", response_model=ATSKeywordSuggestionsResponse)
@@ -394,26 +386,18 @@ async def ats_keyword_suggestions(
         if request.missing_keywords:
             missing = request.missing_keywords
         else:
-            missing = analyzer.get_missing_keywords(
-                request.resume_content, request.job_description
-            )
+            missing = analyzer.get_missing_keywords(request.resume_content, request.job_description)
 
         # Get suggestions for missing keywords
-        suggestions = analyzer.get_keyword_suggestions(
-            missing[:request.max_suggestions]
-        )
+        suggestions = analyzer.get_keyword_suggestions(missing[: request.max_suggestions])
 
         # Also get matched keywords for reference
-        result = analyzer.analyze_resume(
-            request.resume_content, request.job_description
-        )
+        result = analyzer.analyze_resume(request.resume_content, request.job_description)
 
         # Calculate match percentage
         total_keywords = len(missing) + len(result.matched_keywords)
         match_percentage = (
-            (len(result.matched_keywords) / total_keywords * 100)
-            if total_keywords > 0
-            else 0
+            (len(result.matched_keywords) / total_keywords * 100) if total_keywords > 0 else 0
         )
 
         return ATSKeywordSuggestionsResponse(
@@ -432,9 +416,7 @@ async def ats_keyword_suggestions(
             match_percentage=round(match_percentage, 1),
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}")
 
 
 @router.post("/experience-match", response_model=ExperienceMatchResponse)
@@ -464,12 +446,8 @@ async def calculate_experience_match(
         )
 
         # Also get the raw requirements for detailed view
-        jd_requirements = analyzer._extract_experience_requirements(
-            request.job_description
-        )
-        resume_experience = analyzer._extract_years_from_resume(
-            request.resume_content
-        )
+        jd_requirements = analyzer._extract_experience_requirements(request.job_description)
+        resume_experience = analyzer._extract_years_from_resume(request.resume_content)
 
         return ExperienceMatchResponse(
             match=ExperienceMatch(**experience_match),

@@ -24,8 +24,8 @@ from app.schemas.job_import import (
     JobSource,
 )
 from app.services.job_importer import (
-    JobImportError,
     JobImporter,
+    JobImportError,
     get_job_importer,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status

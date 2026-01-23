@@ -892,7 +892,7 @@ BODY:
 
       // Parse the response
       const response = result.answer
-      const subjectMatch = response.match(/SUBJECT:\s*(.+?)(?:\n|BODY:)/is)
+      const subjectMatch = response.match(/SUBJECT:\s*([^\n]+?)(?:\n|BODY:)/i)
       const bodyMatch = response.match(/BODY:\s*([\s\S]+)/i)
 
       if (subjectMatch && bodyMatch) {
@@ -1148,7 +1148,7 @@ BODY:
       })
 
       const response = result.answer
-      const subjectMatch = response.match(/SUBJECT:\s*(.+?)(?:\n|BODY:)/is)
+      const subjectMatch = response.match(/SUBJECT:\s*([^\n]+?)(?:\n|BODY:)/i)
       const bodyMatch = response.match(/BODY:\s*([\s\S]+)/i)
 
       if (subjectMatch && bodyMatch) {

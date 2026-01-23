@@ -11,7 +11,6 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 import httpx
-
 from app.config import get_settings
 
 
@@ -78,8 +77,7 @@ class OpenAIProvider(BaseLLMProvider):
             from openai import OpenAI
         except ImportError:
             raise LLMConfigurationError(
-                "openai package is required for OpenAI support. "
-                "Install with: pip install openai"
+                "openai package is required for OpenAI support. " "Install with: pip install openai"
             )
 
         settings = get_settings()
@@ -239,9 +237,7 @@ class OllamaProvider(BaseLLMProvider):
         self._base_url = settings.ollama_base_url or os.getenv(
             "OLLAMA_BASE_URL", "http://localhost:11434"
         )
-        self._model = model_name or settings.ollama_model or os.getenv(
-            "OLLAMA_MODEL", "llama3.2"
-        )
+        self._model = model_name or settings.ollama_model or os.getenv("OLLAMA_MODEL", "llama3.2")
         self._temperature = temperature
         self._timeout = timeout
 
@@ -263,13 +259,10 @@ class OllamaProvider(BaseLLMProvider):
                 data = response.json()
                 return data.get("response", "")
         except httpx.HTTPStatusError as e:
-            raise LLMProviderError(
-                f"Ollama API error: HTTP {e.response.status_code}"
-            ) from e
+            raise LLMProviderError(f"Ollama API error: HTTP {e.response.status_code}") from e
         except httpx.RequestError as e:
             raise LLMProviderError(
-                f"Ollama connection error: {str(e)}. "
-                f"Is Ollama running at {self._base_url}?"
+                f"Ollama connection error: {str(e)}. " f"Is Ollama running at {self._base_url}?"
             ) from e
         except Exception as e:
             raise LLMProviderError(f"Ollama error: {str(e)}") from e
@@ -429,10 +422,7 @@ def get_llm_provider(
     """
     settings = get_settings()
     provider = (
-        provider_name
-        or os.getenv("LLM_PROVIDER")
-        or settings.llm_provider
-        or "openai"
+        provider_name or os.getenv("LLM_PROVIDER") or settings.llm_provider or "openai"
     ).lower()
 
     if provider not in _PROVIDERS:

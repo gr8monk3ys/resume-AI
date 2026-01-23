@@ -5,16 +5,15 @@ JWT Authentication middleware and utilities.
 from datetime import datetime, timedelta
 from typing import Optional
 
+from app.config import get_settings
+from app.database import get_db
+from app.models.user import User
+from app.schemas.user import TokenData
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-
-from app.config import get_settings
-from app.database import get_db
-from app.models.user import User
-from app.schemas.user import TokenData
 
 settings = get_settings()
 

@@ -43,182 +43,695 @@ class KeywordSuggestion:
 # 200+ Technical Skills
 TECHNICAL_SKILLS: List[str] = [
     # Programming Languages
-    "python", "java", "javascript", "typescript", "c++", "c#", "ruby", "go",
-    "golang", "rust", "swift", "kotlin", "scala", "php", "perl", "r",
-    "matlab", "julia", "haskell", "erlang", "elixir", "clojure", "groovy",
-    "objective-c", "dart", "lua", "shell", "bash", "powershell", "vba",
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "c++",
+    "c#",
+    "ruby",
+    "go",
+    "golang",
+    "rust",
+    "swift",
+    "kotlin",
+    "scala",
+    "php",
+    "perl",
+    "r",
+    "matlab",
+    "julia",
+    "haskell",
+    "erlang",
+    "elixir",
+    "clojure",
+    "groovy",
+    "objective-c",
+    "dart",
+    "lua",
+    "shell",
+    "bash",
+    "powershell",
+    "vba",
     # Frontend Frameworks/Libraries
-    "react", "reactjs", "react.js", "angular", "angularjs", "vue", "vuejs",
-    "vue.js", "svelte", "nextjs", "next.js", "nuxtjs", "nuxt.js", "gatsby",
-    "ember", "backbone", "jquery", "bootstrap", "tailwind", "tailwindcss",
-    "material-ui", "chakra-ui", "styled-components", "sass", "scss", "less",
-    "webpack", "vite", "parcel", "rollup", "esbuild",
+    "react",
+    "reactjs",
+    "react.js",
+    "angular",
+    "angularjs",
+    "vue",
+    "vuejs",
+    "vue.js",
+    "svelte",
+    "nextjs",
+    "next.js",
+    "nuxtjs",
+    "nuxt.js",
+    "gatsby",
+    "ember",
+    "backbone",
+    "jquery",
+    "bootstrap",
+    "tailwind",
+    "tailwindcss",
+    "material-ui",
+    "chakra-ui",
+    "styled-components",
+    "sass",
+    "scss",
+    "less",
+    "webpack",
+    "vite",
+    "parcel",
+    "rollup",
+    "esbuild",
     # Backend Frameworks
-    "node", "nodejs", "node.js", "express", "expressjs", "fastapi", "django",
-    "flask", "spring", "springboot", "spring boot", "rails", "ruby on rails",
-    "laravel", "symfony", "asp.net", ".net", "dotnet", "gin", "fiber",
-    "fastify", "nestjs", "koa", "hapi",
+    "node",
+    "nodejs",
+    "node.js",
+    "express",
+    "expressjs",
+    "fastapi",
+    "django",
+    "flask",
+    "spring",
+    "springboot",
+    "spring boot",
+    "rails",
+    "ruby on rails",
+    "laravel",
+    "symfony",
+    "asp.net",
+    ".net",
+    "dotnet",
+    "gin",
+    "fiber",
+    "fastify",
+    "nestjs",
+    "koa",
+    "hapi",
     # Databases
-    "sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "cassandra",
-    "dynamodb", "couchdb", "neo4j", "elasticsearch", "sqlite", "oracle",
-    "mariadb", "mssql", "sql server", "firebase", "firestore", "supabase",
-    "timescaledb", "influxdb", "clickhouse", "cockroachdb",
+    "sql",
+    "mysql",
+    "postgresql",
+    "postgres",
+    "mongodb",
+    "redis",
+    "cassandra",
+    "dynamodb",
+    "couchdb",
+    "neo4j",
+    "elasticsearch",
+    "sqlite",
+    "oracle",
+    "mariadb",
+    "mssql",
+    "sql server",
+    "firebase",
+    "firestore",
+    "supabase",
+    "timescaledb",
+    "influxdb",
+    "clickhouse",
+    "cockroachdb",
     # Cloud Platforms
-    "aws", "amazon web services", "azure", "microsoft azure", "gcp",
-    "google cloud", "google cloud platform", "heroku", "digitalocean",
-    "vercel", "netlify", "cloudflare", "linode", "vultr",
+    "aws",
+    "amazon web services",
+    "azure",
+    "microsoft azure",
+    "gcp",
+    "google cloud",
+    "google cloud platform",
+    "heroku",
+    "digitalocean",
+    "vercel",
+    "netlify",
+    "cloudflare",
+    "linode",
+    "vultr",
     # AWS Services
-    "ec2", "s3", "lambda", "rds", "dynamodb", "cloudfront", "cloudwatch",
-    "sns", "sqs", "kinesis", "ecs", "eks", "fargate", "api gateway",
-    "cloudformation", "cdk", "sam", "step functions", "cognito", "iam",
+    "ec2",
+    "s3",
+    "lambda",
+    "rds",
+    "dynamodb",
+    "cloudfront",
+    "cloudwatch",
+    "sns",
+    "sqs",
+    "kinesis",
+    "ecs",
+    "eks",
+    "fargate",
+    "api gateway",
+    "cloudformation",
+    "cdk",
+    "sam",
+    "step functions",
+    "cognito",
+    "iam",
     # DevOps/Infrastructure
-    "docker", "kubernetes", "k8s", "terraform", "ansible", "puppet", "chef",
-    "vagrant", "jenkins", "gitlab ci", "github actions", "circleci",
-    "travis ci", "bamboo", "argo cd", "flux", "helm", "istio", "envoy",
-    "prometheus", "grafana", "datadog", "splunk", "elk", "logstash", "kibana",
-    "new relic", "pagerduty", "opsgenie",
+    "docker",
+    "kubernetes",
+    "k8s",
+    "terraform",
+    "ansible",
+    "puppet",
+    "chef",
+    "vagrant",
+    "jenkins",
+    "gitlab ci",
+    "github actions",
+    "circleci",
+    "travis ci",
+    "bamboo",
+    "argo cd",
+    "flux",
+    "helm",
+    "istio",
+    "envoy",
+    "prometheus",
+    "grafana",
+    "datadog",
+    "splunk",
+    "elk",
+    "logstash",
+    "kibana",
+    "new relic",
+    "pagerduty",
+    "opsgenie",
     # Version Control
-    "git", "github", "gitlab", "bitbucket", "svn", "mercurial",
+    "git",
+    "github",
+    "gitlab",
+    "bitbucket",
+    "svn",
+    "mercurial",
     # APIs and Protocols
-    "rest", "restful", "api", "graphql", "grpc", "soap", "websocket",
-    "webhooks", "oauth", "oauth2", "jwt", "openapi", "swagger",
+    "rest",
+    "restful",
+    "api",
+    "graphql",
+    "grpc",
+    "soap",
+    "websocket",
+    "webhooks",
+    "oauth",
+    "oauth2",
+    "jwt",
+    "openapi",
+    "swagger",
     # Data Engineering
-    "spark", "apache spark", "hadoop", "hive", "airflow", "apache airflow",
-    "kafka", "apache kafka", "flink", "apache flink", "beam", "nifi",
-    "databricks", "snowflake", "redshift", "bigquery", "dbt", "presto",
-    "trino", "etl", "elt", "data pipeline", "data warehouse", "data lake",
+    "spark",
+    "apache spark",
+    "hadoop",
+    "hive",
+    "airflow",
+    "apache airflow",
+    "kafka",
+    "apache kafka",
+    "flink",
+    "apache flink",
+    "beam",
+    "nifi",
+    "databricks",
+    "snowflake",
+    "redshift",
+    "bigquery",
+    "dbt",
+    "presto",
+    "trino",
+    "etl",
+    "elt",
+    "data pipeline",
+    "data warehouse",
+    "data lake",
     # Machine Learning / AI
-    "machine learning", "ml", "deep learning", "dl", "tensorflow", "pytorch",
-    "keras", "scikit-learn", "sklearn", "pandas", "numpy", "scipy",
-    "matplotlib", "seaborn", "plotly", "jupyter", "nlp",
-    "natural language processing", "computer vision", "cv", "opencv",
-    "hugging face", "transformers", "bert", "gpt", "llm", "langchain",
-    "rag", "vector database", "pinecone", "weaviate", "milvus", "qdrant",
+    "machine learning",
+    "ml",
+    "deep learning",
+    "dl",
+    "tensorflow",
+    "pytorch",
+    "keras",
+    "scikit-learn",
+    "sklearn",
+    "pandas",
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "jupyter",
+    "nlp",
+    "natural language processing",
+    "computer vision",
+    "cv",
+    "opencv",
+    "hugging face",
+    "transformers",
+    "bert",
+    "gpt",
+    "llm",
+    "langchain",
+    "rag",
+    "vector database",
+    "pinecone",
+    "weaviate",
+    "milvus",
+    "qdrant",
     # Mobile Development
-    "ios", "android", "react native", "flutter", "xamarin", "ionic",
-    "cordova", "swiftui", "uikit", "jetpack compose",
+    "ios",
+    "android",
+    "react native",
+    "flutter",
+    "xamarin",
+    "ionic",
+    "cordova",
+    "swiftui",
+    "uikit",
+    "jetpack compose",
     # Testing
-    "unit testing", "integration testing", "e2e testing", "jest", "mocha",
-    "chai", "pytest", "unittest", "junit", "testng", "selenium", "cypress",
-    "playwright", "puppeteer", "postman", "tdd", "bdd", "cucumber",
+    "unit testing",
+    "integration testing",
+    "e2e testing",
+    "jest",
+    "mocha",
+    "chai",
+    "pytest",
+    "unittest",
+    "junit",
+    "testng",
+    "selenium",
+    "cypress",
+    "playwright",
+    "puppeteer",
+    "postman",
+    "tdd",
+    "bdd",
+    "cucumber",
     # Security
-    "security", "cybersecurity", "penetration testing", "owasp", "sast",
-    "dast", "encryption", "ssl", "tls", "https", "firewall", "vpn",
-    "sso", "saml", "ldap", "active directory", "kerberos",
+    "security",
+    "cybersecurity",
+    "penetration testing",
+    "owasp",
+    "sast",
+    "dast",
+    "encryption",
+    "ssl",
+    "tls",
+    "https",
+    "firewall",
+    "vpn",
+    "sso",
+    "saml",
+    "ldap",
+    "active directory",
+    "kerberos",
     # Architecture/Design
-    "microservices", "monolith", "serverless", "event-driven", "soa",
-    "domain-driven design", "ddd", "cqrs", "event sourcing", "saga pattern",
-    "api gateway", "service mesh", "load balancing",
+    "microservices",
+    "monolith",
+    "serverless",
+    "event-driven",
+    "soa",
+    "domain-driven design",
+    "ddd",
+    "cqrs",
+    "event sourcing",
+    "saga pattern",
+    "api gateway",
+    "service mesh",
+    "load balancing",
     # Methodologies
-    "agile", "scrum", "kanban", "lean", "xp", "extreme programming",
-    "waterfall", "sdlc", "ci/cd", "cicd", "continuous integration",
-    "continuous deployment", "continuous delivery", "devops", "devsecops",
-    "gitops", "infrastructure as code", "iac",
+    "agile",
+    "scrum",
+    "kanban",
+    "lean",
+    "xp",
+    "extreme programming",
+    "waterfall",
+    "sdlc",
+    "ci/cd",
+    "cicd",
+    "continuous integration",
+    "continuous deployment",
+    "continuous delivery",
+    "devops",
+    "devsecops",
+    "gitops",
+    "infrastructure as code",
+    "iac",
     # Other Tools
-    "jira", "confluence", "trello", "asana", "slack", "teams", "notion",
-    "figma", "sketch", "adobe xd", "invision", "zeplin", "storybook",
-    "chromatic", "percy", "visual regression",
+    "jira",
+    "confluence",
+    "trello",
+    "asana",
+    "slack",
+    "teams",
+    "notion",
+    "figma",
+    "sketch",
+    "adobe xd",
+    "invision",
+    "zeplin",
+    "storybook",
+    "chromatic",
+    "percy",
+    "visual regression",
 ]
 
 # 50+ Soft Skills
 SOFT_SKILLS: List[str] = [
-    "leadership", "communication", "collaboration", "teamwork", "team player",
-    "problem-solving", "problem solving", "critical thinking", "analytical",
-    "creativity", "creative", "innovation", "innovative", "adaptability",
-    "adaptable", "flexibility", "flexible", "time management", "organization",
-    "organized", "detail-oriented", "attention to detail", "self-motivated",
-    "self-starter", "initiative", "proactive", "accountability", "responsible",
-    "reliability", "reliable", "dependable", "interpersonal", "emotional intelligence",
-    "empathy", "conflict resolution", "negotiation", "persuasion", "influence",
-    "presentation", "public speaking", "written communication", "verbal communication",
-    "active listening", "customer service", "client relations", "stakeholder management",
-    "decision making", "strategic thinking", "strategic planning", "mentoring",
-    "coaching", "training", "facilitation", "cross-functional", "multitasking",
-    "prioritization", "deadline-driven", "results-oriented", "goal-oriented",
-    "work ethic", "integrity", "professionalism", "positive attitude", "resilience",
-    "stress management", "patience", "cultural awareness", "diversity", "inclusion",
+    "leadership",
+    "communication",
+    "collaboration",
+    "teamwork",
+    "team player",
+    "problem-solving",
+    "problem solving",
+    "critical thinking",
+    "analytical",
+    "creativity",
+    "creative",
+    "innovation",
+    "innovative",
+    "adaptability",
+    "adaptable",
+    "flexibility",
+    "flexible",
+    "time management",
+    "organization",
+    "organized",
+    "detail-oriented",
+    "attention to detail",
+    "self-motivated",
+    "self-starter",
+    "initiative",
+    "proactive",
+    "accountability",
+    "responsible",
+    "reliability",
+    "reliable",
+    "dependable",
+    "interpersonal",
+    "emotional intelligence",
+    "empathy",
+    "conflict resolution",
+    "negotiation",
+    "persuasion",
+    "influence",
+    "presentation",
+    "public speaking",
+    "written communication",
+    "verbal communication",
+    "active listening",
+    "customer service",
+    "client relations",
+    "stakeholder management",
+    "decision making",
+    "strategic thinking",
+    "strategic planning",
+    "mentoring",
+    "coaching",
+    "training",
+    "facilitation",
+    "cross-functional",
+    "multitasking",
+    "prioritization",
+    "deadline-driven",
+    "results-oriented",
+    "goal-oriented",
+    "work ethic",
+    "integrity",
+    "professionalism",
+    "positive attitude",
+    "resilience",
+    "stress management",
+    "patience",
+    "cultural awareness",
+    "diversity",
+    "inclusion",
 ]
 
 # Common Certifications
 CERTIFICATIONS: List[str] = [
     # Cloud Certifications
-    "aws certified", "aws solutions architect", "aws developer", "aws sysops",
-    "aws devops engineer", "aws security specialty", "aws data analytics",
-    "aws machine learning", "azure certified", "azure administrator",
-    "azure developer", "azure solutions architect", "azure security engineer",
-    "azure data engineer", "azure ai engineer", "gcp certified",
-    "google cloud architect", "google cloud developer", "google cloud engineer",
+    "aws certified",
+    "aws solutions architect",
+    "aws developer",
+    "aws sysops",
+    "aws devops engineer",
+    "aws security specialty",
+    "aws data analytics",
+    "aws machine learning",
+    "azure certified",
+    "azure administrator",
+    "azure developer",
+    "azure solutions architect",
+    "azure security engineer",
+    "azure data engineer",
+    "azure ai engineer",
+    "gcp certified",
+    "google cloud architect",
+    "google cloud developer",
+    "google cloud engineer",
     # Project Management
-    "pmp", "project management professional", "capm", "prince2", "scrum master",
-    "csm", "certified scrum master", "psm", "professional scrum master",
-    "safe", "safe agilist", "pmi-acp", "agile certified practitioner",
+    "pmp",
+    "project management professional",
+    "capm",
+    "prince2",
+    "scrum master",
+    "csm",
+    "certified scrum master",
+    "psm",
+    "professional scrum master",
+    "safe",
+    "safe agilist",
+    "pmi-acp",
+    "agile certified practitioner",
     # IT/Security
-    "cissp", "cism", "cisa", "ceh", "certified ethical hacker",
-    "comptia security+", "comptia network+", "comptia a+", "ccna", "ccnp",
-    "ccie", "oscp", "itil", "cobit",
+    "cissp",
+    "cism",
+    "cisa",
+    "ceh",
+    "certified ethical hacker",
+    "comptia security+",
+    "comptia network+",
+    "comptia a+",
+    "ccna",
+    "ccnp",
+    "ccie",
+    "oscp",
+    "itil",
+    "cobit",
     # Data/Analytics
-    "cdmp", "certified data management professional", "google data analytics",
-    "microsoft certified data analyst", "tableau certified", "power bi certified",
-    "snowflake certification", "databricks certified",
+    "cdmp",
+    "certified data management professional",
+    "google data analytics",
+    "microsoft certified data analyst",
+    "tableau certified",
+    "power bi certified",
+    "snowflake certification",
+    "databricks certified",
     # Development
-    "oracle certified", "java certified", "microsoft certified developer",
-    "certified kubernetes administrator", "cka", "ckad", "cks",
-    "terraform certified", "hashicorp certified", "docker certified",
+    "oracle certified",
+    "java certified",
+    "microsoft certified developer",
+    "certified kubernetes administrator",
+    "cka",
+    "ckad",
+    "cks",
+    "terraform certified",
+    "hashicorp certified",
+    "docker certified",
     # Other
-    "six sigma", "lean six sigma", "green belt", "black belt",
+    "six sigma",
+    "lean six sigma",
+    "green belt",
+    "black belt",
 ]
 
 # Education Keywords
 EDUCATION_KEYWORDS: List[str] = [
     # Degrees
-    "bachelor", "bachelors", "bachelor's", "bs", "ba", "b.s.", "b.a.",
-    "master", "masters", "master's", "ms", "ma", "m.s.", "m.a.", "mba", "m.b.a.",
-    "phd", "ph.d.", "doctorate", "doctoral", "associate", "associates",
-    "associate's", "diploma", "certificate", "certification",
+    "bachelor",
+    "bachelors",
+    "bachelor's",
+    "bs",
+    "ba",
+    "b.s.",
+    "b.a.",
+    "master",
+    "masters",
+    "master's",
+    "ms",
+    "ma",
+    "m.s.",
+    "m.a.",
+    "mba",
+    "m.b.a.",
+    "phd",
+    "ph.d.",
+    "doctorate",
+    "doctoral",
+    "associate",
+    "associates",
+    "associate's",
+    "diploma",
+    "certificate",
+    "certification",
     # Fields of Study
-    "computer science", "software engineering", "information technology",
-    "information systems", "data science", "computer engineering",
-    "electrical engineering", "mathematics", "statistics", "physics",
-    "business administration", "economics", "finance", "accounting",
-    "marketing", "communications", "psychology", "engineering",
+    "computer science",
+    "software engineering",
+    "information technology",
+    "information systems",
+    "data science",
+    "computer engineering",
+    "electrical engineering",
+    "mathematics",
+    "statistics",
+    "physics",
+    "business administration",
+    "economics",
+    "finance",
+    "accounting",
+    "marketing",
+    "communications",
+    "psychology",
+    "engineering",
     # Academic Terms
-    "gpa", "cum laude", "magna cum laude", "summa cum laude", "honors",
-    "dean's list", "graduate", "undergraduate", "coursework", "thesis",
-    "dissertation", "research", "academic", "scholarship",
+    "gpa",
+    "cum laude",
+    "magna cum laude",
+    "summa cum laude",
+    "honors",
+    "dean's list",
+    "graduate",
+    "undergraduate",
+    "coursework",
+    "thesis",
+    "dissertation",
+    "research",
+    "academic",
+    "scholarship",
 ]
 
 # Action Verbs for Resume
 ACTION_VERBS: List[str] = [
     # Leadership
-    "led", "managed", "directed", "supervised", "coordinated", "oversaw",
-    "administered", "chaired", "headed", "orchestrated", "spearheaded",
+    "led",
+    "managed",
+    "directed",
+    "supervised",
+    "coordinated",
+    "oversaw",
+    "administered",
+    "chaired",
+    "headed",
+    "orchestrated",
+    "spearheaded",
     # Achievement
-    "achieved", "accomplished", "attained", "exceeded", "surpassed", "earned",
-    "awarded", "recognized", "promoted", "selected",
+    "achieved",
+    "accomplished",
+    "attained",
+    "exceeded",
+    "surpassed",
+    "earned",
+    "awarded",
+    "recognized",
+    "promoted",
+    "selected",
     # Creation/Development
-    "created", "developed", "designed", "built", "established", "founded",
-    "implemented", "launched", "initiated", "pioneered", "introduced",
-    "architected", "engineered", "constructed", "formulated",
+    "created",
+    "developed",
+    "designed",
+    "built",
+    "established",
+    "founded",
+    "implemented",
+    "launched",
+    "initiated",
+    "pioneered",
+    "introduced",
+    "architected",
+    "engineered",
+    "constructed",
+    "formulated",
     # Improvement
-    "improved", "enhanced", "optimized", "streamlined", "upgraded",
-    "modernized", "transformed", "revamped", "refined", "restructured",
-    "consolidated", "strengthened", "accelerated",
+    "improved",
+    "enhanced",
+    "optimized",
+    "streamlined",
+    "upgraded",
+    "modernized",
+    "transformed",
+    "revamped",
+    "refined",
+    "restructured",
+    "consolidated",
+    "strengthened",
+    "accelerated",
     # Analysis
-    "analyzed", "evaluated", "assessed", "researched", "investigated",
-    "examined", "audited", "diagnosed", "identified", "discovered",
+    "analyzed",
+    "evaluated",
+    "assessed",
+    "researched",
+    "investigated",
+    "examined",
+    "audited",
+    "diagnosed",
+    "identified",
+    "discovered",
     # Communication
-    "presented", "communicated", "negotiated", "persuaded", "collaborated",
-    "partnered", "liaised", "advocated", "represented", "facilitated",
+    "presented",
+    "communicated",
+    "negotiated",
+    "persuaded",
+    "collaborated",
+    "partnered",
+    "liaised",
+    "advocated",
+    "represented",
+    "facilitated",
     # Problem Solving
-    "resolved", "solved", "troubleshot", "debugged", "fixed", "addressed",
-    "mitigated", "prevented", "remediated",
+    "resolved",
+    "solved",
+    "troubleshot",
+    "debugged",
+    "fixed",
+    "addressed",
+    "mitigated",
+    "prevented",
+    "remediated",
     # Growth/Results
-    "increased", "grew", "expanded", "scaled", "generated", "drove",
-    "boosted", "maximized", "delivered", "produced", "reduced", "decreased",
-    "cut", "saved", "eliminated", "minimized",
+    "increased",
+    "grew",
+    "expanded",
+    "scaled",
+    "generated",
+    "drove",
+    "boosted",
+    "maximized",
+    "delivered",
+    "produced",
+    "reduced",
+    "decreased",
+    "cut",
+    "saved",
+    "eliminated",
+    "minimized",
     # Technical
-    "automated", "integrated", "migrated", "deployed", "configured",
-    "customized", "programmed", "coded", "tested", "validated", "documented",
+    "automated",
+    "integrated",
+    "migrated",
+    "deployed",
+    "configured",
+    "customized",
+    "programmed",
+    "coded",
+    "tested",
+    "validated",
+    "documented",
 ]
 
 # Experience Level Patterns
@@ -258,6 +771,7 @@ class ATSAnalyzer:
         if self._llm_service is None and self.use_llm:
             try:
                 from app.services.llm_service import get_llm_service
+
                 self._llm_service = get_llm_service()
             except Exception:
                 self.use_llm = False
@@ -280,7 +794,7 @@ class ATSAnalyzer:
             - experience_years: Experience level requirements
         """
         text_lower = text.lower()
-        words_in_text = set(re.findall(r'\b[\w.#+/-]+\b', text_lower))
+        words_in_text = set(re.findall(r"\b[\w.#+/-]+\b", text_lower))
 
         result = {
             "technical_skills": [],
@@ -338,7 +852,7 @@ class ATSAnalyzer:
         """Check if a keyword exists in text using word boundary matching."""
         # Handle special characters in keywords
         escaped = re.escape(keyword)
-        pattern = rf'\b{escaped}\b'
+        pattern = rf"\b{escaped}\b"
         return bool(re.search(pattern, text, re.IGNORECASE))
 
     def _extract_experience_requirements(self, text: str) -> List[Dict[str, any]]:
@@ -350,30 +864,38 @@ class ATSAnalyzer:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 if pattern_type == "years":
-                    results.append({
-                        "type": "years",
-                        "value": int(match.group(1)),
-                        "text": match.group(0),
-                    })
+                    results.append(
+                        {
+                            "type": "years",
+                            "value": int(match.group(1)),
+                            "text": match.group(0),
+                        }
+                    )
                 elif pattern_type == "range":
-                    results.append({
-                        "type": "range",
-                        "min": int(match.group(1)),
-                        "max": int(match.group(2)),
-                        "text": match.group(0),
-                    })
+                    results.append(
+                        {
+                            "type": "range",
+                            "min": int(match.group(1)),
+                            "max": int(match.group(2)),
+                            "text": match.group(0),
+                        }
+                    )
                 elif pattern_type == "minimum":
-                    results.append({
-                        "type": "minimum",
-                        "value": int(match.group(1)),
-                        "text": match.group(0),
-                    })
+                    results.append(
+                        {
+                            "type": "minimum",
+                            "value": int(match.group(1)),
+                            "text": match.group(0),
+                        }
+                    )
                 else:
-                    results.append({
-                        "type": "level",
-                        "level": pattern_type,
-                        "text": match.group(0),
-                    })
+                    results.append(
+                        {
+                            "type": "level",
+                            "level": pattern_type,
+                            "text": match.group(0),
+                        }
+                    )
 
         return results
 
@@ -439,16 +961,21 @@ class ATSAnalyzer:
             keyword_breakdown=keyword_breakdown,
         )
 
-    def _calculate_section_scores(
-        self, resume: str, job_description: str
-    ) -> Dict[str, int]:
+    def _calculate_section_scores(self, resume: str, job_description: str) -> Dict[str, int]:
         """Calculate scores for different resume sections."""
         scores = {}
 
         # Standard sections check (0-20 points)
         standard_sections = [
-            "experience", "education", "skills", "summary", "objective",
-            "projects", "certifications", "achievements", "work history"
+            "experience",
+            "education",
+            "skills",
+            "summary",
+            "objective",
+            "projects",
+            "certifications",
+            "achievements",
+            "work history",
         ]
         sections_found = sum(1 for s in standard_sections if s in resume)
         scores["sections"] = min(sections_found * 4, 20)
@@ -476,8 +1003,8 @@ class ATSAnalyzer:
         scores["action_verbs"] = min(action_verbs_found * 2, 15)
 
         # Quantifiable results (0-15 points)
-        numbers = len(re.findall(r'\d+%|\$\d+|\d+\+', resume))
-        metrics = len(re.findall(r'\b\d+[kKmMbB]\b', resume))
+        numbers = len(re.findall(r"\d+%|\$\d+|\d+\+", resume))
+        metrics = len(re.findall(r"\b\d+[kKmMbB]\b", resume))
         scores["quantifiable_results"] = min((numbers + metrics) * 2, 15)
 
         # Length appropriateness (0-10 points)
@@ -524,27 +1051,27 @@ class ATSAnalyzer:
 
         # Check for clear section headers
         section_patterns = [
-            r'(?:^|\n)\s*(experience|work history|employment)',
-            r'(?:^|\n)\s*(education|academic)',
-            r'(?:^|\n)\s*(skills|technical skills|core competencies)',
-            r'(?:^|\n)\s*(summary|profile|objective)',
+            r"(?:^|\n)\s*(experience|work history|employment)",
+            r"(?:^|\n)\s*(education|academic)",
+            r"(?:^|\n)\s*(skills|technical skills|core competencies)",
+            r"(?:^|\n)\s*(summary|profile|objective)",
         ]
         for pattern in section_patterns:
             if re.search(pattern, resume, re.IGNORECASE):
                 score += 10
 
         # Check for consistent formatting (bullet points or dashes)
-        if re.search(r'[*\-\u2022]\s+\w', resume):
+        if re.search(r"[*\-\u2022]\s+\w", resume):
             score += 15
 
         # Check for contact information
-        if re.search(r'[\w.+-]+@[\w-]+\.[\w.-]+', resume):
+        if re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", resume):
             score += 10
-        if re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', resume):
+        if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", resume):
             score += 5
 
         # Penalize for excessive special characters (might break ATS)
-        special_chars = len(re.findall(r'[^\w\s@.+#-]', resume))
+        special_chars = len(re.findall(r"[^\w\s@.+#-]", resume))
         word_count = len(resume.split())
         if word_count > 0 and (special_chars / word_count) > 0.1:
             score -= 10
@@ -564,9 +1091,9 @@ class ATSAnalyzer:
 
         # Weights: keywords 40%, sections 40%, formatting 20%
         weighted = (
-            (keyword_score * 0.4) +
-            ((section_total / max_section * 100) * 0.4) +
-            (formatting_score * 0.2)
+            (keyword_score * 0.4)
+            + ((section_total / max_section * 100) * 0.4)
+            + (formatting_score * 0.2)
         )
 
         return min(int(weighted), 100)
@@ -612,9 +1139,7 @@ class ATSAnalyzer:
 
         return missing
 
-    def get_keyword_suggestions(
-        self, missing_keywords: List[str]
-    ) -> List[KeywordSuggestion]:
+    def get_keyword_suggestions(self, missing_keywords: List[str]) -> List[KeywordSuggestion]:
         """
         Generate suggestions for how to add missing keywords to resume.
 
@@ -677,19 +1202,19 @@ class ATSAnalyzer:
                     f"Include relevant coursework if applicable."
                 )
 
-            suggestions.append(KeywordSuggestion(
-                keyword=keyword,
-                category=category,
-                priority=priority,
-                suggestion=suggestion,
-                section_recommendation=section,
-            ))
+            suggestions.append(
+                KeywordSuggestion(
+                    keyword=keyword,
+                    category=category,
+                    priority=priority,
+                    suggestion=suggestion,
+                    section_recommendation=section,
+                )
+            )
 
         return suggestions
 
-    def calculate_experience_match(
-        self, resume: str, job_description: str
-    ) -> Dict[str, any]:
+    def calculate_experience_match(self, resume: str, job_description: str) -> Dict[str, any]:
         """
         Calculate how well resume experience matches job requirements.
 
@@ -777,8 +1302,8 @@ class ATSAnalyzer:
 
         # Look for explicit years of experience statements
         patterns = [
-            r'(\d+)\+?\s*(?:years?|yrs?)(?:\s+of)?\s+(?:experience|exp)',
-            r'(?:over|more than)\s+(\d+)\s*(?:years?|yrs?)',
+            r"(\d+)\+?\s*(?:years?|yrs?)(?:\s+of)?\s+(?:experience|exp)",
+            r"(?:over|more than)\s+(\d+)\s*(?:years?|yrs?)",
         ]
 
         max_years = 0
@@ -792,17 +1317,19 @@ class ATSAnalyzer:
             result["total_years"] = max_years
 
         # Try to extract from date ranges (e.g., "2018 - 2023")
-        date_pattern = r'(20\d{2})\s*[-\u2013]\s*(20\d{2}|present|current)'
+        date_pattern = r"(20\d{2})\s*[-\u2013]\s*(20\d{2}|present|current)"
         date_matches = re.findall(date_pattern, resume.lower())
 
         for start, end in date_matches:
             start_year = int(start)
             end_year = 2024 if end in ["present", "current"] else int(end)
-            result["positions"].append({
-                "start": start_year,
-                "end": end_year,
-                "duration": end_year - start_year,
-            })
+            result["positions"].append(
+                {
+                    "start": start_year,
+                    "end": end_year,
+                    "duration": end_year - start_year,
+                }
+            )
 
         # Calculate total from positions if not explicitly stated
         if not result["total_years"] and result["positions"]:

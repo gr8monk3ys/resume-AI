@@ -69,9 +69,7 @@ class JobImportRequest(BaseModel):
     source: Optional[JobSource] = Field(
         None, description="Job source hint (auto-detected if not provided)"
     )
-    save_to_pipeline: bool = Field(
-        True, description="Whether to save the job to the pipeline"
-    )
+    save_to_pipeline: bool = Field(True, description="Whether to save the job to the pipeline")
 
     @field_validator("url")
     @classmethod
@@ -91,9 +89,7 @@ class BulkJobImportRequest(BaseModel):
         max_length=50,
         description="List of job URLs to import (max 50)",
     )
-    save_to_pipeline: bool = Field(
-        True, description="Whether to save jobs to the pipeline"
-    )
+    save_to_pipeline: bool = Field(True, description="Whether to save jobs to the pipeline")
 
     @field_validator("urls")
     @classmethod
@@ -113,15 +109,9 @@ class GitHubRepoFilter(BaseModel):
     locations: Optional[list[str]] = Field(
         None, description="Filter by locations (e.g., ['Remote', 'New York'])"
     )
-    companies: Optional[list[str]] = Field(
-        None, description="Filter by company names"
-    )
-    sponsorship: Optional[bool] = Field(
-        None, description="Filter by sponsorship availability"
-    )
-    exclude_companies: Optional[list[str]] = Field(
-        None, description="Companies to exclude"
-    )
+    companies: Optional[list[str]] = Field(None, description="Filter by company names")
+    sponsorship: Optional[bool] = Field(None, description="Filter by sponsorship availability")
+    exclude_companies: Optional[list[str]] = Field(None, description="Companies to exclude")
     min_posted_date: Optional[datetime] = Field(
         None, description="Only include jobs posted after this date"
     )
@@ -134,15 +124,9 @@ class GitHubRepoImportRequest(BaseModel):
         ...,
         description="GitHub repo URL (e.g., https://github.com/SimplifyJobs/New-Grad-Positions)",
     )
-    filters: Optional[GitHubRepoFilter] = Field(
-        None, description="Optional filters for the import"
-    )
-    max_jobs: int = Field(
-        100, ge=1, le=500, description="Maximum number of jobs to import"
-    )
-    save_to_pipeline: bool = Field(
-        True, description="Whether to save jobs to the pipeline"
-    )
+    filters: Optional[GitHubRepoFilter] = Field(None, description="Optional filters for the import")
+    max_jobs: int = Field(100, ge=1, le=500, description="Maximum number of jobs to import")
+    save_to_pipeline: bool = Field(True, description="Whether to save jobs to the pipeline")
 
     @field_validator("repo_url")
     @classmethod

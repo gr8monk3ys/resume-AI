@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+from app.middleware.security import get_client_ip, get_user_agent
 from fastapi import Request, Response
 from sqlalchemy import (
     Boolean,
@@ -35,8 +36,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from app.middleware.security import get_client_ip, get_user_agent
 
 # Create a separate base for audit models
 AuditBase = declarative_base()
@@ -191,9 +190,7 @@ class AuditLogger:
 
         # File handler with rotation would be better in production
         handler = logging.FileHandler(self.log_file_path)
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        )
+        handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
         self.file_logger.addHandler(handler)
 
     @contextmanager
@@ -631,11 +628,7 @@ class AuditLogger:
         cutoff = datetime.utcnow() - timedelta(days=days)
 
         with self.get_session() as session:
-            deleted = (
-                session.query(AuditLog)
-                .filter(AuditLog.timestamp < cutoff)
-                .delete()
-            )
+            deleted = session.query(AuditLog).filter(AuditLog.timestamp < cutoff).delete()
             return deleted
 
     def cleanup_old_failed_attempts(self, days: int = 30) -> int:
@@ -741,7 +734,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         if should_log:
             self.audit_logger.log_event(
-                AuditEventType.API_ACCESS if response.status_code < 400 else AuditEventType.API_ERROR,
+                (
+                    AuditEventType.API_ACCESS
+                    if response.status_code < 400
+                    else AuditEventType.API_ERROR
+                ),
                 f"{method} {path}",
                 user_id=user_id,
                 username=username,

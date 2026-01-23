@@ -10,11 +10,6 @@ Includes:
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
-
 from app.config import get_settings
 from app.database import get_db
 from app.middleware.audit import AuditEventType, get_audit_logger
@@ -30,6 +25,10 @@ from app.middleware.security import get_client_ip, get_user_agent
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserResponse
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 settings = get_settings()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])

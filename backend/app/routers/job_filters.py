@@ -5,16 +5,13 @@ Job filters router for managing company filters, keyword filters, and applicatio
 import re
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.job_filters import (
+    DEFAULT_QUESTION_TEMPLATES,
     ApplicationQuestion,
     CompanyFilter,
     CompanyFilterType,
-    DEFAULT_QUESTION_TEMPLATES,
     KeywordAppliesTo,
     KeywordFilter,
     KeywordFilterType,
@@ -36,6 +33,8 @@ from app.schemas.job_filters import (
     KeywordFilterListResponse,
     KeywordFilterResponse,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/filters", tags=["Job Filters"])
 
@@ -197,9 +196,7 @@ async def list_keyword_filters(
     return KeywordFilterListResponse(items=items, total=total)
 
 
-@router.post(
-    "/keywords", response_model=KeywordFilterResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/keywords", response_model=KeywordFilterResponse, status_code=status.HTTP_201_CREATED)
 async def create_keyword_filter(
     filter_data: KeywordFilterCreate,
     current_user: User = Depends(get_current_user),
@@ -322,7 +319,12 @@ async def list_application_questions(
         )
 
     total = query.count()
-    items = query.order_by(ApplicationQuestion.category, ApplicationQuestion.created_at.desc()).offset(skip).limit(limit).all()
+    items = (
+        query.order_by(ApplicationQuestion.category, ApplicationQuestion.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return ApplicationQuestionListResponse(items=items, total=total)
 
@@ -359,7 +361,9 @@ async def get_application_question(
     """Get a specific application question template."""
     question = (
         db.query(ApplicationQuestion)
-        .filter(ApplicationQuestion.id == question_id, ApplicationQuestion.user_id == current_user.id)
+        .filter(
+            ApplicationQuestion.id == question_id, ApplicationQuestion.user_id == current_user.id
+        )
         .first()
     )
 
@@ -379,7 +383,9 @@ async def update_application_question(
     """Update an application question template."""
     question = (
         db.query(ApplicationQuestion)
-        .filter(ApplicationQuestion.id == question_id, ApplicationQuestion.user_id == current_user.id)
+        .filter(
+            ApplicationQuestion.id == question_id, ApplicationQuestion.user_id == current_user.id
+        )
         .first()
     )
 
@@ -405,7 +411,9 @@ async def delete_application_question(
     """Delete an application question template."""
     question = (
         db.query(ApplicationQuestion)
-        .filter(ApplicationQuestion.id == question_id, ApplicationQuestion.user_id == current_user.id)
+        .filter(
+            ApplicationQuestion.id == question_id, ApplicationQuestion.user_id == current_user.id
+        )
         .first()
     )
 
@@ -457,9 +465,7 @@ async def check_job_filters(
     summary_parts = []
 
     # Check company filters
-    company_filters = (
-        db.query(CompanyFilter).filter(CompanyFilter.user_id == current_user.id).all()
-    )
+    company_filters = db.query(CompanyFilter).filter(CompanyFilter.user_id == current_user.id).all()
 
     for cf in company_filters:
         if cf.company_name.lower() in company.lower() or company.lower() in cf.company_name.lower():
@@ -479,9 +485,7 @@ async def check_job_filters(
             break
 
     # Check keyword filters
-    keyword_filters = (
-        db.query(KeywordFilter).filter(KeywordFilter.user_id == current_user.id).all()
-    )
+    keyword_filters = db.query(KeywordFilter).filter(KeywordFilter.user_id == current_user.id).all()
 
     for kf in keyword_filters:
         text_to_check = ""
