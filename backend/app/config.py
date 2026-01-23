@@ -5,10 +5,16 @@ Provides configuration management with environment variable support.
 Settings are cached for performance but can be cleared for testing.
 """
 
+import os
+import secrets
+import warnings
 from functools import lru_cache
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Default secret key - ONLY for development/testing
+_DEFAULT_SECRET_KEY = "INSECURE-DEFAULT-KEY-CHANGE-IN-PRODUCTION"
 
 
 class Settings(BaseSettings):
@@ -22,8 +28,8 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite:///./data/resume_ai.db"
 
-    # JWT Authentication
-    secret_key: str = "your-secret-key-change-in-production"
+    # JWT Authentication - No default, must be explicitly set or auto-generated
+    secret_key: str = _DEFAULT_SECRET_KEY
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
@@ -114,7 +120,27 @@ def get_settings() -> Settings:
 
     To reset settings (e.g., for testing), call clear_settings_cache().
     """
-    return Settings()
+    settings = Settings()
+
+    # Security validation for secret key
+    if settings.secret_key == _DEFAULT_SECRET_KEY:
+        if settings.debug or os.getenv("TESTING", "false").lower() == "true":
+            # Generate a random key for development/testing if not set
+            warnings.warn(
+                "Using auto-generated secret key for development. "
+                "Set SECRET_KEY environment variable for production!",
+                UserWarning,
+                stacklevel=2,
+            )
+            # Override with a secure random key for this session
+            object.__setattr__(settings, "secret_key", secrets.token_urlsafe(32))
+        else:
+            raise ValueError(
+                "SECURITY ERROR: SECRET_KEY environment variable must be set in production! "
+                'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+            )
+
+    return settings
 
 
 def clear_settings_cache() -> None:

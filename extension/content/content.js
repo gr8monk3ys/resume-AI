@@ -784,13 +784,23 @@
         maxWidth: '350px',
       })
 
-      notification.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          ${config.icon}
-        </svg>
-        <span>${message}</span>
-      `
+      // Create SVG icon (safe - config.icon is from trusted source)
+      const svgNS = 'http://www.w3.org/2000/svg'
+      const svg = document.createElementNS(svgNS, 'svg')
+      svg.setAttribute('width', '20')
+      svg.setAttribute('height', '20')
+      svg.setAttribute('viewBox', '0 0 24 24')
+      svg.setAttribute('fill', 'none')
+      svg.setAttribute('stroke', 'currentColor')
+      svg.setAttribute('stroke-width', '2')
+      svg.innerHTML = config.icon // Safe - config.icon is hardcoded in NOTIFICATION_TYPES
 
+      // Create message span (use textContent to prevent XSS)
+      const messageSpan = document.createElement('span')
+      messageSpan.textContent = message // Safe - textContent does not interpret HTML
+
+      notification.appendChild(svg)
+      notification.appendChild(messageSpan)
       document.body.appendChild(notification)
 
       // Auto-remove after duration

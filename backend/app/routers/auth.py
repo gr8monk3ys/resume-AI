@@ -7,10 +7,52 @@ Includes:
 - Audit logging for security events
 """
 
-from datetime import datetime
-from typing import Optional
+import re
+from datetime import datetime, timezone
+from typing import Optional, Tuple
 
 from app.config import get_settings
+
+
+def validate_password_strength(password: str) -> Tuple[bool, str]:
+    """
+    Validate password strength with complexity requirements.
+
+    Requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one digit
+    - At least one special character
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if len(password) < 12:
+        return False, "Password must be at least 12 characters long"
+
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter"
+
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter"
+
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one digit"
+
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, 'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)'
+
+    # Check for common weak patterns
+    common_patterns = ["password", "123456", "qwerty", "admin", "letmein"]
+    password_lower = password.lower()
+    for pattern in common_patterns:
+        if pattern in password_lower:
+            return False, f"Password contains a common weak pattern: {pattern}"
+
+    return True, ""
+
+
 from app.database import get_db
 from app.middleware.audit import AuditEventType, get_audit_logger
 from app.middleware.auth import (
@@ -190,7 +232,7 @@ async def login(
     )
 
     # Update last login
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(timezone.utc)
     db.commit()
 
     # Create tokens
@@ -234,15 +276,28 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/lockout-status/{username}", response_model=LockoutStatusResponse)
-async def check_lockout_status(username: str):
+async def check_lockout_status(
+    username: str,
+    current_user: User = Depends(get_current_user),
+):
     """
     Check the lockout status for a username.
+
+    Requires authentication to prevent username enumeration.
+    Users can only check their own status unless they are admins.
 
     Returns information about:
     - Whether the account is locked
     - Number of recent failed attempts
     - Whether login attempts are currently allowed
     """
+    # Security: Only allow users to check their own status (or admin can check any)
+    if current_user.username != username and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only check your own lockout status",
+        )
+
     audit_logger = get_audit_logger()
 
     # Check if account is locked
@@ -307,11 +362,12 @@ async def change_password(
             detail="Current password is incorrect",
         )
 
-    # Validate new password (basic validation)
-    if len(password_data.new_password) < 8:
+    # Validate new password with complexity requirements
+    is_valid, error_message = validate_password_strength(password_data.new_password)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 8 characters long",
+            detail=error_message,
         )
 
     # Update password
