@@ -4,16 +4,19 @@ Database configuration and session management.
 
 import os
 
+from app.config import get_settings
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.config import get_settings
-
 settings = get_settings()
 
-# Ensure data directory exists
-os.makedirs(os.path.dirname(settings.database_url.replace("sqlite:///", "")), exist_ok=True)
+# Ensure data directory exists for SQLite file databases
+if settings.database_url.startswith("sqlite:///") and ":memory:" not in settings.database_url:
+    db_path = settings.database_url.replace("sqlite:///", "")
+    db_dir = os.path.dirname(db_path)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
 
 # SQLite-specific configuration
 if settings.database_url.startswith("sqlite"):
@@ -51,6 +54,14 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from app.models import cover_letter, job_application, profile, resume, user
+    from app.models import (
+        cover_letter,
+        job_alert,
+        job_application,
+        job_filters,
+        profile,
+        resume,
+        user,
+    )
 
     Base.metadata.create_all(bind=engine)

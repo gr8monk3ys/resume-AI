@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { aiApi, resumesApi } from '@/lib/api';
-import type { Resume } from '@/types';
+import type { Resume, TailorResumeResponse, AnswerQuestionResponse, InterviewPrepResponse } from '@/types';
 import { Bot, FileText, MessageSquare, Mic } from 'lucide-react';
 
 type Tool = 'tailor' | 'question' | 'interview';
@@ -26,13 +26,7 @@ export default function AIAssistantPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (tokens?.access_token) {
-      loadResumes();
-    }
-  }, [tokens]);
-
-  const loadResumes = async () => {
+  const loadResumes = useCallback(async () => {
     if (!tokens?.access_token) return;
     try {
       const data = await resumesApi.list(tokens.access_token);
@@ -43,7 +37,13 @@ export default function AIAssistantPage() {
     } catch (error) {
       console.error('Failed to load resumes:', error);
     }
-  };
+  }, [tokens]);
+
+  useEffect(() => {
+    if (tokens?.access_token) {
+      loadResumes();
+    }
+  }, [tokens, loadResumes]);
 
   const handleTailorResume = async () => {
     if (!tokens?.access_token || !selectedResume) return;
@@ -54,7 +54,7 @@ export default function AIAssistantPage() {
         resume_content: selectedResume.content,
         job_description: jobDescription,
       });
-      setResult((response as any).tailored_resume);
+      setResult((response as TailorResumeResponse).tailored_resume);
     } catch (error) {
       console.error('Failed to tailor resume:', error);
       setResult('Error: Failed to tailor resume. Please try again.');
@@ -73,7 +73,7 @@ export default function AIAssistantPage() {
         resume_content: selectedResume?.content,
         job_description: jobDescription,
       });
-      setResult((response as any).answer);
+      setResult((response as AnswerQuestionResponse).answer);
     } catch (error) {
       console.error('Failed to answer question:', error);
       setResult('Error: Failed to generate answer. Please try again.');
@@ -92,7 +92,7 @@ export default function AIAssistantPage() {
         resume_content: selectedResume?.content,
         job_description: jobDescription,
       });
-      setResult((response as any).answer);
+      setResult((response as InterviewPrepResponse).answer);
     } catch (error) {
       console.error('Failed to prepare interview answer:', error);
       setResult('Error: Failed to generate answer. Please try again.');

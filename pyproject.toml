@@ -5,20 +5,8 @@ description = "AI-powered resume analysis and optimization tool"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    # Core dependencies
-    "openai",
-    "streamlit",
+    # Minimal root dependencies - main app deps are in backend/requirements.txt
     "python-dotenv",
-    "langchain",
-    "langchain-community",
-    "langchain-core",
-    # LLM Providers
-    "langchain-openai",
-    # File parsing
-    "PyPDF2",
-    "python-docx",
-    # Authentication & Security
-    "bcrypt",
 ]
 
 [dependency-groups]
@@ -50,6 +38,8 @@ exclude = '''
   | dist
   | data
   | backups
+  | node_modules
+  | frontend
 )/
 '''
 
@@ -61,10 +51,10 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
-skip_glob = ["venv/*", ".venv/*", "data/*"]
+skip_glob = ["venv/*", ".venv/*", "data/*", "frontend/*", "node_modules/*"]
 
 [tool.pytest]
-testpaths = ["scripts"]
+testpaths = ["backend/tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 addopts = "-v --tb=short"
@@ -82,13 +72,14 @@ warn_unused_ignores = true
 warn_no_return = true
 follow_imports = "normal"
 ignore_missing_imports = true
+exclude = ["frontend/", "node_modules/"]
 
 [[tool.mypy.overrides]]
-module = "streamlit.*"
+module = "fastapi.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "openai.*"
+module = "sqlalchemy.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

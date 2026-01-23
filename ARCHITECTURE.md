@@ -1,7 +1,7 @@
 # ResuBoost AI - System Architecture
 
-**Version:** 1.0.0
-**Last Updated:** 2025-11-18
+**Version:** 2.0.0
+**Last Updated:** 2026-01-23
 
 ---
 
@@ -9,807 +9,587 @@
 
 1. [Overview](#overview)
 2. [System Architecture](#system-architecture)
-3. [Database Schema](#database-schema)
-4. [Authentication Flow](#authentication-flow)
-5. [Data Flow](#data-flow)
-6. [Security Architecture](#security-architecture)
-7. [Module Organization](#module-organization)
-8. [Key Design Patterns](#key-design-patterns)
-9. [Dependencies](#dependencies)
-10. [Extension Points](#extension-points)
+3. [Backend Architecture](#backend-architecture)
+4. [Frontend Architecture](#frontend-architecture)
+5. [Database Schema](#database-schema)
+6. [Authentication Flow](#authentication-flow)
+7. [API Endpoints](#api-endpoints)
+8. [Security Architecture](#security-architecture)
+9. [LLM Integration](#llm-integration)
 
 ---
 
 ## Overview
 
-ResuBoost AI is a multi-user Streamlit application that helps job seekers optimize their resumes, track applications, and prepare for interviews. The application uses a multi-tier architecture with:
+ResuBoost AI is a multi-user job search application built with a modern decoupled architecture:
 
-- **Frontend:** Streamlit web interface (9 pages)
-- **Business Logic:** Python modules for authentication, AI integration, ATS scoring
-- **Data Layer:** SQLite databases (auth.db, resume_ai.db)
-- **External Services:** OpenAI API for AI-powered features
+- **Backend:** FastAPI REST API with SQLAlchemy ORM
+- **Frontend:** Next.js 15 with React 19 and Tailwind CSS 4
+- **Database:** SQLite (development) / PostgreSQL (production ready)
+- **Authentication:** JWT tokens with refresh token rotation
+- **AI Integration:** Multi-provider LLM support via LangChain
 
 ### Design Principles
 
-1. **Data Isolation:** Each user's data is completely isolated
-2. **Security by Default:** Rate limiting, audit logging, password enforcement
-3. **Modularity:** Clear separation of concerns across modules
-4. **Testability:** Comprehensive test coverage (27 tests)
-5. **Production Ready:** Optimized for 5-10 concurrent users
+1. **Separation of Concerns:** Clear frontend/backend separation via REST API
+2. **Security by Default:** JWT auth, rate limiting, input sanitization, audit logging
+3. **Multi-Provider AI:** Support for OpenAI, Anthropic, Google, and Ollama
+4. **Data Isolation:** Each user's data is completely isolated
+5. **Type Safety:** Pydantic schemas (backend) and TypeScript (frontend)
 
 ---
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Streamlit Frontend                       │
-├──────────────┬──────────────┬──────────────┬────────────────┤
-│ app.py       │ Login        │ Optimizer    │ Job Tracker    │
-│ (Dashboard)  │ (Auth)       │ (ATS)        │ (Applications) │
-├──────────────┼──────────────┼──────────────┼────────────────┤
-│ Cover Letter │ Profile      │ Interview    │ Salary         │
-│ (Generator)  │ (Settings)   │ (Prep)       │ (Negotiation)  │
-├──────────────┴──────────────┴──────────────┴────────────────┤
-│              Career Journal   │   Health Check               │
-└───────────────────────────────┴──────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Business Logic Layer                      │
-├──────────────────┬──────────────────┬──────────────────────┤
-│ utils/           │ models/          │ services/            │
-│ - auth.py        │ - auth_database  │ - ats_scorer.py      │
-│ - page_auth.py   │ - database.py    │ - ai_optimizer.py    │
-│ - rate_limiter   │                  │ - cover_letter.py    │
-│ - audit_logger   │                  │ - job_matcher.py     │
-│ - password_val   │                  │                      │
-└──────────────────┴──────────────────┴──────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Data Layer                               │
-├──────────────────────────────┬──────────────────────────────┤
-│  auth.db (SQLite)            │  resume_ai.db (SQLite)       │
-│  - users                     │  - profiles                  │
-│  - login_attempts            │  - resumes                   │
-│  - audit_logs                │  - job_applications          │
-│                              │  - cover_letters             │
-│                              │  - career_journal            │
-└──────────────────────────────┴──────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   External Services                          │
-│  - OpenAI API (GPT-4/GPT-3.5)                               │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Frontend (Next.js 15)                        │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│  │ Dashboard│ │ Resumes  │ │   Jobs   │ │Interview │ │ Settings │  │
+│  │  /       │ │ /resumes │ │  /jobs   │ │/interview│ │/settings │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │
+│  │Documents │ │  Cover   │ │  Career  │ │    AI    │ │ Profile  │  │
+│  │/documents│ │ Letters  │ │ /career  │ │Assistant │ │ /profile │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   │ HTTP/REST (JSON)
+                                   │ JWT Bearer Token
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                       Backend (FastAPI)                              │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                     Middleware Stack                           │  │
+│  │  CORS → RequestID → Security Headers → Rate Limit → Audit     │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                   │                                  │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                         Routers                              │    │
+│  │  /api/auth  /api/profile  /api/resumes  /api/jobs  /api/ai  │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                   │                                  │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                        Services                              │    │
+│  │    LLM Service    Resume Analyzer    File Parser            │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                                   │                                  │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                     SQLAlchemy ORM                           │    │
+│  │   User  Profile  Resume  JobApplication  CoverLetter        │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                          Data Layer                                  │
+│  ┌────────────────────────────┐  ┌─────────────────────────────┐   │
+│  │   SQLite/PostgreSQL        │  │     LLM Providers           │   │
+│  │   - users                  │  │  - OpenAI (GPT-4o)          │   │
+│  │   - profiles               │  │  - Anthropic (Claude)       │   │
+│  │   - resumes                │  │  - Google (Gemini)          │   │
+│  │   - job_applications       │  │  - Ollama (local)           │   │
+│  │   - cover_letters          │  │                             │   │
+│  │   - career_journal         │  │                             │   │
+│  └────────────────────────────┘  └─────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Backend Architecture
+
+### Project Structure
+
+```
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI application entry point
+│   ├── config.py            # Pydantic Settings configuration
+│   ├── database.py          # SQLAlchemy engine and session
+│   │
+│   ├── models/              # SQLAlchemy ORM models
+│   │   ├── __init__.py
+│   │   ├── user.py          # User authentication model
+│   │   ├── profile.py       # User profile model
+│   │   ├── resume.py        # Resume storage model
+│   │   ├── job_application.py
+│   │   ├── cover_letter.py
+│   │   └── career_journal.py
+│   │
+│   ├── schemas/             # Pydantic request/response schemas
+│   │   ├── __init__.py
+│   │   ├── user.py          # UserCreate, UserResponse, Token
+│   │   ├── profile.py
+│   │   ├── resume.py
+│   │   ├── job.py
+│   │   ├── cover_letter.py
+│   │   ├── career_journal.py
+│   │   └── ai.py            # AI request/response schemas
+│   │
+│   ├── routers/             # API route handlers
+│   │   ├── __init__.py
+│   │   ├── auth.py          # Authentication endpoints
+│   │   ├── profile.py       # Profile CRUD
+│   │   ├── resumes.py       # Resume management
+│   │   ├── jobs.py          # Job tracking
+│   │   ├── cover_letters.py
+│   │   ├── career_journal.py
+│   │   └── ai.py            # AI-powered features
+│   │
+│   ├── services/            # Business logic layer
+│   │   ├── __init__.py
+│   │   ├── llm_service.py   # Multi-provider LLM integration
+│   │   ├── resume_analyzer.py # ATS scoring algorithm
+│   │   └── file_parser.py   # PDF/DOCX parsing
+│   │
+│   └── middleware/          # Security and logging
+│       ├── __init__.py
+│       ├── auth.py          # JWT token handling
+│       ├── rate_limiter.py  # Token bucket rate limiting
+│       ├── security.py      # CORS, headers, sanitization
+│       └── audit.py         # Security event logging
+│
+├── tests/                   # Pytest test suite
+│   ├── __init__.py
+│   ├── conftest.py          # Test fixtures
+│   ├── test_auth.py
+│   ├── test_resumes.py
+│   ├── test_jobs.py
+│   ├── test_ai.py
+│   └── test_career_journal.py
+│
+└── requirements.txt
+```
+
+### Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| fastapi | Web framework |
+| uvicorn | ASGI server |
+| sqlalchemy | ORM and database |
+| pydantic-settings | Configuration management |
+| python-jose | JWT token handling |
+| passlib + bcrypt | Password hashing |
+| langchain | LLM orchestration |
+| PyPDF2, python-docx | File parsing |
+
+---
+
+## Frontend Architecture
+
+### Project Structure
+
+```
+frontend/
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── layout.tsx       # Root layout with providers
+│   │   ├── page.tsx         # Dashboard (home)
+│   │   ├── login/
+│   │   │   └── page.tsx     # Login form
+│   │   ├── register/
+│   │   │   └── page.tsx     # Registration form
+│   │   ├── resumes/
+│   │   │   └── page.tsx     # Resume Hub
+│   │   ├── jobs/
+│   │   │   └── page.tsx     # Job Pipeline (Kanban)
+│   │   ├── interview/
+│   │   │   └── page.tsx     # Interview Center
+│   │   ├── documents/
+│   │   │   └── page.tsx     # Document Generator
+│   │   ├── cover-letters/
+│   │   │   └── page.tsx     # Cover Letter Generator
+│   │   ├── career/
+│   │   │   └── page.tsx     # Career Tools
+│   │   ├── ai-assistant/
+│   │   │   └── page.tsx     # AI Assistant
+│   │   ├── profile/
+│   │   │   └── page.tsx     # Profile Management
+│   │   └── settings/
+│   │       └── page.tsx     # Account Settings
+│   │
+│   └── lib/                 # Shared utilities
+│       ├── auth.ts          # Auth context and helpers
+│       ├── utils.ts         # Utility functions
+│       └── index.ts         # Exports
+│
+├── package.json
+├── tailwind.config.ts
+├── tsconfig.json
+└── next.config.js
+```
+
+### Key Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| next 15 | React framework |
+| react 19 | UI library |
+| tailwindcss 4 | Styling |
+| @tanstack/react-query | Server state management |
+| react-hook-form | Form handling |
+| zod | Schema validation |
+| @dnd-kit | Drag and drop (Kanban) |
+| lucide-react | Icons |
 
 ---
 
 ## Database Schema
 
-### Authentication Database (auth.db)
+### Entity Relationship Diagram
 
-#### users table
+```
+┌──────────────┐       ┌──────────────┐
+│    users     │       │   profiles   │
+├──────────────┤       ├──────────────┤
+│ id (PK)      │──────<│ id (PK)      │
+│ username     │       │ user_id (FK) │
+│ email        │       │ name         │
+│ password_hash│       │ email        │
+│ full_name    │       │ phone        │
+│ is_active    │       │ linkedin     │
+│ is_admin     │       │ github       │
+│ created_at   │       │ portfolio    │
+│ last_login   │       │ created_at   │
+└──────────────┘       │ updated_at   │
+                       └──────────────┘
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+            ▼                 ▼                 ▼
+┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+│   resumes    │   │job_applications│  │career_journal│
+├──────────────┤   ├──────────────┤   ├──────────────┤
+│ id (PK)      │   │ id (PK)      │   │ id (PK)      │
+│ profile_id   │   │ profile_id   │   │ profile_id   │
+│ version_name │   │ company      │   │ title        │
+│ content      │   │ position     │   │ description  │
+│ ats_score    │   │ job_desc     │   │ date         │
+│ keywords     │   │ status       │   │ tags         │
+│ created_at   │   │ app_date     │   │ created_at   │
+│ updated_at   │   │ deadline     │   │ updated_at   │
+└──────────────┘   │ location     │   └──────────────┘
+                   │ job_url      │
+                   │ notes        │
+                   │ created_at   │
+                   │ updated_at   │
+                   └──────────────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │cover_letters │
+                   ├──────────────┤
+                   │ id (PK)      │
+                   │ profile_id   │
+                   │ job_app_id   │
+                   │ content      │
+                   │ created_at   │
+                   │ updated_at   │
+                   └──────────────┘
+```
+
+### Users Table
+
 ```sql
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,        -- bcrypt hash
-    full_name TEXT,
-    is_active BOOLEAN DEFAULT 1,
-    is_admin BOOLEAN DEFAULT 0,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100),
+    is_active BOOLEAN DEFAULT TRUE,
+    is_admin BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
 );
 ```
 
-**Indexes:**
-- `idx_username` on username (for fast login lookups)
-- `idx_email` on email (for registration checks)
+### Profiles Table
 
-#### login_attempts table
-```sql
-CREATE TABLE login_attempts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ip_address TEXT,
-    success BOOLEAN DEFAULT 0
-);
-```
-
-**Purpose:** Rate limiting and brute force prevention
-
-#### audit_logs table
-```sql
-CREATE TABLE audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type TEXT NOT NULL,           -- login, logout, login_failed, etc.
-    user_id INTEGER,
-    username TEXT,
-    action TEXT NOT NULL,
-    details TEXT,                       -- JSON string with extra info
-    ip_address TEXT,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-**Purpose:** Security audit trail
-
-### Application Database (resume_ai.db)
-
-#### profiles table
 ```sql
 CREATE TABLE profiles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER UNIQUE,             -- Foreign key to auth.db users
-    name TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    linkedin TEXT,
-    github TEXT,
-    portfolio TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-**Index:** `idx_user_id` on user_id
-
-#### resumes table
-```sql
-CREATE TABLE resumes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_id INTEGER,                 -- Foreign key to profiles
-    version_name TEXT NOT NULL,
-    content TEXT NOT NULL,
-    ats_score INTEGER,
-    keywords TEXT,                      -- JSON array
+    user_id INTEGER UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(20),
+    linkedin VARCHAR(255),
+    github VARCHAR(255),
+    portfolio VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (profile_id) REFERENCES profiles(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 ```
 
-#### job_applications table
+### Job Applications Table
+
 ```sql
 CREATE TABLE job_applications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_id INTEGER,
-    company TEXT NOT NULL,
-    position TEXT NOT NULL,
+    profile_id INTEGER NOT NULL,
+    company VARCHAR(100) NOT NULL,
+    position VARCHAR(100) NOT NULL,
     job_description TEXT,
-    status TEXT DEFAULT 'Applied',      -- Applied, Interview, Offer, Rejected
+    status VARCHAR(20) DEFAULT 'Bookmarked',
     application_date DATE,
     deadline DATE,
-    location TEXT,
-    job_url TEXT,
+    location VARCHAR(100),
+    job_url VARCHAR(500),
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (profile_id) REFERENCES profiles(id)
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
 );
 ```
 
-#### cover_letters table
-```sql
-CREATE TABLE cover_letters (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_id INTEGER,
-    job_application_id INTEGER,
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (profile_id) REFERENCES profiles(id),
-    FOREIGN KEY (job_application_id) REFERENCES job_applications(id)
-);
-```
-
-#### career_journal table
-```sql
-CREATE TABLE career_journal (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    profile_id INTEGER,
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    achievement_date DATE,
-    tags TEXT,                          -- Comma-separated
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (profile_id) REFERENCES profiles(id)
-);
-```
+**Status Values:** `Bookmarked`, `Applied`, `Phone Screen`, `Interview`, `Offer`, `Rejected`
 
 ---
 
 ## Authentication Flow
 
-### Registration Flow
+### JWT Token Flow
 
 ```
-User submits registration form
-    │
-    ▼
-Validate password strength (utils/password_validator.py)
-    │
-    ├─ Fail → Show errors, require stronger password
-    │
-    ▼
-Check username/email uniqueness (models/auth_database.py)
-    │
-    ├─ Exists → Show error
-    │
-    ▼
-Hash password with bcrypt (bcrypt.gensalt() + bcrypt.hashpw())
-    │
-    ▼
-Create user in auth.db (create_user())
-    │
-    ▼
-Log event to audit_logs (utils/audit_logger.py)
-    │
-    ▼
-Auto-login user
-    │
-    ▼
-Create profile in resume_ai.db (get_or_create_profile_for_user())
-    │
-    ▼
-Redirect to dashboard
+┌─────────┐                    ┌─────────┐                    ┌─────────┐
+│ Frontend│                    │ Backend │                    │Database │
+└────┬────┘                    └────┬────┘                    └────┬────┘
+     │                              │                              │
+     │  POST /api/auth/login        │                              │
+     │  {username, password}        │                              │
+     │─────────────────────────────>│                              │
+     │                              │  Verify credentials          │
+     │                              │─────────────────────────────>│
+     │                              │                              │
+     │                              │  User record                 │
+     │                              │<─────────────────────────────│
+     │                              │                              │
+     │  {access_token,              │  Generate JWT tokens         │
+     │   refresh_token}             │                              │
+     │<─────────────────────────────│                              │
+     │                              │                              │
+     │  Store tokens in memory      │                              │
+     │                              │                              │
+     │  GET /api/resumes            │                              │
+     │  Authorization: Bearer <jwt> │                              │
+     │─────────────────────────────>│                              │
+     │                              │  Validate JWT                │
+     │                              │  Extract user_id             │
+     │                              │                              │
+     │                              │  Query with user_id          │
+     │                              │─────────────────────────────>│
+     │                              │                              │
+     │  {resumes: [...]}            │  User's resumes              │
+     │<─────────────────────────────│<─────────────────────────────│
+     │                              │                              │
 ```
 
-### Login Flow
+### Token Structure
 
-```
-User submits username/password
-    │
-    ▼
-Check rate limiting (utils/rate_limiter_auth.py)
-    │
-    ├─ Account locked → Show error
-    ├─ Too many attempts → Show wait time
-    │
-    ▼
-Fetch user from auth.db (get_user_by_username())
-    │
-    ├─ Not found → Record failed attempt, log to audit
-    │
-    ▼
-Verify password (bcrypt.checkpw())
-    │
-    ├─ Invalid → Record failed attempt, log to audit
-    │
-    ▼
-Clear failed attempts (rate_limiter_auth.py)
-    │
-    ▼
-Update last_login timestamp
-    │
-    ▼
-Set session state (st.session_state.user, st.session_state.authenticated)
-    │
-    ▼
-Log successful login to audit_logs
-    │
-    ▼
-Redirect to dashboard
+**Access Token (30 min expiry):**
+```json
+{
+  "sub": 1,
+  "username": "demo",
+  "exp": 1706000000,
+  "type": "access"
+}
 ```
 
-### Session Management
-
-**Session State Variables:**
-- `st.session_state.authenticated` (bool) - Is user logged in?
-- `st.session_state.user` (dict) - User info from auth.db
-- `st.session_state.profile` (dict) - User profile from resume_ai.db
-
-**Session Lifecycle:**
-1. User logs in → Session state populated
-2. User navigates pages → Session persists (Streamlit handles this)
-3. User closes browser → Session cleared
-4. User logs out → Session state cleared, rerun app
-
-**Page Protection:**
-All pages except Login use the `@require_authentication` decorator:
-
-```python
-from utils.page_auth import require_authentication
-
-@require_authentication
-def main():
-    # Page content here
+**Refresh Token (7 day expiry):**
+```json
+{
+  "sub": 1,
+  "username": "demo",
+  "exp": 1706600000,
+  "type": "refresh"
+}
 ```
 
-This decorator:
-1. Initializes auth database
-2. Initializes session state
-3. Shows auth sidebar
-4. Checks if authenticated, stops execution if not
+### Token Refresh Flow
+
+1. Access token expires
+2. Frontend sends refresh token to `/api/auth/refresh`
+3. Backend validates refresh token
+4. New access and refresh tokens issued
+5. Frontend updates stored tokens
 
 ---
 
-## Data Flow
+## API Endpoints
 
-### Resume Optimization Flow
+### Authentication
 
-```
-User uploads resume (PDF/DOCX) on Optimizer page
-    │
-    ▼
-Extract text from file (PyPDF2 / python-docx)
-    │
-    ▼
-Calculate ATS score (services/ats_scorer.py)
-    │   ├─ Keyword extraction
-    │   ├─ Formatting analysis
-    │   ├─ Section detection
-    │   └─ Scoring algorithm (0-100)
-    │
-    ▼
-Generate AI suggestions (services/ai_optimizer.py)
-    │   └─ Call OpenAI API with prompt
-    │
-    ▼
-Display results to user
-    │
-    ▼
-User saves optimized version
-    │
-    ▼
-Store in resumes table (linked to user's profile_id)
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Create new user account |
+| POST | `/api/auth/login` | Login and get tokens |
+| POST | `/api/auth/refresh` | Refresh access token |
+| GET | `/api/auth/me` | Get current user info |
+| POST | `/api/auth/change-password` | Change password |
+| GET | `/api/auth/lockout-status/{username}` | Check account lockout |
 
-### Job Application Tracking Flow
+### Profile
 
-```
-User creates job application on Job Tracker page
-    │
-    ▼
-Validate required fields (company, position)
-    │
-    ▼
-Insert into job_applications table (linked to profile_id)
-    │
-    ▼
-User can:
-    ├─ Update status (Applied → Interview → Offer)
-    ├─ Add notes
-    ├─ Set deadlines
-    └─ Delete application
-    │
-    ▼
-All operations filtered by profile_id (data isolation)
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/profile` | Get user profile |
+| PUT | `/api/profile` | Update profile |
+| DELETE | `/api/profile` | Delete profile and all data |
 
-### Cover Letter Generation Flow
+### Resumes
 
-```
-User selects job from dropdown (Cover Letter page)
-    │
-    ▼
-Load job description from job_applications table
-    │
-    ▼
-User provides additional context
-    │
-    ▼
-Generate cover letter (services/cover_letter_generator.py)
-    │   └─ OpenAI API call with job details + user profile
-    │
-    ▼
-Display generated letter
-    │
-    ▼
-User saves to cover_letters table (linked to job_application_id)
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/resumes` | List all resumes |
+| POST | `/api/resumes` | Create new resume |
+| GET | `/api/resumes/{id}` | Get specific resume |
+| PUT | `/api/resumes/{id}` | Update resume |
+| DELETE | `/api/resumes/{id}` | Delete resume |
+| POST | `/api/resumes/{id}/analyze` | Get ATS score |
+
+### Jobs
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/jobs` | List all job applications |
+| POST | `/api/jobs` | Create job application |
+| GET | `/api/jobs/{id}` | Get specific job |
+| PUT | `/api/jobs/{id}` | Update job application |
+| DELETE | `/api/jobs/{id}` | Delete job application |
+| PATCH | `/api/jobs/{id}/status` | Update job status |
+
+### Cover Letters
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/cover-letters` | List all cover letters |
+| POST | `/api/cover-letters` | Create cover letter |
+| GET | `/api/cover-letters/{id}` | Get specific cover letter |
+| PUT | `/api/cover-letters/{id}` | Update cover letter |
+| DELETE | `/api/cover-letters/{id}` | Delete cover letter |
+
+### Career Journal
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/career-journal` | List journal entries |
+| POST | `/api/career-journal` | Create entry |
+| GET | `/api/career-journal/{id}` | Get specific entry |
+| PUT | `/api/career-journal/{id}` | Update entry |
+| DELETE | `/api/career-journal/{id}` | Delete entry |
+
+### AI Features
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/ai/tailor-resume` | Tailor resume for job |
+| POST | `/api/ai/optimize-resume` | Get optimization suggestions |
+| POST | `/api/ai/generate-cover-letter` | Generate cover letter |
+| POST | `/api/ai/answer-question` | Answer application question |
+| POST | `/api/ai/interview-answer` | Generate interview answer |
+| POST | `/api/ai/correct-grammar` | Fix grammar in text |
 
 ---
 
 ## Security Architecture
 
-### Defense in Depth Layers
+### Middleware Stack
 
-**Layer 1: Input Validation**
-- Password strength enforcement (8+ chars, complexity)
-- Email format validation
-- SQL injection prevention (parameterized queries)
-- File upload validation (PDF/DOCX only)
+```
+Request → CORS → RequestID → SecurityHeaders → InputSanitization → RateLimiter → Audit → Router
+```
 
-**Layer 2: Authentication**
-- Bcrypt password hashing (salt rounds: 12)
-- Session-based authentication (Streamlit session state)
-- No plaintext passwords stored
-- Secure password comparison (bcrypt.checkpw)
+### Rate Limiting
 
-**Layer 3: Rate Limiting**
-- Max 5 login attempts per 15 minutes per username
-- Account lockout after 10 total failed attempts
-- Cleanup of old attempts (>24 hours)
-- Admin unlock functionality
+**Token Bucket Algorithm:**
+- General API: 100 requests / 60 seconds
+- Auth endpoints: 5 requests / 60 seconds
+- AI endpoints: 20 requests / 60 seconds
 
-**Layer 4: Authorization**
-- Data isolation by user_id/profile_id
-- All queries filtered by current user
-- Admin-only functions protected (is_admin check)
+### Brute Force Protection
 
-**Layer 5: Audit Logging**
-- All security events logged (login, logout, failures)
-- Immutable audit trail
-- Queryable for security analysis
-- Includes IP address, timestamp, details
+- Track failed login attempts per username
+- After 5 failures in 15 minutes: temporary lockout
+- After 10 total failures: account lockout (admin unlock required)
+- All attempts logged to audit database
 
-**Layer 6: Database Security**
-- WAL mode for better concurrency
-- Foreign keys enabled
-- Transactions for data consistency
-- Busy timeout to prevent locks
+### Security Headers
 
-### Threat Model
+```
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+Content-Security-Policy: default-src 'self'
+```
 
-**Threats Mitigated:**
-- ✅ Brute force attacks (rate limiting + lockout)
-- ✅ Password cracking (bcrypt with salt)
-- ✅ SQL injection (parameterized queries)
-- ✅ Data leakage (user isolation)
-- ✅ Session hijacking (Streamlit secure sessions)
+### Input Sanitization
 
-**Threats NOT Mitigated (require additional work):**
-- ⚠️ CSRF attacks (no CSRF tokens)
-- ⚠️ XSS attacks (Streamlit provides some protection, but not comprehensive)
-- ⚠️ DDoS attacks (no rate limiting on API calls)
-- ⚠️ Man-in-the-middle (requires HTTPS in production)
+- HTML tag stripping
+- Script injection prevention
+- SQL injection prevention via parameterized queries
+- File upload validation (PDF/DOCX only, size limits)
 
 ---
 
-## Module Organization
+## LLM Integration
 
-### Project Structure
-
-```
-resume-AI/
-├── app.py                      # Main dashboard
-├── setup_multiuser.py          # Database initialization script
-├── requirements.txt            # Python dependencies
-│
-├── pages/                      # Streamlit pages (9 pages)
-│   ├── 0_Login.py              # Authentication page
-│   ├── 1_Resume_Optimizer.py   # ATS scoring + AI optimization
-│   ├── 2_Job_Tracker.py        # Job application tracking
-│   ├── 3_Cover_Letter.py       # Cover letter generation
-│   ├── 4_Career_Journal.py     # Achievement tracking
-│   ├── 5_Profile.py            # User settings + password change
-│   ├── 6_Interview_Prep.py     # Interview questions + practice
-│   ├── 7_Salary_Negotiation.py # Salary research + scripts
-│   └── 8_Health_Check.py       # System status + diagnostics
-│
-├── models/                     # Database models
-│   ├── auth_database.py        # User authentication DB
-│   └── database.py             # Application data DB
-│
-├── utils/                      # Utility modules
-│   ├── auth.py                 # Authentication functions
-│   ├── page_auth.py            # @require_authentication decorator
-│   ├── rate_limiter_auth.py    # Login rate limiting
-│   ├── audit_logger.py         # Security audit logging
-│   └── password_validator.py   # Password strength validation
-│
-├── services/                   # Business logic services
-│   ├── ats_scorer.py           # ATS scoring algorithm
-│   ├── ai_optimizer.py         # AI-powered resume optimization
-│   ├── cover_letter_generator.py # Cover letter generation
-│   └── job_matcher.py          # Job-resume matching
-│
-├── scripts/                    # Utility scripts
-│   ├── test_multiuser.py       # Multi-user testing (19 tests)
-│   └── test_rate_limiting.py   # Rate limiting tests (8 tests)
-│
-└── data/                       # SQLite databases (gitignored)
-    ├── auth.db                 # Authentication database
-    └── resume_ai.db            # Application database
-```
-
-### Module Responsibilities
-
-**models/** - Data Access Layer
-- Database schema creation
-- CRUD operations
-- Connection management
-- Data validation at DB level
-
-**utils/** - Cross-cutting Concerns
-- Authentication helpers
-- Security utilities (rate limiting, audit logging)
-- Password validation
-- Decorators for DRY code
-
-**services/** - Business Logic
-- ATS scoring algorithms
-- AI integration (OpenAI API)
-- Cover letter generation
-- Job matching algorithms
-
-**pages/** - Presentation Layer
-- Streamlit UI components
-- User input handling
-- Data display
-- Navigation
-
----
-
-## Key Design Patterns
-
-### 1. Decorator Pattern
-
-**@require_authentication**
-- Wraps page functions to enforce authentication
-- Reduces code duplication (90 lines → 1 decorator)
-- Centralizes auth logic
+### Multi-Provider Architecture
 
 ```python
-from utils.page_auth import require_authentication
+# services/llm_service.py
 
-@require_authentication
-def main():
-    st.title("Protected Page")
+class LLMService:
+    def __init__(self, provider: str):
+        match provider:
+            case "openai":
+                self.llm = ChatOpenAI(model=settings.openai_model)
+            case "anthropic":
+                self.llm = ChatAnthropic(model=settings.anthropic_model)
+            case "google":
+                self.llm = ChatGoogleGenerativeAI(model=settings.google_model)
+            case "ollama":
+                self.llm = ChatOllama(model=settings.ollama_model)
+            case "mock":
+                self.llm = MockLLM()
+
+    async def tailor_resume(self, resume: str, job_description: str) -> str:
+        # Implementation
+        pass
 ```
 
-### 2. Context Manager Pattern
+### Supported Methods
 
-**Database Connections**
-- Ensures proper resource cleanup
-- Handles transactions automatically
-- Reduces boilerplate code
+| Method | Description |
+|--------|-------------|
+| `tailor_resume()` | Rewrite resume for specific job |
+| `optimize_resume()` | Get improvement suggestions |
+| `generate_cover_letter()` | Create personalized cover letter |
+| `answer_application_question()` | Answer common application questions |
+| `generate_interview_answer()` | STAR method interview responses |
+| `correct_grammar()` | Fix grammar and improve clarity |
 
-```python
-with get_auth_db_connection() as conn:
-    cursor = conn.cursor()
-    cursor.execute('SELECT ...')
-    # Auto-commit on success, rollback on exception
-```
+### Provider Configuration
 
-### 3. Repository Pattern
-
-**Database Models**
-- Abstracts database operations
-- Provides clean API for CRUD operations
-- Centralizes query logic
-
-```python
-# Instead of raw SQL everywhere:
-user = get_user_by_username('alice')
-
-# Not:
-cursor.execute('SELECT * FROM users WHERE username = ?', ('alice',))
-user = cursor.fetchone()
-```
-
-### 4. Strategy Pattern
-
-**Password Validation**
-- Multiple validation strategies (length, complexity, blacklist)
-- Easy to add new validation rules
-- Returns detailed feedback
-
-```python
-is_valid, errors, strength = validate_password_strength(password)
-```
-
-### 5. Facade Pattern
-
-**Authentication Module**
-- Simple interface hiding complex operations
-- Combines rate limiting + auth + audit logging
-- Single function call for login
-
-```python
-success, message = login(username, password)
-# Internally: rate limit check, password verify, audit log, session setup
-```
-
----
-
-## Dependencies
-
-### Core Dependencies
-
-**Streamlit** (`streamlit>=1.28.0`)
-- Web framework
-- Session management
-- UI components
-
-**OpenAI** (`openai>=1.0.0`)
-- AI-powered features
-- GPT-4/GPT-3.5 integration
-
-**bcrypt** (`bcrypt>=4.0.1`)
-- Password hashing
-- Secure password storage
-
-**PyPDF2** (`PyPDF2>=3.0.0`)
-- PDF resume parsing
-
-**python-docx** (`python-docx>=0.8.11`)
-- DOCX resume parsing
-
-**python-dotenv** (`python-dotenv>=1.0.0`)
-- Environment variable management
-
-### Database
-
-**SQLite3** (built-in)
-- Authentication database
-- Application database
-- No external DB server required
-
-### Testing
-
-**unittest** (built-in)
-- Test framework
-- 27 automated tests
-
----
-
-## Extension Points
-
-### Adding New Features
-
-**1. Add New Page**
-
-```python
-# pages/N_New_Feature.py
-import streamlit as st
-from utils.page_auth import require_authentication
-from models.database import get_db_connection
-
-@require_authentication
-def main():
-    st.title("New Feature")
-    user = st.session_state.user
-    profile = st.session_state.profile
-
-    # Feature implementation
-
-if __name__ == "__main__":
-    main()
-```
-
-**2. Add New Database Table**
-
-```python
-# In models/database.py init_database()
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS new_table (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        profile_id INTEGER,
-        data TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (profile_id) REFERENCES profiles(id)
-    )
-''')
-```
-
-**3. Add New AI Service**
-
-```python
-# services/new_ai_service.py
-import openai
-
-def generate_something(profile, context):
-    """Generate AI content."""
-    prompt = f"Generate something for {profile['name']}..."
-
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    return response.choices[0].message.content
-```
-
-**4. Add New Validation Rule**
-
-```python
-# In utils/password_validator.py
-def validate_password_strength(password):
-    # Add new rule
-    if len(password) > 64:
-        errors.append("Password must be less than 64 characters")
-
-    # Existing rules...
-```
-
-### Migration to PostgreSQL
-
-For >20 concurrent users, migrate to PostgreSQL:
-
-**1. Install psycopg2**
 ```bash
-pip install psycopg2-binary
-```
+# Environment variables
+LLM_PROVIDER=openai          # Provider to use
+OPENAI_API_KEY=sk-...        # OpenAI API key
+OPENAI_MODEL=gpt-4o-mini     # Model to use
 
-**2. Update connection managers**
-```python
-# models/database.py
-import psycopg2
-from psycopg2.extras import RealDictCursor
-
-@contextmanager
-def get_db_connection():
-    conn = psycopg2.connect(
-        host=os.getenv('DB_HOST'),
-        database=os.getenv('DB_NAME'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        cursor_factory=RealDictCursor
-    )
-    try:
-        yield conn
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
-```
-
-**3. Update schema (minor changes)**
-- `AUTOINCREMENT` → `SERIAL`
-- `TEXT` remains same
-- `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` → `TIMESTAMP DEFAULT NOW()`
-
-### Adding Email Verification
-
-**1. Add email verification fields**
-```sql
-ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT 0;
-ALTER TABLE users ADD COLUMN verification_token TEXT;
-```
-
-**2. Send verification email**
-```python
-# utils/email_sender.py
-import smtplib
-
-def send_verification_email(email, token):
-    link = f"https://your-app.com/verify?token={token}"
-    # Send email with link
-```
-
-**3. Add verification page**
-```python
-# pages/Verify_Email.py
-def verify_email(token):
-    # Update user email_verified = 1
+# Or for local Ollama
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 ```
 
 ---
 
-## Performance Considerations
-
-### Current Optimizations
-
-1. **WAL Mode** - Better concurrent write performance
-2. **Busy Timeout** - Prevents lock errors under load
-3. **Indexes** - Fast lookups on username, email, user_id
-4. **Connection Pooling** - Context managers prevent connection leaks
-
-### Bottlenecks
-
-1. **OpenAI API Calls** - Can take 5-10 seconds
-2. **File Parsing** - Large PDFs can be slow
-3. **SQLite Concurrency** - Limited to 5-10 concurrent users
-
-### Optimization Opportunities
-
-1. **Caching** - Cache OpenAI responses for similar requests
-2. **Background Jobs** - Async processing for AI generation
-3. **Database Upgrade** - PostgreSQL for >20 users
-4. **Connection Pool** - SQLAlchemy for connection pooling
-
----
-
-**Last Updated:** 2025-11-18
-**Version:** 1.0.0
+**Version:** 2.0.0
+**Architecture:** FastAPI + Next.js
 **Maintainer:** Development Team
