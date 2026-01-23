@@ -5,26 +5,17 @@ Jobs router for job application tracking.
 from typing import List, Optional
 
 from app.database import get_db
+from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
-
-
-def get_user_profile(user: User, db: Session) -> Profile:
-    """Get or create user profile."""
-    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-    if not profile:
-        profile = Profile(user_id=user.id, name=user.full_name or user.username)
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
-    return profile
 
 
 @router.get("", response_model=List[JobResponse])
@@ -35,7 +26,7 @@ async def list_jobs(
     db: Session = Depends(get_db),
 ):
     """List all job applications for current user."""
-    profile = get_user_profile(current_user, db)
+    profile = await get_user_profile(current_user, db)
 
     query = db.query(JobApplication).filter(JobApplication.profile_id == profile.id)
 
@@ -55,20 +46,22 @@ async def list_jobs(
 
 @router.get("/stats")
 async def get_job_stats(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    profile: Profile = Depends(get_user_profile),
+    db: Session = Depends(get_db),
 ):
-    """Get job application statistics."""
-    profile = get_user_profile(current_user, db)
+    """Get job application statistics using efficient SQL aggregation."""
+    # Use SQL GROUP BY for efficient counting (avoids N+1 query)
+    status_counts_query = (
+        db.query(JobApplication.status, func.count(JobApplication.id))
+        .filter(JobApplication.profile_id == profile.id)
+        .group_by(JobApplication.status)
+        .all()
+    )
 
-    jobs = db.query(JobApplication).filter(JobApplication.profile_id == profile.id).all()
-
-    # Status breakdown
-    status_counts = {}
-    for job in jobs:
-        status_counts[job.status] = status_counts.get(job.status, 0) + 1
+    status_counts = {status: count for status, count in status_counts_query}
+    total = sum(status_counts.values())
 
     # Calculate response rate (interviews / applications)
-    total = len(jobs)
     applied = status_counts.get("Applied", 0)
     interviews = status_counts.get("Interview", 0) + status_counts.get("Phone Screen", 0)
     offers = status_counts.get("Offer", 0)
@@ -91,7 +84,7 @@ async def create_job(
     db: Session = Depends(get_db),
 ):
     """Create a new job application."""
-    profile = get_user_profile(current_user, db)
+    profile = await get_user_profile(current_user, db)
 
     job = JobApplication(
         profile_id=profile.id,
@@ -133,7 +126,7 @@ async def get_job(
     job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get a specific job application."""
-    profile = get_user_profile(current_user, db)
+    profile = await get_user_profile(current_user, db)
 
     job = (
         db.query(JobApplication)
@@ -155,7 +148,7 @@ async def update_job(
     db: Session = Depends(get_db),
 ):
     """Update a job application."""
-    profile = get_user_profile(current_user, db)
+    profile = await get_user_profile(current_user, db)
 
     job = (
         db.query(JobApplication)
@@ -186,7 +179,7 @@ async def delete_job(
     job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Delete a job application."""
-    profile = get_user_profile(current_user, db)
+    profile = await get_user_profile(current_user, db)
 
     job = (
         db.query(JobApplication)
@@ -209,7 +202,7 @@ async def update_job_status(
     db: Session = Depends(get_db),
 ):
     """Quick status update for a job application."""
-    profile = get_user_profile(current_user, db)
+    profile = await get_user_profile(current_user, db)
 
     job = (
         db.query(JobApplication)

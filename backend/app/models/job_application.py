@@ -2,11 +2,16 @@
 Job application model for tracking applications.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from app.database import Base
-from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+
+def utc_now():
+    """Return timezone-aware UTC datetime."""
+    return datetime.now(timezone.utc)
 
 
 class JobApplication(Base):
@@ -14,10 +19,17 @@ class JobApplication(Base):
 
     __tablename__ = "job_applications"
 
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        Index("ix_job_applications_profile_status", "profile_id", "status"),
+        Index("ix_job_applications_profile_updated", "profile_id", "updated_at"),
+        Index("ix_job_applications_company_position", "company", "position"),
+    )
+
     id = Column(Integer, primary_key=True, index=True)
     profile_id = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
-    company = Column(String, nullable=False)
-    position = Column(String, nullable=False)
+    company = Column(String, nullable=False, index=True)
+    position = Column(String, nullable=False, index=True)
     job_description = Column(Text, nullable=True)
     status = Column(
         String, default="Bookmarked", index=True
@@ -27,8 +39,8 @@ class JobApplication(Base):
     location = Column(String, nullable=True)
     job_url = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now, index=True)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
 
     # HR Contact tracking fields
     recruiter_name = Column(String, nullable=True)

@@ -78,7 +78,9 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
+    # Shutdown - graceful cleanup
+    logger.info("Starting graceful shutdown...")
+
     # Stop the job scheduler gracefully
     if settings.enable_scheduler:
         try:
@@ -87,6 +89,27 @@ async def lifespan(app: FastAPI):
             logger.info("Job scheduler stopped")
         except Exception as e:
             logger.error(f"Error stopping job scheduler: {e}")
+
+    # Close database connections gracefully
+    try:
+        from app.database import engine
+
+        engine.dispose()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.error(f"Error closing database connections: {e}")
+
+    # Close audit logger connections
+    if settings.enable_audit_logging:
+        try:
+            audit_logger = get_audit_logger()
+            if hasattr(audit_logger, "close"):
+                audit_logger.close()
+            logger.info("Audit logger closed")
+        except Exception as e:
+            logger.error(f"Error closing audit logger: {e}")
+
+    logger.info("Graceful shutdown complete")
 
 
 app = FastAPI(
@@ -197,9 +220,61 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
+async def health_check(db: Session = Depends(get_db)):
+    """
+    Comprehensive health check endpoint.
+
+    Checks:
+    - Database connectivity
+    - LLM service availability (if configured)
+    - Scheduler status (if enabled)
+
+    Returns:
+        Health status with component-level details
+    """
+    from sqlalchemy import text
+
+    checks = {}
+    all_healthy = True
+
+    # Check database connectivity
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = {"status": "healthy", "latency_ms": 0}
+    except Exception as e:
+        checks["database"] = {"status": "unhealthy", "error": str(e)}
+        all_healthy = False
+
+    # Check LLM service (only if configured)
+    try:
+        from app.services.llm_service import get_llm_service
+
+        llm = get_llm_service()
+        provider = getattr(llm, "provider_name", "unknown")
+        checks["llm"] = {"status": "configured", "provider": provider}
+    except Exception as e:
+        checks["llm"] = {"status": "not_configured", "message": str(e)}
+
+    # Check scheduler (only if enabled)
+    if settings.enable_scheduler:
+        try:
+            from app.services.scheduler import get_job_scheduler
+
+            scheduler = get_job_scheduler()
+            is_running = scheduler.running if hasattr(scheduler, "running") else False
+            checks["scheduler"] = {
+                "status": "running" if is_running else "stopped",
+            }
+        except Exception as e:
+            checks["scheduler"] = {"status": "error", "message": str(e)}
+    else:
+        checks["scheduler"] = {"status": "disabled"}
+
+    return {
+        "status": "healthy" if all_healthy else "degraded",
+        "version": settings.app_version,
+        "checks": checks,
+    }
 
 
 if __name__ == "__main__":
