@@ -1,96 +1,54 @@
 # ResuBoost AI
 
-**Production Grade: A (95/100)** ✅ | **Status: Production Ready**
+ResuBoost AI is a comprehensive job search toolkit with multi-provider LLM support, designed as an open-source alternative to Simplify.jobs. Built with a modern FastAPI backend and Next.js frontend, it provides an all-in-one platform to optimize resumes, generate cover letters, track applications, and prepare for interviews.
 
-ResuBoost AI is a comprehensive job search toolkit inspired by Simplify.jobs. Built with Python and Streamlit, it provides an all-in-one platform to optimize resumes, generate cover letters, track applications, and more - all powered by OpenAI's GPT-3.5-turbo.
-
-**NEW: Multi-User Authentication** - ResuBoost AI now supports multiple users with secure authentication, personal data isolation, and individual profiles.
-
-## 🏆 Production Ready
-
-This application has achieved **Grade A (95/100)** across all production readiness categories:
-- ✅ **Security:** A (25/25) - Rate limiting, audit logging, input sanitization
-- ✅ **Testing:** A+ (20/20) - 27 tests, 100% pass rate
-- ✅ **Code Quality:** A+ (20/20) - Well-documented, maintainable code
-- ✅ **Database:** A (15/15) - Optimized, backed up, monitored
-- ✅ **Documentation:** A+ (10/10) - Comprehensive guides
-- ✅ **Error Handling:** A (10/10) - Centralized, robust
-- ✅ **Performance:** A (10/10) - Caching, optimization
-- ✅ **Maintainability:** A+ (10/10) - Developer-friendly
-
-See [FINAL_SCORE.md](FINAL_SCORE.md) for complete assessment.
+**Supported LLM Providers:** OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
 
 ## Features
 
-### 📄 Resume Optimizer
+### Resume Hub
 - **ATS Score Analysis** - Get a detailed score (0-100) showing how well your resume passes Applicant Tracking Systems
-- **6-Factor Scoring** - Evaluation based on formatting, keywords, action verbs, metrics, length, and job match
 - **AI-Powered Optimization** - Receive personalized suggestions to improve your resume for specific jobs
-- **Keyword Matching** - Identify missing keywords from job descriptions
-- **Grammar Correction** - Automatically fix grammatical errors
-- **Skills Extraction** - Automatic categorization of technical and soft skills
+- **Resume Tailoring** - Generate job-specific resume versions with optimized keywords
 - **Version Management** - Save and manage multiple resume versions for different applications
+- **Multi-Format Support** - Upload resumes in TXT, PDF, or DOCX formats
 
-### 📝 Cover Letter & Email Generator
-- **Personalized Cover Letters** - Generate tailored cover letters for each job application
-- **Email Templates** - Create professional networking emails, follow-ups, and thank-you notes
-- **Multiple Template Types** - Networking, job inquiry, follow-ups, thank you notes
-- **AI-Driven Content** - Compelling, professional writing that highlights your qualifications
-- **Save & Reuse** - Store generated letters in database for future reference
-- **Download Options** - Export as text files
+### Job Pipeline
+- **Kanban Board** - Visual job tracking with drag-and-drop status updates
+- **6-Stage Workflow** - Bookmarked, Applied, Phone Screen, Interview, Offer, Rejected
+- **Application Analytics** - Track response rates, conversion metrics, and weekly goals
+- **Deadline Management** - Never miss important application deadlines
+- **CSV Export** - Export applications for backup or external analysis
 
-### 📊 Job Application Tracker
-- **Centralized Dashboard** - Track all your job applications in one place
-- **7-Stage Status Tracking** - Applied → Phone Screen → Interview → Offer (and more)
-- **Deadline Management** - Never miss an important application deadline
-- **CSV Export** - Export all applications for backup or analysis
-- **Analytics Dashboard** - Visualize your job search with statistics and success rates
-- **Search & Filter** - Find applications by status, company, or position
-- **Notes & URLs** - Store job postings and detailed notes for each application
-
-### 📓 Career Journal
-- **Achievement Tracking** - Document your professional wins and accomplishments
-- **AI Enhancement** - Transform raw notes into polished, impact-focused bullet points
-- **STAR Method** - Structure achievements using Situation-Task-Action-Result
-- **Tag System** - Organize achievements by skills, type, and impact
-- **Search & Filter** - Quickly find relevant achievements for applications
-- **Resume Integration** - Pull achievements directly into resume updates
-
-### 🎯 Interview Preparation
-- **Question Bank** - 50+ common interview questions across 5 categories
+### Interview Center
+- **Question Bank** - 50+ common interview questions across multiple categories
 - **AI Practice Partner** - Get real-time feedback on your interview answers
-- **STAR Story Builder** - Create compelling stories for behavioral interviews
-- **Company Research Helper** - Generate talking points and research questions
-- **Answer Tips** - AI-generated tips for each question
-- **Example Answers** - See strong example responses
+- **STAR Story Builder** - Create compelling behavioral interview stories
+- **Company Research** - Generate talking points and research questions
 
-### 💰 Salary Negotiation
-- **Market Research Guide** - Links to top salary resources (Glassdoor, Levels.fyi, etc.)
-- **Compensation Calculator** - Calculate total comp including bonuses, equity, and benefits
-- **Negotiation Scripts** - AI-generated scripts for various negotiation scenarios
-- **Email Templates** - Professional emails for counter-offers and discussions
-- **Strategy Guide** - Tips, timing advice, and common mistakes to avoid
-- **Response Templates** - Ready-to-use phrases for common salary questions
+### Document Generator
+- **Cover Letters** - AI-generated personalized cover letters for each application
+- **Email Templates** - Professional networking, follow-up, and thank-you emails
+- **Negotiation Scripts** - Salary negotiation scripts and counter-offer templates
 
-### 👤 Profile Management
-- **Personal Information** - Store contact details, LinkedIn, GitHub, portfolio
-- **Statistics Dashboard** - Track your progress across all features
-- **Data Export** - Export applications and journal entries
-- **Quick Copy** - One-click copying of your information for forms
+### Career Tools
+- **Career Journal** - Document achievements with AI enhancement
+- **Keyword Gap Analysis** - Identify missing keywords from job descriptions
+- **Salary Research** - Links to market data and compensation calculators
 
-### 📁 Multi-Format Support
-Upload resumes and job descriptions in multiple formats:
-- Plain text (.txt)
-- PDF documents (.pdf)
-- Word documents (.docx)
+### Account and Settings
+- **Multi-User Support** - Secure authentication with data isolation
+- **Profile Management** - Store contact details, LinkedIn, GitHub, portfolio
+- **Data Export** - Export all your data in standard formats
 
 ## Installation
 
 ### Prerequisites
-- Python 3.7+
-- OpenAI API key
+- Python 3.10+
+- Node.js 20+
+- An LLM API key (OpenAI, Anthropic, Google, or Ollama running locally)
 
-### Setup
+### Quick Start
 
 1. Clone the repository:
 ```bash
@@ -98,97 +56,162 @@ git clone https://github.com/yourusername/resume-AI.git
 cd resume-AI
 ```
 
-2. Install dependencies:
+2. Set up the backend:
 ```bash
+cd backend
 pip install -r requirements.txt
 ```
 
-3. Create a `.env` file in the root directory and add your OpenAI API key:
+3. Set up the frontend:
 ```bash
-echo "OPENAI_API_KEY=your_api_key_here" > .env
+cd frontend
+npm install
 ```
 
-4. Set up multi-user authentication (creates demo accounts):
+4. Create a `.env` file in the root directory (see [Environment Variables](#environment-variables)):
 ```bash
-python setup_multiuser.py
+cp .env.example .env
+# Edit .env with your API keys
 ```
 
-This will create the following test accounts:
-- **Demo User**: username=`demo`, password=`demo123`
-- **Admin**: username=`admin`, password=`[randomly generated - shown during setup]`
-- **Alice**: username=`alice`, password=`alice123`
-- **Bob**: username=`bob`, password=`bob123`
-
-**IMPORTANT:** The admin password is randomly generated for security. Make sure to save it when shown during setup!
-
-5. Run the application:
+5. Start the application:
 ```bash
-streamlit run app.py
+# Terminal 1 - Backend (from backend directory)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Terminal 2 - Frontend (from frontend directory)
+npm run dev
 ```
 
-6. Open your browser to `http://localhost:8501`
+6. Open your browser to `http://localhost:3000`
 
-7. Click "Login" in the sidebar and sign in with one of the test accounts (or create your own)
+### Using Make Commands
 
-## Usage
+The project includes a Makefile for convenience:
 
-### Getting Started
+```bash
+make help       # Show available commands
+make backend    # Start FastAPI backend server (port 8000)
+make frontend   # Start Next.js frontend server (port 3000)
+make dev        # Start both backend and frontend
+make test       # Run all tests (backend + frontend)
+make lint       # Run linting on all code
+make clean      # Remove cache and build files
+```
 
-1. **Login/Register** - Create an account or sign in with existing credentials
-2. **Set Up Profile** - Add your personal information (name, email, LinkedIn, etc.)
-3. **Upload Resume** - Get instant ATS feedback and optimization suggestions
-4. **Track Applications** - Log every job application with status and deadlines
-5. **Prepare for Interviews** - Practice with AI feedback and build STAR stories
+## Environment Variables
 
-### Multi-User Features
+Create a `.env` file in the root directory with the following variables:
 
-**Secure Authentication:**
-- Bcrypt password hashing
-- Session-based authentication
-- Automatic session management
+### Required - Choose One LLM Provider
 
-**Data Isolation:**
-- Each user has their own profile and data
-- Resumes, applications, and journal entries are private to each user
-- No cross-user data access
+```bash
+# Provider selection (default: openai)
+LLM_PROVIDER=openai  # Options: openai, anthropic, google, ollama, mock
 
-**Account Management:**
-- Create new accounts via the Register tab
-- Login/logout functionality
-- Password change capability
+# OpenAI
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4o-mini
 
-### Page-by-Page Guide
+# Anthropic (Claude)
+ANTHROPIC_API_KEY=your_anthropic_api_key
+ANTHROPIC_MODEL=claude-3-haiku-20240307
 
-0. **Login** - Authenticate with existing account or create a new one
-1. **Home** - Dashboard with statistics and quick access to all features
-2. **Resume Optimizer** - Upload resumes/job descriptions for ATS analysis and AI optimization
-3. **Job Tracker** - Manage applications with status tracking, filtering, and CSV export
-4. **Cover Letter** - Generate personalized letters and professional networking emails
-5. **Career Journal** - Document achievements and enhance them with AI
-6. **Profile** - Manage personal info, view statistics, and export data
-7. **Interview Prep** - Practice with 50+ questions and get AI feedback
-8. **Salary Negotiation** - Research salaries and generate negotiation scripts
-9. **Health Check** - Monitor system health and database status
+# Google (Gemini)
+GOOGLE_API_KEY=your_google_api_key
+GOOGLE_MODEL=gemini-1.5-flash
+
+# Ollama (local - no API key needed)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+```
+
+### Application Settings
+
+```bash
+# Security (CHANGE IN PRODUCTION)
+SECRET_KEY=your-secret-key-change-in-production
+
+# Database
+DATABASE_URL=sqlite:///./data/resume_ai.db
+
+# CORS (frontend URL)
+CORS_ORIGINS=["http://localhost:3000"]
+
+# Debug mode
+DEBUG=false
+```
+
+### Optional Settings
+
+```bash
+# JWT Token Expiration
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+
+# Rate Limiting
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
+AUTH_RATE_LIMIT_REQUESTS=5
+AI_RATE_LIMIT_REQUESTS=20
+
+# Brute Force Protection
+AUTH_MAX_RECENT_FAILURES=5
+AUTH_LOCKOUT_THRESHOLD=10
+
+# File Uploads
+MAX_FILE_SIZE_MB=10
+MAX_RESUME_LENGTH=100000
+```
 
 ## Technology Stack
 
-- **Frontend**: Streamlit
-- **AI/ML**: OpenAI GPT-3.5-turbo via LangChain
-- **Database**: SQLite (with separate auth database)
-- **Authentication**: bcrypt for password hashing, streamlit session state
-- **File Processing**: PyPDF2, python-docx
+### Backend
+- **Framework:** FastAPI
+- **Database:** SQLAlchemy with SQLite (PostgreSQL ready)
+- **Authentication:** JWT tokens with bcrypt password hashing
+- **AI Integration:** Multi-provider LLM support via LangChain
+- **File Processing:** PyPDF2, python-docx
 
-## Security Notes
+### Frontend
+- **Framework:** Next.js 15 with App Router
+- **UI Library:** React 19
+- **Styling:** Tailwind CSS 4
+- **State Management:** TanStack Query
+- **Forms:** React Hook Form with Zod validation
+- **Drag and Drop:** dnd-kit
 
-**For Production Deployment:**
-1. Change all default passwords immediately (especially admin account)
-2. Use strong passwords for all accounts
-3. Consider migrating to PostgreSQL for better concurrency
-4. Enable HTTPS for production
-5. Regularly backup both `auth.db` and `resume_ai.db`
-6. Consider adding password reset functionality
-7. Implement rate limiting on login attempts
+## API Documentation
+
+Once the backend is running, access the interactive API documentation:
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+
+## Demo Account
+
+A demo account is available for testing:
+- **Username:** `demo`
+- **Password:** `demo123`
+
+## Security Features
+
+- JWT-based authentication with refresh tokens
+- Bcrypt password hashing
+- Rate limiting on all endpoints
+- Brute force protection with account lockout
+- Input sanitization and validation
+- CORS configuration
+- Security headers (XSS protection, HSTS, CSP)
+- Audit logging for security events
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
-This project is licensed under the MIT License.
 
+This project is licensed under the MIT License.

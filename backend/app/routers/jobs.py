@@ -4,15 +4,14 @@ Jobs router for job application tracking.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
@@ -105,6 +104,22 @@ async def create_job(
         location=job_data.location,
         job_url=job_data.job_url,
         notes=job_data.notes,
+        # HR Contact fields
+        recruiter_name=job_data.recruiter_name,
+        recruiter_email=job_data.recruiter_email,
+        recruiter_linkedin=job_data.recruiter_linkedin,
+        recruiter_phone=job_data.recruiter_phone,
+        # Referral fields
+        referral_name=job_data.referral_name,
+        referral_relationship=job_data.referral_relationship,
+        # Source and response tracking
+        application_source=(
+            job_data.application_source.value if job_data.application_source else None
+        ),
+        response_date=job_data.response_date,
+        rejection_reason=job_data.rejection_reason,
+        # Resume version
+        resume_id=job_data.resume_id,
     )
     db.add(job)
     db.commit()
@@ -154,6 +169,8 @@ async def update_job(
     update_data = job_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         if field == "status" and value:
+            setattr(job, field, value.value)
+        elif field == "application_source" and value:
             setattr(job, field, value.value)
         else:
             setattr(job, field, value)

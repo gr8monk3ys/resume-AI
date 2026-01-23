@@ -73,3 +73,54 @@ class GrammarCorrectionResponse(BaseModel):
 
     corrected_text: str
     corrections_made: List[str]
+
+
+class NetworkingEmailRequest(BaseModel):
+    """Schema for networking email generation request."""
+
+    recipient_name: str
+    company: str
+    purpose: str
+    background: Optional[str] = None
+
+
+class NetworkingEmailResponse(BaseModel):
+    """Schema for networking email response."""
+
+    subject: str
+    body: str
+    full_email: str
+
+
+class KeywordSuggestionsRequest(BaseModel):
+    """Schema for keyword suggestions request."""
+
+    resume_content: str
+    job_description: str
+    missing_keywords: Optional[List[str]] = None
+
+
+class KeywordSuggestionsResponse(BaseModel):
+    """Schema for keyword suggestions response."""
+
+    suggestions: str
+    missing_keywords: List[str]
+    matched_keywords: List[str]
+
+
+class JobMatchScoreRequest(BaseModel):
+    """Schema for job match score calculation request."""
+
+    resume_content: str
+    job_description: str
+
+
+class JobMatchScoreResponse(BaseModel):
+    """Schema for job match score response."""
+
+    score: int
+    score_breakdown: dict
+    missing_keywords: List[str]
+    matched_keywords: List[str]
+    suggestions: List[str]
+    found_skills: dict

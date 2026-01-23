@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,10 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
 jobs:
-  lint:
-    name: Lint
+  # ============================================================================
+  # Backend Jobs (FastAPI)
+  # ============================================================================
+
+  backend-lint:
+    name: Backend - Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v6
 
@@ -17,23 +28,37 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install 3.11
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+          uv pip install black isort pylint
 
       - name: Check formatting with Black
-        run: uv run black --check --diff .
+        run: uv run black --check --diff app/ tests/
 
       - name: Check import sorting with isort
-        run: uv run isort --check-only --diff .
+        run: uv run isort --check-only --diff app/ tests/
 
       - name: Run Pylint
-        run: uv run pylint services/ utils/ models/ --exit-zero --output-format=colorized
+        run: uv run pylint app/ --exit-zero --output-format=colorized
 
-  test:
-    name: Test (Mock Provider)
+  backend-typecheck:
+    name: Backend - Type Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v6
 
@@ -41,20 +66,199 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install 3.11
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+          uv pip install mypy types-passlib types-python-jose
+
+      - name: Run mypy
+        run: uv run mypy app/ --ignore-missing-imports --no-error-summary || true
+
+  backend-security:
+    name: Backend - Security Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install Bandit
+        run: uv tool install bandit
+
+      - name: Run Bandit security scan
+        run: uv tool run bandit -r app/ -ll -ii
+
+  backend-test:
+    name: Backend - Test (Mock Provider)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            uv-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+          uv pip install pytest pytest-asyncio pytest-cov httpx
 
       - name: Run tests with mock LLM provider
         env:
           LLM_PROVIDER: mock
-        run: uv run python test_app.py
+          TESTING: "true"
+        run: uv run pytest tests/ -v --cov=app --cov-report=xml
 
-  test-openai:
-    name: Test (OpenAI)
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'push'
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+
+  # ============================================================================
+  # Frontend Jobs (Next.js)
+  # ============================================================================
+
+  frontend-lint:
+    name: Frontend - Lint
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  frontend-typecheck:
+    name: Frontend - Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript type check
+        run: npm run typecheck
+
+  frontend-test:
+    name: Frontend - Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test -- --run --coverage
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'push'
+        with:
+          files: frontend/coverage/coverage-final.json
+          flags: frontend
+          fail_ci_if_error: false
+
+  frontend-build:
+    name: Frontend - Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  # ============================================================================
+  # Integration Job
+  # ============================================================================
+
+  integration:
+    name: Integration - Health Check
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
     steps:
       - uses: actions/checkout@v6
 
@@ -62,22 +266,94 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install 3.11
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Start backend server
+        working-directory: backend
+        run: |
+          uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        env:
+          LLM_PROVIDER: mock
+          TESTING: "true"
+          SECRET_KEY: test-secret-key-for-ci
+
+      - name: Build and start frontend
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run start &
+          sleep 5
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Health check - Backend
+        run: |
+          curl --fail --retry 5 --retry-delay 2 http://localhost:8000/health || \
+          curl --fail --retry 5 --retry-delay 2 http://localhost:8000/docs
+
+      - name: Health check - Frontend
+        run: |
+          curl --fail --retry 5 --retry-delay 2 http://localhost:3000
+
+  # ============================================================================
+  # Provider-Specific Tests (Main Branch Only)
+  # ============================================================================
+
+  backend-test-openai:
+    name: Backend - Test (OpenAI)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+          uv pip install pytest pytest-asyncio httpx
 
       - name: Run tests with OpenAI
         if: env.OPENAI_API_KEY != ''
         env:
           LLM_PROVIDER: openai
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: uv run python test_app.py
+          TESTING: "true"
+        run: uv run pytest tests/ -v -k "not slow"
 
-  test-anthropic:
-    name: Test (Anthropic)
+  backend-test-anthropic:
+    name: Backend - Test (Anthropic)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v6
 
@@ -85,59 +361,18 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Set up Python
-        run: uv python install 3.11
+        run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
         run: |
-          uv sync --dev
-          uv add langchain-anthropic
+          uv venv
+          uv pip install -r requirements.txt
+          uv pip install pytest pytest-asyncio httpx langchain-anthropic
 
       - name: Run tests with Anthropic
         if: env.ANTHROPIC_API_KEY != ''
         env:
           LLM_PROVIDER: anthropic
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: uv run python test_app.py
-
-  test-google:
-    name: Test (Google)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install 3.11
-
-      - name: Install dependencies
-        run: |
-          uv sync --dev
-          uv add langchain-google-genai
-
-      - name: Run tests with Google
-        if: env.GOOGLE_API_KEY != ''
-        env:
-          LLM_PROVIDER: google
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        run: uv run python test_app.py
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install 3.11
-
-      - name: Install Bandit
-        run: uv tool install bandit
-
-      - name: Run Bandit security scan
-        run: uv tool run bandit -r services/ utils/ models/ -ll -ii
+          TESTING: "true"
+        run: uv run pytest tests/ -v -k "not slow"

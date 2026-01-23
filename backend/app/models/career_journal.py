@@ -4,10 +4,9 @@ Career journal model for tracking achievements.
 
 from datetime import date, datetime
 
+from app.database import Base
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-
-from app.database import Base
 
 
 class CareerJournalEntry(Base):

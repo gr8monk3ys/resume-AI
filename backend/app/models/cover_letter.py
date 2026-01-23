@@ -4,10 +4,9 @@ Cover letter model for storing generated cover letters.
 
 from datetime import datetime
 
+from app.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
-
-from app.database import Base
 
 
 class CoverLetter(Base):
