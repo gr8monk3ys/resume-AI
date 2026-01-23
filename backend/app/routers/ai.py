@@ -13,6 +13,12 @@ from app.schemas.ai import (
     GrammarCorrectionResponse,
     InterviewPrepRequest,
     InterviewPrepResponse,
+    JobMatchScoreRequest,
+    JobMatchScoreResponse,
+    KeywordSuggestionsRequest,
+    KeywordSuggestionsResponse,
+    NetworkingEmailRequest,
+    NetworkingEmailResponse,
     TailorResumeRequest,
     TailorResumeResponse,
 )
@@ -141,3 +147,118 @@ async def optimize_resume(
         return {"suggestions": suggestions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to optimize resume: {str(e)}")
+
+
+@router.post("/networking-email", response_model=NetworkingEmailResponse)
+async def generate_networking_email(
+    request: NetworkingEmailRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a professional networking email."""
+    from app.services.llm_service import get_llm_service
+
+    try:
+        llm_service = get_llm_service()
+        full_email = llm_service.generate_networking_email(
+            recipient=request.recipient_name,
+            company=request.company,
+            purpose=request.purpose,
+            background=request.background,
+        )
+
+        # Parse subject and body from the generated email
+        lines = full_email.strip().split("\n")
+        subject = ""
+        body_lines = []
+        body_started = False
+
+        for line in lines:
+            if line.lower().startswith("subject:"):
+                subject = line[8:].strip()
+            elif subject and not body_started:
+                # Skip empty lines between subject and body
+                if line.strip():
+                    body_started = True
+                    body_lines.append(line)
+            elif body_started:
+                body_lines.append(line)
+
+        body = "\n".join(body_lines).strip()
+
+        # Fallback if parsing fails
+        if not subject:
+            subject = f"Introduction - Interest in {request.company}"
+        if not body:
+            body = full_email
+
+        return NetworkingEmailResponse(
+            subject=subject,
+            body=body,
+            full_email=full_email,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate networking email: {str(e)}"
+        )
+
+
+@router.post("/keyword-suggestions", response_model=KeywordSuggestionsResponse)
+async def get_keyword_suggestions(
+    request: KeywordSuggestionsRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Get AI-powered suggestions for adding missing keywords to a resume."""
+    from app.services.llm_service import get_llm_service
+    from app.services.resume_analyzer import ATSAnalyzer
+
+    try:
+        # Analyze resume to find missing keywords if not provided
+        analyzer = ATSAnalyzer()
+        analysis = analyzer.analyze_resume(request.resume_content, request.job_description)
+
+        missing_keywords = request.missing_keywords or analysis.get("missing_keywords", [])
+        matched_keywords = analysis.get("keyword_matches", [])
+
+        # Get AI suggestions for incorporating keywords
+        llm_service = get_llm_service()
+        suggestions = llm_service.suggest_keyword_additions(
+            resume=request.resume_content,
+            job_description=request.job_description,
+            missing_keywords=missing_keywords,
+        )
+
+        return KeywordSuggestionsResponse(
+            suggestions=suggestions,
+            missing_keywords=missing_keywords,
+            matched_keywords=matched_keywords,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}"
+        )
+
+
+@router.post("/job-match-score", response_model=JobMatchScoreResponse)
+async def calculate_job_match_score(
+    request: JobMatchScoreRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Calculate how well a resume matches a job description."""
+    from app.services.resume_analyzer import ATSAnalyzer
+
+    try:
+        analyzer = ATSAnalyzer()
+        analysis = analyzer.analyze_resume(request.resume_content, request.job_description)
+
+        return JobMatchScoreResponse(
+            score=analysis.get("ats_score", 0),
+            score_breakdown=analysis.get("score_breakdown", {}),
+            missing_keywords=analysis.get("missing_keywords", []),
+            matched_keywords=analysis.get("keyword_matches", []),
+            suggestions=analysis.get("suggestions", []),
+            found_skills=analysis.get("found_skills", {}),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate job match score: {str(e)}"
+        )

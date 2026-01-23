@@ -124,3 +124,56 @@ export interface InterviewPrepResponse {
   result: string | null;
   tips: string[];
 }
+
+// Interview Event types for Timeline
+export type InterviewEventType =
+  | 'phone_screen'
+  | 'technical'
+  | 'behavioral'
+  | 'onsite'
+  | 'panel'
+  | 'hr'
+  | 'final'
+  | 'follow_up'
+  | 'other';
+
+export type FollowUpUrgency = 'low' | 'medium' | 'high' | 'overdue';
+
+export interface InterviewEvent {
+  id: string;
+  job_id: number;
+  company: string;
+  position: string;
+  event_type: InterviewEventType;
+  scheduled_date: string;
+  scheduled_time?: string;
+  duration_minutes?: number;
+  location?: string;
+  meeting_link?: string;
+  interviewer_names?: string[];
+  notes?: string;
+  is_completed: boolean;
+  follow_up_date?: string;
+  follow_up_done: boolean;
+  created_at: string;
+}
+
+// Analytics types
+export interface WeeklyApplicationData {
+  week: string;
+  count: number;
+}
+
+export interface CompanySuccessRate {
+  company: string;
+  applications: number;
+  offers: number;
+  rate: number;
+}
+
+export interface JobGoals {
+  weekly_target: number;
+  monthly_target: number;
+  weekly_current: number;
+  monthly_current: number;
+}
