@@ -54,6 +54,14 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    from app.models import cover_letter, job_application, job_filters, profile, resume, user
+    from app.models import (
+        cover_letter,
+        job_alert,
+        job_application,
+        job_filters,
+        profile,
+        resume,
+        user,
+    )
 
     Base.metadata.create_all(bind=engine)

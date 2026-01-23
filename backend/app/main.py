@@ -7,8 +7,12 @@ Includes security middleware:
 - Request ID tracing
 - Input sanitization
 - Audit logging
+
+Background services:
+- Job scheduler for automated job scraping
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
@@ -32,13 +36,19 @@ from app.routers import (
     auth,
     career_journal,
     cover_letters,
+    job_alerts,
     job_filters,
     job_import,
     jobs,
     profile,
     resumes,
+    scheduler,
+    websocket,
 )
+from app.services.scheduler import get_job_scheduler
 from fastapi import FastAPI
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -57,9 +67,26 @@ async def lifespan(app: FastAPI):
             log_file_path=settings.audit_log_file_path,
         )
 
+    # Start the job scheduler for background scraping tasks
+    if settings.enable_scheduler:
+        try:
+            job_scheduler = get_job_scheduler()
+            job_scheduler.start()
+            logger.info("Job scheduler started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start job scheduler: {e}")
+
     yield
+
     # Shutdown
-    pass
+    # Stop the job scheduler gracefully
+    if settings.enable_scheduler:
+        try:
+            job_scheduler = get_job_scheduler()
+            job_scheduler.stop()
+            logger.info("Job scheduler stopped")
+        except Exception as e:
+            logger.error(f"Error stopping job scheduler: {e}")
 
 
 app = FastAPI(
@@ -147,12 +174,15 @@ app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(resumes.router)
 app.include_router(jobs.router)
+app.include_router(job_alerts.router)
 app.include_router(job_filters.router)
 app.include_router(job_import.router)
 app.include_router(cover_letters.router)
 app.include_router(career_journal.router)
 app.include_router(ai.router)
 app.include_router(analytics.router)
+app.include_router(scheduler.router)
+app.include_router(websocket.router)
 
 
 @app.get("/")

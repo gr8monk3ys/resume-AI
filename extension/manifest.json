@@ -1,0 +1,83 @@
+{
+  "manifest_version": 3,
+  "name": "ResuBoost AI - Job Application Autofill",
+  "version": "1.0.0",
+  "description": "Automatically fill job applications with your ResuBoost AI profile data",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://linkedin.com/*",
+    "https://www.indeed.com/*",
+    "https://indeed.com/*",
+    "https://boards.greenhouse.io/*",
+    "https://jobs.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.workday.com/*",
+    "https://*.icims.com/*",
+    "https://*.smartrecruiters.com/*",
+    "https://*.ashbyhq.com/*",
+    "https://*.bamboohr.com/*",
+    "https://*.breezy.hr/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "ResuBoost AI Autofill"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/*",
+        "https://linkedin.com/jobs/*",
+        "https://www.indeed.com/*",
+        "https://indeed.com/*",
+        "https://boards.greenhouse.io/*",
+        "https://jobs.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://*.myworkdayjobs.com/*",
+        "https://*.workday.com/*",
+        "https://*.icims.com/*",
+        "https://*.smartrecruiters.com/*",
+        "https://*.ashbyhq.com/*",
+        "https://*.bamboohr.com/*",
+        "https://*.breezy.hr/*"
+      ],
+      "js": [
+        "lib/storage.js",
+        "content/detector.js",
+        "content/fillers/generic.js",
+        "content/fillers/linkedin.js",
+        "content/fillers/greenhouse.js",
+        "content/fillers/lever.js",
+        "content/fillers/workday.js",
+        "content/content.js"
+      ],
+      "css": [],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

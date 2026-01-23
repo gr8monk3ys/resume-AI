@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     enable_hsts: bool = True
     hsts_max_age: int = 31536000  # 1 year
 
+    # Background scheduler settings
+    enable_scheduler: bool = True
+    scheduler_default_interval_minutes: int = 60
+    scheduler_min_interval_minutes: int = 5
+    scheduler_max_interval_minutes: int = 1440  # 24 hours
+
     class Config:
         env_file = "../.env"
         env_file_encoding = "utf-8"

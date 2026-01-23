@@ -47,6 +47,19 @@ from app.schemas.resume import (
     ResumeResponse,
     ResumeUpdate,
 )
+from app.schemas.scheduler import (
+    JobAlertCreate,
+    JobAlertResponse,
+    JobSchedulerStatus,
+    ScheduledJobCreate,
+    ScheduledJobResponse,
+    ScheduledJobStatus,
+    ScheduledJobUpdate,
+    SchedulerStatusResponse,
+    ScrapeCriteria,
+    ScrapeSource,
+    TriggerJobResponse,
+)
 from app.schemas.user import (
     Token,
     TokenData,
@@ -91,6 +104,18 @@ __all__ = [
     "ImportResult",
     "ImportError",
     "JobPreviewResponse",
+    # Scheduler
+    "ScheduledJobCreate",
+    "ScheduledJobUpdate",
+    "ScheduledJobResponse",
+    "SchedulerStatusResponse",
+    "TriggerJobResponse",
+    "JobSchedulerStatus",
+    "ScheduledJobStatus",
+    "ScrapeSource",
+    "ScrapeCriteria",
+    "JobAlertCreate",
+    "JobAlertResponse",
     # Cover Letter
     "CoverLetterCreate",
     "CoverLetterResponse",
