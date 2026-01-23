@@ -20,6 +20,21 @@ from app.schemas.job import (
     JobStatus,
     JobUpdate,
 )
+from app.schemas.job_import import (
+    BulkImportResponse,
+    BulkJobImportRequest,
+    GitHubRepoFilter,
+    GitHubRepoImportRequest,
+    GitHubRepoImportResponse,
+    ImportError,
+    ImportResult,
+    JobData,
+    JobImportRequest,
+    JobImportResponse,
+    JobPreviewResponse,
+    JobSource,
+    JobType,
+)
 from app.schemas.profile import (
     ProfileCreate,
     ProfileResponse,
@@ -62,6 +77,20 @@ __all__ = [
     "JobUpdate",
     "JobResponse",
     "JobStatus",
+    # Job Import
+    "JobImportRequest",
+    "JobImportResponse",
+    "BulkJobImportRequest",
+    "BulkImportResponse",
+    "GitHubRepoImportRequest",
+    "GitHubRepoImportResponse",
+    "GitHubRepoFilter",
+    "JobData",
+    "JobSource",
+    "JobType",
+    "ImportResult",
+    "ImportError",
+    "JobPreviewResponse",
     # Cover Letter
     "CoverLetterCreate",
     "CoverLetterResponse",

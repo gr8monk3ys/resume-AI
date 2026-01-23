@@ -18,6 +18,8 @@ import {
   Settings,
   LogIn,
   UserPlus,
+  BarChart3,
+  Filter,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
@@ -29,6 +31,8 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Resume Hub', href: '/resumes', icon: FileText },
   { name: 'Job Pipeline', href: '/jobs', icon: Briefcase },
+  { name: 'Job Filters', href: '/jobs/filters', icon: Filter },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Interview Center', href: '/interview', icon: Mic },
   { name: 'Document Generator', href: '/documents', icon: FileEdit },
   { name: 'Career Tools', href: '/career', icon: Award },

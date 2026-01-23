@@ -22,6 +22,21 @@ from app.schemas.ai import (
     TailorResumeRequest,
     TailorResumeResponse,
 )
+from app.schemas.ats import (
+    ATSAnalysisRequest,
+    ATSAnalysisResponse,
+    ExperienceMatch,
+    ExperienceMatchRequest,
+    ExperienceMatchResponse,
+    ExtractedKeywords,
+    ExtractKeywordsRequest,
+    ExtractKeywordsResponse,
+    KeywordBreakdown,
+    KeywordSuggestion as ATSKeywordSuggestion,
+    KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest,
+    KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse,
+    SectionScores,
+)
 
 router = APIRouter(prefix="/api/ai", tags=["AI Services"])
 
@@ -261,4 +276,207 @@ async def calculate_job_match_score(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to calculate job match score: {str(e)}"
+        )
+
+
+# =============================================================================
+# ATS Analyzer Endpoints (Algorithmic - No LLM Required)
+# =============================================================================
+
+
+@router.post("/ats-analyze", response_model=ATSAnalysisResponse)
+async def ats_analyze(
+    request: ATSAnalysisRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Perform comprehensive ATS analysis of a resume against a job description.
+
+    This endpoint uses algorithmic analysis (no LLM required) to:
+    - Calculate overall ATS compatibility score
+    - Identify matching and missing keywords
+    - Score different resume sections
+    - Analyze experience level match
+    - Generate actionable improvement suggestions
+
+    The analysis is purely algorithmic and works without any external API calls,
+    making it fast and reliable.
+    """
+    from app.services.ats_analyzer import get_ats_analyzer
+
+    try:
+        analyzer = get_ats_analyzer(use_llm=request.use_llm_suggestions)
+        result = analyzer.analyze_resume(
+            resume=request.resume_content,
+            job_description=request.job_description,
+        )
+
+        return ATSAnalysisResponse(
+            overall_score=result.overall_score,
+            keyword_match_score=result.keyword_match_score,
+            formatting_score=result.formatting_score,
+            section_scores=SectionScores(**result.section_scores),
+            missing_keywords=result.missing_keywords,
+            matched_keywords=result.matched_keywords,
+            suggestions=result.suggestions,
+            experience_match=ExperienceMatch(**result.experience_match),
+            keyword_breakdown=KeywordBreakdown(**result.keyword_breakdown),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to analyze resume: {str(e)}"
+        )
+
+
+@router.post("/extract-keywords", response_model=ExtractKeywordsResponse)
+async def extract_keywords(
+    request: ExtractKeywordsRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Extract and categorize keywords from text (typically a job description).
+
+    Keywords are categorized into:
+    - technical_skills: Programming languages, frameworks, tools
+    - soft_skills: Interpersonal and professional skills
+    - certifications: Professional certifications
+    - education: Educational requirements
+    - experience_years: Experience level requirements
+
+    This is useful for understanding what a job posting is looking for
+    and identifying keywords to target in your resume.
+    """
+    from app.services.ats_analyzer import get_ats_analyzer
+
+    try:
+        analyzer = get_ats_analyzer()
+        keywords = analyzer.extract_keywords(request.text)
+
+        total = sum(
+            len(v) if isinstance(v, list) else 0
+            for v in keywords.values()
+        )
+
+        return ExtractKeywordsResponse(
+            keywords=ExtractedKeywords(**keywords),
+            total_keywords=total,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to extract keywords: {str(e)}"
+        )
+
+
+@router.post("/ats-keyword-suggestions", response_model=ATSKeywordSuggestionsResponse)
+async def ats_keyword_suggestions(
+    request: ATSKeywordSuggestionsRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get actionable suggestions for adding missing keywords to a resume.
+
+    For each missing keyword, provides:
+    - Category (technical skill, soft skill, certification, etc.)
+    - Priority level (high, medium, low)
+    - Specific suggestion for how to add the keyword naturally
+    - Recommended resume section for the keyword
+
+    This endpoint provides algorithmic suggestions. For AI-enhanced suggestions
+    that consider context more deeply, use the /keyword-suggestions endpoint
+    with LLM integration.
+    """
+    from app.services.ats_analyzer import get_ats_analyzer
+
+    try:
+        analyzer = get_ats_analyzer()
+
+        # Get missing keywords if not provided
+        if request.missing_keywords:
+            missing = request.missing_keywords
+        else:
+            missing = analyzer.get_missing_keywords(
+                request.resume_content, request.job_description
+            )
+
+        # Get suggestions for missing keywords
+        suggestions = analyzer.get_keyword_suggestions(
+            missing[:request.max_suggestions]
+        )
+
+        # Also get matched keywords for reference
+        result = analyzer.analyze_resume(
+            request.resume_content, request.job_description
+        )
+
+        # Calculate match percentage
+        total_keywords = len(missing) + len(result.matched_keywords)
+        match_percentage = (
+            (len(result.matched_keywords) / total_keywords * 100)
+            if total_keywords > 0
+            else 0
+        )
+
+        return ATSKeywordSuggestionsResponse(
+            suggestions=[
+                ATSKeywordSuggestion(
+                    keyword=s.keyword,
+                    category=s.category,
+                    priority=s.priority,
+                    suggestion=s.suggestion,
+                    section_recommendation=s.section_recommendation,
+                )
+                for s in suggestions
+            ],
+            missing_keywords=missing,
+            matched_keywords=result.matched_keywords,
+            match_percentage=round(match_percentage, 1),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}"
+        )
+
+
+@router.post("/experience-match", response_model=ExperienceMatchResponse)
+async def calculate_experience_match(
+    request: ExperienceMatchRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Calculate how well a resume's experience matches a job's requirements.
+
+    Analyzes:
+    - Years of experience mentioned in job description
+    - Experience level (entry, mid, senior, executive)
+    - Years of experience evident in resume
+    - Position history and duration
+
+    Returns a match level (strong, moderate, weak, undetermined) with
+    recommendations for how to present your experience effectively.
+    """
+    from app.services.ats_analyzer import get_ats_analyzer
+
+    try:
+        analyzer = get_ats_analyzer()
+
+        experience_match = analyzer.calculate_experience_match(
+            request.resume_content, request.job_description
+        )
+
+        # Also get the raw requirements for detailed view
+        jd_requirements = analyzer._extract_experience_requirements(
+            request.job_description
+        )
+        resume_experience = analyzer._extract_years_from_resume(
+            request.resume_content
+        )
+
+        return ExperienceMatchResponse(
+            match=ExperienceMatch(**experience_match),
+            job_requirements=jd_requirements,
+            resume_experience=resume_experience,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate experience match: {str(e)}"
         )

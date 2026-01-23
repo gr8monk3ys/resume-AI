@@ -11,8 +11,6 @@ Includes security middleware:
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-
 from app.config import get_settings
 from app.database import init_db
 from app.middleware.audit import AuditMiddleware, init_audit_logger
@@ -28,7 +26,19 @@ from app.middleware.security import (
     SecurityHeadersMiddleware,
     configure_cors,
 )
-from app.routers import ai, auth, career_journal, cover_letters, jobs, profile, resumes
+from app.routers import (
+    ai,
+    analytics,
+    auth,
+    career_journal,
+    cover_letters,
+    job_filters,
+    job_import,
+    jobs,
+    profile,
+    resumes,
+)
+from fastapi import FastAPI
 
 settings = get_settings()
 
@@ -137,9 +147,12 @@ app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(resumes.router)
 app.include_router(jobs.router)
+app.include_router(job_filters.router)
+app.include_router(job_import.router)
 app.include_router(cover_letters.router)
 app.include_router(career_journal.router)
 app.include_router(ai.router)
+app.include_router(analytics.router)
 
 
 @app.get("/")

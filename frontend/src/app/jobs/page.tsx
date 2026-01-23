@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
-import { jobsApi } from '@/lib/api'
+import Link from 'next/link'
+import { jobsApi, filtersApi } from '@/lib/api'
 import type {
   JobApplication,
   JobStatus,
@@ -13,6 +14,7 @@ import type {
   FollowUpUrgency,
   WeeklyApplicationData,
   JobGoals,
+  CompanyFilter,
 } from '@/types'
 import { cn, getStatusColor, formatDate, truncate, generateId } from '@/lib/utils'
 import {
@@ -41,6 +43,9 @@ import {
   Target,
   TrendingUp,
   PieChart,
+  Settings,
+  Ban,
+  Star,
 } from 'lucide-react'
 import {
   DndContext,
@@ -149,9 +154,10 @@ interface SortableJobCardProps {
   onEdit: (job: JobApplication) => void
   onDelete: (id: number) => void
   onStatusChange: (id: number, status: JobStatus) => void
+  companyFilters?: CompanyFilter[]
 }
 
-function SortableJobCard({ job, onEdit, onDelete, onStatusChange }: SortableJobCardProps) {
+function SortableJobCard({ job, onEdit, onDelete, onStatusChange, companyFilters = [] }: SortableJobCardProps) {
   const {
     attributes,
     listeners,
@@ -168,6 +174,16 @@ function SortableJobCard({ job, onEdit, onDelete, onStatusChange }: SortableJobC
 
   const matchScore = calculateMatchScore(job)
   const statusColors = getStatusColor(job.status)
+
+  // Find matching company filter
+  const matchedCompanyFilter = useMemo(() => {
+    const companyLower = job.company.toLowerCase()
+    return companyFilters.find(
+      (f) =>
+        companyLower.includes(f.company_name.toLowerCase()) ||
+        f.company_name.toLowerCase().includes(companyLower)
+    )
+  }, [job.company, companyFilters])
 
   return (
     <div
@@ -192,7 +208,26 @@ function SortableJobCard({ job, onEdit, onDelete, onStatusChange }: SortableJobC
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0" onClick={() => onEdit(job)}>
-              <h4 className="font-medium text-gray-900 truncate">{job.position}</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="font-medium text-gray-900 truncate">{job.position}</h4>
+                {matchedCompanyFilter && (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded',
+                      matchedCompanyFilter.filter_type === 'blacklist'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-green-100 text-green-700'
+                    )}
+                    title={matchedCompanyFilter.reason || undefined}
+                  >
+                    {matchedCompanyFilter.filter_type === 'blacklist' ? (
+                      <Ban className="w-3 h-3" />
+                    ) : (
+                      <Star className="w-3 h-3" />
+                    )}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500 truncate">{job.company}</p>
             </div>
             <div className="flex items-center gap-2 ml-2">
@@ -279,6 +314,7 @@ interface KanbanColumnProps {
   onEditJob: (job: JobApplication) => void
   onDeleteJob: (id: number) => void
   onStatusChange: (id: number, status: JobStatus) => void
+  companyFilters?: CompanyFilter[]
 }
 
 function KanbanColumn({
@@ -288,6 +324,7 @@ function KanbanColumn({
   onEditJob,
   onDeleteJob,
   onStatusChange,
+  companyFilters = [],
 }: KanbanColumnProps) {
   const statusColors = getStatusColor(status)
 
@@ -328,6 +365,7 @@ function KanbanColumn({
               onEdit={onEditJob}
               onDelete={onDeleteJob}
               onStatusChange={onStatusChange}
+              companyFilters={companyFilters}
             />
           ))}
         </SortableContext>
@@ -353,6 +391,7 @@ interface KanbanBoardProps {
   onDeleteJob: (id: number) => void
   onStatusChange: (id: number, status: JobStatus) => void
   onReorder: (jobs: JobApplication[]) => void
+  companyFilters?: CompanyFilter[]
 }
 
 function KanbanBoard({
@@ -362,6 +401,7 @@ function KanbanBoard({
   onDeleteJob,
   onStatusChange,
   onReorder,
+  companyFilters = [],
 }: KanbanBoardProps) {
   const [activeJob, setActiveJob] = useState<JobApplication | null>(null)
 
@@ -449,6 +489,7 @@ function KanbanBoard({
             onEditJob={onEditJob}
             onDeleteJob={onDeleteJob}
             onStatusChange={onStatusChange}
+            companyFilters={companyFilters}
           />
         ))}
       </div>
@@ -1998,6 +2039,8 @@ export default function JobsPage() {
   const [jobs, setJobs] = useState<JobApplication[]>([])
   const [stats, setStats] = useState<JobStats | null>(null)
   const [events, setEvents] = useState<InterviewEvent[]>([])
+  const [companyFilters, setCompanyFilters] = useState<CompanyFilter[]>([])
+  const [keywordFilters, setKeywordFilters] = useState<{ id: string; keyword: string; filter_type: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('kanban')
   const [showJobModal, setShowJobModal] = useState(false)
@@ -2022,13 +2065,17 @@ export default function JobsPage() {
     if (!tokens?.access_token) return
 
     try {
-      const [jobsData, statsData] = await Promise.all([
+      const [jobsData, statsData, companyFiltersData, keywordFiltersData] = await Promise.all([
         jobsApi.list(tokens.access_token),
         jobsApi.getStats(tokens.access_token).catch(() => null),
+        filtersApi.getCompanyFilters(),
+        filtersApi.getKeywordFilters(),
       ])
 
       setJobs(jobsData as JobApplication[])
       setStats(statsData)
+      setCompanyFilters(companyFiltersData)
+      setKeywordFilters(keywordFiltersData)
 
       // Load events from localStorage (in real app, would be from API)
       const storedEvents = localStorage.getItem('interview_events')
@@ -2188,16 +2235,30 @@ export default function JobsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setAddJobStatus(undefined)
-            setShowJobModal(true)
-          }}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Job
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/jobs/filters"
+            className="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 shadow-sm"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Filters
+            {(companyFilters.length > 0 || keywordFilters.length > 0) && (
+              <span className="ml-2 px-2 py-0.5 text-xs bg-primary-100 text-primary-700 rounded-full">
+                {companyFilters.length + keywordFilters.length}
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={() => {
+              setAddJobStatus(undefined)
+              setShowJobModal(true)
+            }}
+            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Job
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -2239,6 +2300,7 @@ export default function JobsPage() {
           onDeleteJob={handleDeleteJob}
           onStatusChange={handleStatusChange}
           onReorder={setJobs}
+          companyFilters={companyFilters}
         />
       )}
 

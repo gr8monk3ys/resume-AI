@@ -4,10 +4,9 @@ Job application model for tracking applications.
 
 from datetime import date, datetime
 
+from app.database import Base
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
-
-from app.database import Base
 
 
 class JobApplication(Base):
@@ -31,9 +30,30 @@ class JobApplication(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    # HR Contact tracking fields
+    recruiter_name = Column(String, nullable=True)
+    recruiter_email = Column(String, nullable=True)
+    recruiter_linkedin = Column(String, nullable=True)
+    recruiter_phone = Column(String, nullable=True)
+
+    # Referral tracking fields
+    referral_name = Column(String, nullable=True)
+    referral_relationship = Column(String, nullable=True)
+
+    # Application source and response tracking
+    application_source = Column(
+        String, nullable=True, index=True
+    )  # LinkedIn, Indeed, Company Site, Referral, etc.
+    response_date = Column(DateTime, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+
+    # Resume version used for this application
+    resume_id = Column(Integer, ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
+
     # Relationships
     profile = relationship("Profile", back_populates="job_applications")
     cover_letters = relationship("CoverLetter", back_populates="job_application")
+    resume = relationship("Resume")
 
 
 # Valid status values

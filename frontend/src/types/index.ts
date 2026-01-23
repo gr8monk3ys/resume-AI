@@ -177,3 +177,126 @@ export interface JobGoals {
   weekly_current: number;
   monthly_current: number;
 }
+
+// Analytics types
+export type DateRangeOption = '7d' | '30d' | '90d' | 'all' | 'custom';
+export type TimelinePeriod = 'daily' | 'weekly' | 'monthly';
+
+export interface AnalyticsOverview {
+  total_applications: number;
+  response_rate: number;
+  response_rate_trend: number;
+  interview_rate: number;
+  interview_rate_trend: number;
+  offer_rate: number;
+  offer_rate_trend: number;
+  avg_response_time_days: number;
+  active_applications: number;
+}
+
+export interface TimelineDataPoint {
+  date: string;
+  count: number;
+  label: string;
+}
+
+export interface ConversionFunnelStage {
+  stage: string;
+  count: number;
+  percentage: number;
+  dropoff_rate: number;
+}
+
+export interface SourcePerformance {
+  source: string;
+  applications: number;
+  responses: number;
+  interviews: number;
+  offers: number;
+  response_rate: number;
+}
+
+export interface CompanyStats {
+  company: string;
+  applications: number;
+  responses: number;
+  interviews: number;
+  offers: number;
+  response_rate: number;
+  avg_response_time_days: number | null;
+}
+
+export interface ResumePerformance {
+  resume_id: number;
+  version_name: string;
+  applications: number;
+  interviews: number;
+  offers: number;
+  interview_rate: number;
+  ats_score: number | null;
+}
+
+export interface ActivityLogEntry {
+  id: number;
+  timestamp: string;
+  type: 'application' | 'status_change' | 'interview' | 'offer';
+  description: string;
+  company: string;
+  position: string;
+}
+
+export interface AnalyticsFilters {
+  dateRange: DateRangeOption;
+  customStartDate?: string;
+  customEndDate?: string;
+  status?: JobStatus | '';
+  source?: string;
+}
+
+// Job Filter types
+export type CompanyFilterType = 'blacklist' | 'whitelist';
+
+export interface CompanyFilter {
+  id: string;
+  company_name: string;
+  filter_type: CompanyFilterType;
+  reason: string | null;
+  created_at: string;
+}
+
+export type KeywordFilterType = 'exclude' | 'require';
+export type KeywordAppliesTo = 'title' | 'description' | 'both';
+
+export interface KeywordFilter {
+  id: string;
+  keyword: string;
+  filter_type: KeywordFilterType;
+  applies_to: KeywordAppliesTo;
+  created_at: string;
+}
+
+export type QuestionTemplateType = 'text' | 'number' | 'select' | 'boolean';
+export type QuestionTemplateCategory =
+  | 'experience'
+  | 'salary'
+  | 'availability'
+  | 'authorization'
+  | 'personal'
+  | 'demographics';
+
+export interface QuestionTemplate {
+  id: string;
+  question_pattern: string;
+  answer: string;
+  answer_type: QuestionTemplateType;
+  category: QuestionTemplateCategory;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobCheckResult {
+  blocked: boolean;
+  required: boolean;
+  matched_company_filter: CompanyFilter | null;
+  matched_keyword_filters: KeywordFilter[];
+}
