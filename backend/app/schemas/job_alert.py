@@ -25,12 +25,16 @@ class JobType(str, Enum):
 class AlertCriteria(BaseModel):
     """Alert matching criteria."""
 
-    keywords: Optional[List[str]] = Field(default=None, description="Keywords to match in job titles/descriptions")
+    keywords: Optional[List[str]] = Field(
+        default=None, description="Keywords to match in job titles/descriptions"
+    )
     companies: Optional[List[str]] = Field(default=None, description="Target company names")
     locations: Optional[List[str]] = Field(default=None, description="Desired job locations")
     job_types: Optional[List[JobType]] = Field(default=None, description="Job types to match")
     min_salary: Optional[int] = Field(default=None, ge=0, description="Minimum salary requirement")
-    exclude_keywords: Optional[List[str]] = Field(default=None, description="Keywords to exclude from matches")
+    exclude_keywords: Optional[List[str]] = Field(
+        default=None, description="Keywords to exclude from matches"
+    )
 
     @field_validator("keywords", "companies", "locations", "exclude_keywords")
     @classmethod
@@ -111,7 +115,9 @@ class JobMatch(BaseModel):
     position: str
     location: Optional[str] = None
     job_url: Optional[str] = None
-    match_score: float = Field(ge=0, le=1, description="How well the job matches the alert criteria")
+    match_score: float = Field(
+        ge=0, le=1, description="How well the job matches the alert criteria"
+    )
     matched_criteria: List[str] = Field(default_factory=list, description="Which criteria matched")
 
 

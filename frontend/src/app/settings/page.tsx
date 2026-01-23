@@ -372,7 +372,6 @@ export default function SettingsPage() {
   const [deleteAppsDialog, setDeleteAppsDialog] = useState(false)
   const [deleteAllDialog, setDeleteAllDialog] = useState(false)
   const [deleteAccountDialog, setDeleteAccountDialog] = useState(false)
-  const [accountDeletePassword, setAccountDeletePassword] = useState('')
 
   // System health state
   const [systemHealth, setSystemHealth] = useState<SystemHealth>({
@@ -635,7 +634,6 @@ export default function SettingsPage() {
     // Placeholder - would need delete account API
     setMessage({ type: 'error', text: 'Account deletion is not yet implemented' })
     setDeleteAccountDialog(false)
-    setAccountDeletePassword('')
   }
 
   // Check system health
@@ -1392,7 +1390,6 @@ export default function SettingsPage() {
         onConfirm={handleDeleteAccount}
         onCancel={() => {
           setDeleteAccountDialog(false)
-          setAccountDeletePassword('')
         }}
       />
     </div>

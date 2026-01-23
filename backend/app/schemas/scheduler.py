@@ -40,32 +40,24 @@ class ScrapeCriteria(BaseModel):
     locations: Optional[list[str]] = Field(
         None, description="Filter by locations (e.g., ['Remote', 'San Francisco'])"
     )
-    companies: Optional[list[str]] = Field(
-        None, description="Filter by company names to include"
-    )
+    companies: Optional[list[str]] = Field(None, description="Filter by company names to include")
     exclude_companies: Optional[list[str]] = Field(
         None, description="Companies to exclude from results"
     )
-    keywords: Optional[list[str]] = Field(
-        None, description="Keywords to match in job titles"
-    )
+    keywords: Optional[list[str]] = Field(None, description="Keywords to match in job titles")
     exclude_keywords: Optional[list[str]] = Field(
         None, description="Keywords to exclude from job titles"
     )
     sponsorship_required: Optional[bool] = Field(
         None, description="Filter for jobs with sponsorship"
     )
-    remote_only: Optional[bool] = Field(
-        False, description="Only include remote positions"
-    )
+    remote_only: Optional[bool] = Field(False, description="Only include remote positions")
 
 
 class ScheduledJobCreate(BaseModel):
     """Schema for creating a new scheduled scrape job."""
 
-    name: str = Field(
-        ..., min_length=1, max_length=100, description="Name for this scheduled job"
-    )
+    name: str = Field(..., min_length=1, max_length=100, description="Name for this scheduled job")
     source: ScrapeSource = Field(..., description="Source to scrape from")
     interval_minutes: int = Field(
         60,
@@ -73,13 +65,9 @@ class ScheduledJobCreate(BaseModel):
         le=1440,
         description="Scrape interval in minutes (min 5, max 1440)",
     )
-    criteria: Optional[ScrapeCriteria] = Field(
-        None, description="Optional filtering criteria"
-    )
+    criteria: Optional[ScrapeCriteria] = Field(None, description="Optional filtering criteria")
     enabled: bool = Field(True, description="Whether the job is enabled")
-    custom_url: Optional[str] = Field(
-        None, description="Custom URL for CUSTOM_URL source type"
-    )
+    custom_url: Optional[str] = Field(None, description="Custom URL for CUSTOM_URL source type")
 
     @field_validator("custom_url")
     @classmethod
@@ -95,15 +83,11 @@ class ScheduledJobCreate(BaseModel):
 class ScheduledJobUpdate(BaseModel):
     """Schema for updating a scheduled job."""
 
-    name: Optional[str] = Field(
-        None, min_length=1, max_length=100, description="Updated name"
-    )
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="Updated name")
     interval_minutes: Optional[int] = Field(
         None, ge=5, le=1440, description="Updated interval in minutes"
     )
-    criteria: Optional[ScrapeCriteria] = Field(
-        None, description="Updated filtering criteria"
-    )
+    criteria: Optional[ScrapeCriteria] = Field(None, description="Updated filtering criteria")
     enabled: Optional[bool] = Field(None, description="Enable or disable the job")
 
 
@@ -137,9 +121,7 @@ class SchedulerStatusResponse(BaseModel):
     status: JobSchedulerStatus = Field(..., description="Scheduler operational status")
     active_jobs: int = Field(..., description="Number of active scheduled jobs")
     total_jobs: int = Field(..., description="Total number of scheduled jobs")
-    uptime_seconds: Optional[float] = Field(
-        None, description="Scheduler uptime in seconds"
-    )
+    uptime_seconds: Optional[float] = Field(None, description="Scheduler uptime in seconds")
     last_error: Optional[str] = Field(None, description="Last scheduler error if any")
     version: str = Field("1.0.0", description="Scheduler version")
 

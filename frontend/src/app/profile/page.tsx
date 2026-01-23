@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { profileApi } from '@/lib/api';
@@ -21,13 +21,7 @@ export default function ProfilePage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (tokens?.access_token) {
-      loadProfile();
-    }
-  }, [tokens]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     if (!tokens?.access_token) return;
     try {
       const data = await profileApi.get(tokens.access_token);
@@ -37,7 +31,13 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tokens]);
+
+  useEffect(() => {
+    if (tokens?.access_token) {
+      loadProfile();
+    }
+  }, [tokens, loadProfile]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

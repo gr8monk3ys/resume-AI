@@ -25,9 +25,7 @@ import {
   Clock,
   BookOpen,
   Star,
-  Plus,
   Trash2,
-  Import,
   X,
   Copy,
   Check,
@@ -315,7 +313,7 @@ interface QuestionBankTabProps {
 
 function QuestionBankTab({
   token,
-  resumes,
+  resumes: _resumes,
   selectedResume,
   jobDescription,
 }: QuestionBankTabProps) {
@@ -1140,7 +1138,7 @@ interface PracticeModeTabProps {
 
 function PracticeModeTab({
   token,
-  resumes,
+  resumes: _resumes,
   selectedResume,
   jobDescription,
 }: PracticeModeTabProps) {
@@ -1583,27 +1581,7 @@ export default function InterviewCenterPage() {
     }
   }, [user, authLoading, router])
 
-  // Load data
-  useEffect(() => {
-    if (tokens?.access_token) {
-      loadData()
-    }
-  }, [tokens])
-
-  // Load saved data from localStorage
-  useEffect(() => {
-    const storedStories = localStorage.getItem('star_stories')
-    if (storedStories) {
-      setStarStories(JSON.parse(storedStories))
-    }
-
-    const storedResearch = localStorage.getItem('company_research')
-    if (storedResearch) {
-      setCompanyResearch(JSON.parse(storedResearch))
-    }
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!tokens?.access_token) return
 
     try {
@@ -1617,7 +1595,27 @@ export default function InterviewCenterPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [tokens])
+
+  // Load data
+  useEffect(() => {
+    if (tokens?.access_token) {
+      loadData()
+    }
+  }, [tokens, loadData])
+
+  // Load saved data from localStorage
+  useEffect(() => {
+    const storedStories = localStorage.getItem('star_stories')
+    if (storedStories) {
+      setStarStories(JSON.parse(storedStories))
+    }
+
+    const storedResearch = localStorage.getItem('company_research')
+    if (storedResearch) {
+      setCompanyResearch(JSON.parse(storedResearch))
+    }
+  }, [])
 
   const handleSaveStory = (story: STARStory) => {
     const existingIndex = starStories.findIndex((s) => s.id === story.id)

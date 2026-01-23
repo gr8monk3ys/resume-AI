@@ -336,6 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         tokens,
         isLoading,
+        authError,
         login,
         logout,
         register,

@@ -51,9 +51,7 @@ class JobScraperCache:
         unique_str = f"{job.company}:{job.title}:{job.location or ''}"
         return hashlib.md5(unique_str.lower().encode()).hexdigest()
 
-    def get(
-        self, source: str, criteria: Optional[ScrapeCriteria]
-    ) -> Optional[list[JobData]]:
+    def get(self, source: str, criteria: Optional[ScrapeCriteria]) -> Optional[list[JobData]]:
         """
         Get cached jobs if available and not expired.
 
@@ -75,9 +73,7 @@ class JobScraperCache:
                 del self._cache[key]
         return None
 
-    def set(
-        self, source: str, criteria: Optional[ScrapeCriteria], jobs: list[JobData]
-    ) -> None:
+    def set(self, source: str, criteria: Optional[ScrapeCriteria], jobs: list[JobData]) -> None:
         """
         Store jobs in cache.
 
@@ -123,9 +119,7 @@ class JobScraperCache:
         """
         now = datetime.utcnow()
         expired_keys = [
-            key
-            for key, (timestamp, _) in self._cache.items()
-            if now - timestamp >= self._ttl
+            key for key, (timestamp, _) in self._cache.items() if now - timestamp >= self._ttl
         ]
         for key in expired_keys:
             del self._cache[key]
@@ -166,9 +160,7 @@ class RateLimiter:
             self._requests[source] = []
 
         # Clean up old requests outside the window
-        self._requests[source] = [
-            ts for ts in self._requests[source] if now - ts < self._window
-        ]
+        self._requests[source] = [ts for ts in self._requests[source] if now - ts < self._window]
 
         return len(self._requests[source]) < limit
 
@@ -431,9 +423,7 @@ class JobScraper:
                 new_jobs.append(job)
                 self._cache.mark_job_seen(job)
 
-        logger.info(
-            f"Found {len(all_jobs)} total jobs, {len(new_jobs)} new for user {user_id}"
-        )
+        logger.info(f"Found {len(all_jobs)} total jobs, {len(new_jobs)} new for user {user_id}")
         return all_jobs, new_jobs
 
     def clear_cache(self) -> None:

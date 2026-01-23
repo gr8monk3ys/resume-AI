@@ -1373,14 +1373,7 @@ export default function CareerToolsPage() {
     }
   }, [user, authLoading, router])
 
-  // Load resumes for Q&A tab
-  useEffect(() => {
-    if (tokens?.access_token) {
-      loadResumes()
-    }
-  }, [tokens])
-
-  const loadResumes = async () => {
+  const loadResumes = useCallback(async () => {
     if (!tokens?.access_token) return
 
     try {
@@ -1391,7 +1384,14 @@ export default function CareerToolsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [tokens])
+
+  // Load resumes for Q&A tab
+  useEffect(() => {
+    if (tokens?.access_token) {
+      loadResumes()
+    }
+  }, [tokens, loadResumes])
 
   // Loading state
   if (authLoading || isLoading) {

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { coverLettersApi, resumesApi } from '@/lib/api';
 import type { CoverLetter, Resume } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { Plus, Mail, Trash2, Wand2 } from 'lucide-react';
+import { Mail, Trash2, Wand2 } from 'lucide-react';
 
 export default function CoverLettersPage() {
   const { user, tokens, isLoading: authLoading } = useAuth();
@@ -22,13 +22,7 @@ export default function CoverLettersPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (tokens?.access_token) {
-      loadData();
-    }
-  }, [tokens]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!tokens?.access_token) return;
     try {
       const [lettersData, resumesData] = await Promise.all([
@@ -42,7 +36,13 @@ export default function CoverLettersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tokens]);
+
+  useEffect(() => {
+    if (tokens?.access_token) {
+      loadData();
+    }
+  }, [tokens, loadData]);
 
   const deleteCoverLetter = async (id: number) => {
     if (!tokens?.access_token) return;

@@ -6,9 +6,38 @@ Provides:
 - Test client fixture with async support
 - Authentication fixtures (test user, test token)
 - Cleanup after tests
+
+IMPORTANT: Environment variables MUST be set before any app imports.
+This file is loaded by pytest before tests run.
 """
 
 import os
+import sys
+
+# ==============================================================================
+# CRITICAL: Set test environment variables BEFORE any app imports
+# This must happen at module level before imports below
+# ==============================================================================
+
+os.environ["LLM_PROVIDER"] = "mock"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["ENABLE_RATE_LIMITING"] = "false"
+os.environ["ENABLE_AUDIT_LOGGING"] = "false"
+os.environ["ENABLE_SECURITY_HEADERS"] = "false"
+os.environ["ENABLE_INPUT_SANITIZATION"] = "false"
+os.environ["ENABLE_SCHEDULER"] = "false"
+os.environ["DEBUG"] = "false"
+
+# Add backend directory to path for imports
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+# ==============================================================================
+# Now we can safely import from the app
+# ==============================================================================
+
 from datetime import datetime
 from typing import AsyncGenerator, Generator
 
@@ -20,15 +49,12 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Set test environment variables BEFORE importing app modules
-os.environ["LLM_PROVIDER"] = "mock"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
-os.environ["ENABLE_RATE_LIMITING"] = "false"
-os.environ["ENABLE_AUDIT_LOGGING"] = "false"
-os.environ["ENABLE_SECURITY_HEADERS"] = "false"
-os.environ["ENABLE_INPUT_SANITIZATION"] = "false"
+# Clear settings cache BEFORE importing app modules to ensure test settings are used
+from app.config import clear_settings_cache, get_settings
 
+clear_settings_cache()
+
+# Now import app modules - they will pick up the test environment variables
 from app.database import Base, get_db
 from app.main import app
 from app.middleware.auth import create_access_token, get_password_hash
@@ -39,7 +65,10 @@ from app.models.resume import Resume
 from app.models.user import User
 
 
-# Test database setup
+# ==============================================================================
+# Test Database Setup
+# ==============================================================================
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 test_engine = create_engine(
@@ -67,6 +96,37 @@ def override_get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+# ==============================================================================
+# Pytest Fixtures
+# ==============================================================================
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """
+    Session-scoped fixture to ensure test environment is properly configured.
+
+    This runs once at the start of the test session.
+    """
+    # Verify environment variables are set
+    assert os.environ.get("LLM_PROVIDER") == "mock"
+    assert os.environ.get("DATABASE_URL") == "sqlite:///:memory:"
+
+    # Clear settings cache to ensure fresh settings
+    clear_settings_cache()
+
+    # Verify settings
+    settings = get_settings()
+    assert settings.llm_provider == "mock"
+    assert settings.enable_rate_limiting is False
+    assert settings.enable_scheduler is False
+
+    yield
+
+    # Cleanup after all tests
+    clear_settings_cache()
 
 
 @pytest.fixture(scope="function")
@@ -317,7 +377,10 @@ def inactive_user(db: Session) -> User:
     return user
 
 
-# Sample data for testing
+# ==============================================================================
+# Sample Data for Testing
+# ==============================================================================
+
 SAMPLE_RESUME_CONTENT = """
 John Doe
 Software Engineer

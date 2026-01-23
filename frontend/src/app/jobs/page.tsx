@@ -31,7 +31,6 @@ import {
   Link as LinkIcon,
   Users,
   CheckCircle,
-  AlertCircle,
   Bell,
   BarChart3,
   List,
@@ -2054,14 +2053,7 @@ export default function JobsPage() {
     }
   }, [user, authLoading, router])
 
-  // Load data
-  useEffect(() => {
-    if (tokens?.access_token) {
-      loadData()
-    }
-  }, [tokens])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!tokens?.access_token) return
 
     try {
@@ -2087,7 +2079,14 @@ export default function JobsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [tokens])
+
+  // Load data
+  useEffect(() => {
+    if (tokens?.access_token) {
+      loadData()
+    }
+  }, [tokens, loadData])
 
   // Job CRUD operations
   const handleAddJob = async (data: Partial<JobApplication>) => {

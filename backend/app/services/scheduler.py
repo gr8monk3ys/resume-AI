@@ -14,14 +14,6 @@ import uuid
 from datetime import datetime
 from typing import Callable, Optional
 
-from apscheduler.events import (
-    EVENT_JOB_ERROR,
-    EVENT_JOB_EXECUTED,
-    EVENT_JOB_MISSED,
-    JobExecutionEvent,
-)
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from app.schemas.scheduler import (
     JobSchedulerStatus,
     ScheduledJobCreate,
@@ -33,6 +25,14 @@ from app.schemas.scheduler import (
     TriggerJobResponse,
 )
 from app.services.job_scraper import JobScraper, get_job_scraper
+from apscheduler.events import (
+    EVENT_JOB_ERROR,
+    EVENT_JOB_EXECUTED,
+    EVENT_JOB_MISSED,
+    JobExecutionEvent,
+)
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -223,13 +223,9 @@ class JobScheduler:
 
             job_info.jobs_found_last_run = len(all_jobs)
             job_info.total_jobs_found += len(new_jobs)
-            job_info.last_result = (
-                f"Found {len(all_jobs)} jobs, {len(new_jobs)} new"
-            )
+            job_info.last_result = f"Found {len(all_jobs)} jobs, {len(new_jobs)} new"
 
-            logger.info(
-                f"Job {job_id}: Found {len(all_jobs)} jobs, {len(new_jobs)} new"
-            )
+            logger.info(f"Job {job_id}: Found {len(all_jobs)} jobs, {len(new_jobs)} new")
 
             # Call callback if new jobs found
             if new_jobs and self._on_jobs_found_callback:
@@ -478,9 +474,7 @@ class JobScheduler:
         logger.info(f"Updated scheduled job: {job_id}")
         return job_info.to_response()
 
-    async def trigger_job(
-        self, job_id: str, user_id: Optional[int] = None
-    ) -> TriggerJobResponse:
+    async def trigger_job(self, job_id: str, user_id: Optional[int] = None) -> TriggerJobResponse:
         """
         Manually trigger a scheduled job.
 
@@ -551,9 +545,7 @@ class JobScheduler:
         if self._start_time:
             uptime = (datetime.utcnow() - self._start_time).total_seconds()
 
-        active_jobs = sum(
-            1 for j in self._jobs.values() if j.status == ScheduledJobStatus.ACTIVE
-        )
+        active_jobs = sum(1 for j in self._jobs.values() if j.status == ScheduledJobStatus.ACTIVE)
 
         return SchedulerStatusResponse(
             status=self._status,

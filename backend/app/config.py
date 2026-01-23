@@ -1,11 +1,14 @@
 """
 Application configuration using Pydantic Settings.
+
+Provides configuration management with environment variable support.
+Settings are cached for performance but can be cleared for testing.
 """
 
 from functools import lru_cache
 from typing import Optional
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -92,13 +95,33 @@ class Settings(BaseSettings):
     scheduler_min_interval_minutes: int = 5
     scheduler_max_interval_minutes: int = 1440  # 24 hours
 
-    class Config:
-        env_file = "../.env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file="../.env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        # Allow environment variables to override .env file
+        env_nested_delimiter="__",
+    )
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Get cached settings instance."""
+    """
+    Get cached settings instance.
+
+    Settings are loaded from environment variables and .env file.
+    The result is cached for performance.
+
+    To reset settings (e.g., for testing), call clear_settings_cache().
+    """
     return Settings()
+
+
+def clear_settings_cache() -> None:
+    """
+    Clear the settings cache.
+
+    This is useful for testing when you need to reload settings
+    with different environment variables.
+    """
+    get_settings.cache_clear()

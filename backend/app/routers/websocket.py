@@ -224,9 +224,7 @@ async def websocket_alerts_endpoint(
         token: JWT authentication token
     """
     # Authenticate the connection
-    is_authenticated, authenticated_user_id, error = await authenticate_websocket(
-        websocket, token
-    )
+    is_authenticated, authenticated_user_id, error = await authenticate_websocket(websocket, token)
 
     if not is_authenticated:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason=error)
@@ -244,14 +242,16 @@ async def websocket_alerts_endpoint(
     await manager.connect(websocket, user_id)
 
     # Send connection confirmation
-    await websocket.send_json({
-        "type": "connected",
-        "data": {
-            "user_id": user_id,
-            "message": "Connected to job alerts WebSocket",
-        },
-        "timestamp": datetime.utcnow().isoformat(),
-    })
+    await websocket.send_json(
+        {
+            "type": "connected",
+            "data": {
+                "user_id": user_id,
+                "message": "Connected to job alerts WebSocket",
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
 
     # Start keepalive task
     async def keepalive():
@@ -262,10 +262,12 @@ async def websocket_alerts_endpoint(
                 if not manager.is_user_connected(user_id):
                     break
                 # Server-initiated ping
-                await websocket.send_json({
-                    "type": "ping",
-                    "timestamp": datetime.utcnow().isoformat(),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "ping",
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
             except Exception:
                 break
 
@@ -284,10 +286,12 @@ async def websocket_alerts_endpoint(
 
                 if message_type == "ping":
                     # Respond to client ping with pong
-                    await websocket.send_json({
-                        "type": "pong",
-                        "timestamp": datetime.utcnow().isoformat(),
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "pong",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    )
 
                 elif message_type == "pong":
                     # Client responded to our ping - connection is alive
@@ -299,18 +303,22 @@ async def websocket_alerts_endpoint(
 
                 else:
                     # Unknown message type
-                    await websocket.send_json({
-                        "type": "error",
-                        "data": {"message": f"Unknown message type: {message_type}"},
-                        "timestamp": datetime.utcnow().isoformat(),
-                    })
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "data": {"message": f"Unknown message type: {message_type}"},
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    )
 
             except json.JSONDecodeError:
-                await websocket.send_json({
-                    "type": "error",
-                    "data": {"message": "Invalid JSON message"},
-                    "timestamp": datetime.utcnow().isoformat(),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "data": {"message": "Invalid JSON message"},
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                )
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected for user {user_id}")

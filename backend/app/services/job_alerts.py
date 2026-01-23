@@ -46,9 +46,7 @@ class JobAlertService:
         except (json.JSONDecodeError, TypeError):
             return None
 
-    def create_alert(
-        self, user_id: int, alert_data: JobAlertCreate
-    ) -> JobAlert:
+    def create_alert(self, user_id: int, alert_data: JobAlertCreate) -> JobAlert:
         """
         Create a new job alert for a user.
 
@@ -176,7 +174,9 @@ class JobAlertService:
         total_criteria = 0
         matches = 0
 
-        job_text = f"{job.company} {job.position} {job.job_description or ''} {job.location or ''}".lower()
+        job_text = (
+            f"{job.company} {job.position} {job.job_description or ''} {job.location or ''}".lower()
+        )
 
         # Check keywords
         if criteria.keywords:
@@ -248,9 +248,7 @@ class JobAlertService:
             )
 
             # Query jobs that were added after the last check
-            query = self.db.query(JobApplication).filter(
-                JobApplication.profile_id == profile.id
-            )
+            query = self.db.query(JobApplication).filter(JobApplication.profile_id == profile.id)
 
             if alert.last_checked:
                 query = query.filter(JobApplication.created_at > alert.last_checked)
@@ -290,9 +288,7 @@ class JobAlertService:
         self.db.commit()
         return notifications
 
-    def test_alert(
-        self, alert_id: int, user_id: int, limit: int = 50
-    ) -> Optional[Dict[str, Any]]:
+    def test_alert(self, alert_id: int, user_id: int, limit: int = 50) -> Optional[Dict[str, Any]]:
         """
         Test an alert against recent jobs to see what would match.
 

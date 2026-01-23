@@ -3,11 +3,10 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
-import { jobsApi, resumesApi, analyticsApi } from '@/lib/api'
+import { jobsApi, resumesApi } from '@/lib/api'
 import type {
   JobApplication,
   JobStatus,
-  JobStats,
   Resume,
   DateRangeOption,
   TimelinePeriod,
@@ -20,7 +19,7 @@ import type {
   ResumePerformance,
   ActivityLogEntry,
 } from '@/types'
-import { cn, formatDate, getStatusColor, formatPercentage } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import {
   BarChart3,
   TrendingUp,
@@ -29,10 +28,8 @@ import {
   Clock,
   Target,
   CheckCircle,
-  AlertCircle,
   Download,
   Filter,
-  Calendar,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -210,19 +207,15 @@ function generateTimelineData(
   const current = new Date(start)
   while (current <= end) {
     let key: string
-    let label: string
 
     if (period === 'daily') {
       key = current.toISOString().slice(0, 10)
-      label = current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     } else if (period === 'weekly') {
       const weekStart = new Date(current)
       weekStart.setDate(weekStart.getDate() - weekStart.getDay())
       key = weekStart.toISOString().slice(0, 10)
-      label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     } else {
       key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`
-      label = current.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
     }
 
     if (!dataMap.has(key)) {
@@ -304,28 +297,6 @@ function calculateConversionFunnel(jobs: JobApplication[]): ConversionFunnelStag
 }
 
 function calculateSourcePerformance(jobs: JobApplication[]): SourcePerformance[] {
-  // Mock source data since jobs don't have a source field
-  // In a real app, this would come from the job data
-  const sources = APPLICATION_SOURCES.map((source) => {
-    const sourceJobs = jobs.filter(() => Math.random() > 0.7) // Mock assignment
-    const responses = sourceJobs.filter((j) =>
-      ['Phone Screen', 'Interview', 'Offer', 'Rejected'].includes(j.status)
-    ).length
-    const interviews = sourceJobs.filter((j) =>
-      ['Interview', 'Offer'].includes(j.status)
-    ).length
-    const offers = sourceJobs.filter((j) => j.status === 'Offer').length
-
-    return {
-      source,
-      applications: sourceJobs.length,
-      responses,
-      interviews,
-      offers,
-      response_rate: sourceJobs.length > 0 ? (responses / sourceJobs.length) * 100 : 0,
-    }
-  })
-
   // Distribute jobs more realistically for demo
   const totalJobs = jobs.length
   const distribution = [0.35, 0.25, 0.15, 0.1, 0.1, 0.05] // LinkedIn, Indeed, etc.
@@ -730,7 +701,7 @@ function DonutChart({ data, title }: DonutChartProps) {
               strokeWidth="10"
             />
             {/* Segments */}
-            {segments.map((segment, index) => (
+            {segments.map((segment, _index) => (
               <circle
                 key={segment.label}
                 cx="50"
@@ -782,8 +753,6 @@ interface FunnelChartProps {
 }
 
 function FunnelChart({ data }: FunnelChartProps) {
-  const maxCount = Math.max(...data.map((d) => d.count), 1)
-
   const colors = ['bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-green-500']
 
   return (

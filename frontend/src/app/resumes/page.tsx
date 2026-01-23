@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 import { resumesApi, aiApi } from '@/lib/api'
 import type { Resume, ATSAnalysis } from '@/types'
-import { cn, formatDate, formatPercentage } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import {
   Plus,
   FileText,
@@ -20,7 +20,6 @@ import {
   Pencil,
   Copy,
   Download,
-  Layout,
   Target,
   FileSearch,
   Palette,

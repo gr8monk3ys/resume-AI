@@ -28,10 +28,8 @@ import {
   Download,
   X,
   Check,
-  AlertCircle,
   Edit2,
   Eye,
-  Filter,
 } from 'lucide-react'
 
 // ============================================================================
