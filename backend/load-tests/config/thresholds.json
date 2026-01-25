@@ -1,0 +1,72 @@
+{
+  "standard": {
+    "description": "Standard performance thresholds for normal operations",
+    "http_req_duration": {
+      "p95": 500,
+      "p99": 1000
+    },
+    "http_req_failed": {
+      "rate": 0.01
+    },
+    "endpoints": {
+      "health": {
+        "p95": 100,
+        "p99": 200
+      },
+      "auth": {
+        "p95": 300,
+        "p99": 600
+      },
+      "jobs": {
+        "p95": 500,
+        "p99": 1000
+      },
+      "resumes": {
+        "p95": 500,
+        "p99": 1000
+      },
+      "ai": {
+        "p95": 5000,
+        "p99": 10000
+      },
+      "ats": {
+        "p95": 1000,
+        "p99": 2000
+      }
+    }
+  },
+  "critical": {
+    "description": "Strict thresholds for critical path validation",
+    "http_req_duration": {
+      "p95": 300,
+      "p99": 500
+    },
+    "http_req_failed": {
+      "rate": 0.001
+    }
+  },
+  "stress": {
+    "description": "Relaxed thresholds for stress testing",
+    "http_req_duration": {
+      "p95": 2000,
+      "p99": 5000
+    },
+    "http_req_failed": {
+      "rate": 0.10
+    }
+  },
+  "soak": {
+    "description": "Thresholds for soak testing with memory leak detection",
+    "http_req_duration": {
+      "p95": 500,
+      "p99": 1000
+    },
+    "http_req_failed": {
+      "rate": 0.01
+    },
+    "iteration_duration": {
+      "p95": 5000
+    },
+    "checks_rate": 0.99
+  }
+}
