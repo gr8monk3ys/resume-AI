@@ -1,4 +1,4 @@
-.PHONY: backend frontend dev test lint clean help
+.PHONY: backend frontend dev test test-e2e lint clean help
 
 # Default target
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "  make frontend - Start Next.js frontend server"
 	@echo "  make dev      - Start both backend and frontend"
 	@echo "  make test     - Run all tests"
+	@echo "  make test-e2e - Run E2E tests with Playwright"
 	@echo "  make lint     - Run linting on backend code"
 	@echo "  make clean    - Remove cache and build files"
 
@@ -28,18 +29,23 @@ dev:
 # Run all tests
 test:
 	@echo "Running backend tests..."
-	cd backend && python -m pytest tests/ -v
+	cd backend && uv run pytest tests/ -v
 	@echo "Running frontend tests..."
 	cd frontend && npm test 2>/dev/null || echo "No frontend tests configured"
+
+# Run E2E tests
+test-e2e:
+	@echo "Running E2E tests with Playwright..."
+	cd frontend && npm run test:e2e
 
 # Run linting
 lint:
 	@echo "Running black..."
-	black backend/
+	uv run black backend/
 	@echo "Running isort..."
-	isort backend/
+	uv run isort backend/
 	@echo "Running pylint..."
-	pylint backend/ --ignore=__pycache__
+	uv run pylint backend/ --ignore=__pycache__
 	@echo "Running frontend lint..."
 	cd frontend && npm run lint 2>/dev/null || echo "No frontend lint configured"
 

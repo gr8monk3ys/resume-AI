@@ -21,7 +21,7 @@ repos:
 
   # Python code formatting
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 24.10.0
     hooks:
       - id: black
         args: ['--line-length=100']
@@ -35,7 +35,7 @@ repos:
 
   # Linting
   - repo: https://github.com/pycqa/pylint
-    rev: v3.0.3
+    rev: v3.3.3
     hooks:
       - id: pylint
         args: ['--rcfile=.pylintrc']
@@ -52,11 +52,36 @@ repos:
 
   # Type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.11.2
     hooks:
       - id: mypy
         additional_dependencies: [types-all]
         exclude: '^(venv|\.venv|data|backups)/'
+
+  # Secrets detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock.json
+
+  # Frontend checks
+  - repo: local
+    hooks:
+      - id: frontend-eslint
+        name: Frontend ESLint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+      - id: frontend-typecheck
+        name: Frontend TypeScript Check
+        entry: bash -c 'cd frontend && npm run typecheck'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
 
 [tool.bandit]
 exclude_dirs = ["venv", ".venv", "data", "backups", "scripts/test_*.py"]

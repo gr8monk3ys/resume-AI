@@ -21,10 +21,8 @@ disable=
     too-many-statements,
     too-many-instance-attributes,
     fixme,
-    broad-except,
     logging-fstring-interpolation,
-    import-outside-toplevel,
-    duplicate-code
+    import-outside-toplevel
 
 [REPORTS]
 # Set the output format.
@@ -35,6 +33,9 @@ include-ids=yes
 
 # Activate the evaluation score.
 score=yes
+
+# Fail if score is below this threshold
+fail-under=8.5
 
 [BASIC]
 # Good variable names
@@ -88,7 +89,7 @@ valid-metaclass-classmethod-first-arg=mcs
 
 [DESIGN]
 # Maximum number of arguments for function / method
-max-args=10
+max-args=6
 
 # Maximum number of attributes for a class
 max-attributes=15
@@ -100,7 +101,7 @@ max-bool-expr=5
 max-branches=15
 
 # Maximum number of locals for function / method body
-max-locals=20
+max-locals=15
 
 # Maximum number of parents for a class
 max-parents=7
@@ -112,7 +113,7 @@ max-public-methods=20
 max-returns=6
 
 # Maximum number of statements in function / method body
-max-statements=60
+max-statements=40
 
 # Minimum number of public methods for a class
 min-public-methods=0

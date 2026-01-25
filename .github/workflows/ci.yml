@@ -217,7 +217,9 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm run test -- --run --coverage
+        run: npm run test:ci -- --coverage
+        env:
+          CI: true
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v5
