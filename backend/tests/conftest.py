@@ -377,6 +377,59 @@ def inactive_user(db: Session) -> User:
     return user
 
 
+@pytest.fixture
+def admin_profile(db: Session, admin_user: User) -> Profile:
+    """
+    Create a profile for the admin user.
+
+    Returns the created Profile object.
+    """
+    profile = Profile(
+        user_id=admin_user.id,
+        name=admin_user.full_name or admin_user.username,
+        email=admin_user.email,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
+@pytest.fixture
+def second_user(db: Session) -> User:
+    """
+    Create a second test user (for isolation tests).
+
+    Returns the created User object.
+    """
+    user = User(
+        username="seconduser",
+        email="second@example.com",
+        password_hash=get_password_hash("secondpassword123"),
+        full_name="Second User",
+        is_active=True,
+        is_admin=False,
+        created_at=datetime.utcnow(),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def second_user_token(second_user: User) -> str:
+    """Create a valid JWT token for the second user."""
+    token_data = {"sub": second_user.id, "username": second_user.username}
+    return create_access_token(token_data)
+
+
+@pytest.fixture
+def second_user_auth_headers(second_user_token: str) -> dict:
+    """Create authorization headers with second user token."""
+    return {"Authorization": f"Bearer {second_user_token}"}
+
+
 # ==============================================================================
 # Sample Data for Testing
 # ==============================================================================
