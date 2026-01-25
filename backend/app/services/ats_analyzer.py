@@ -1214,6 +1214,23 @@ class ATSAnalyzer:
 
         return suggestions
 
+    def extract_experience_details(
+        self, resume: str, job_description: str
+    ) -> Tuple[List[Dict[str, any]], Dict[str, any]]:
+        """
+        Extract experience requirements from job description and resume.
+
+        Args:
+            resume: The resume content
+            job_description: The job description
+
+        Returns:
+            Tuple of (job_requirements, resume_experience) dictionaries
+        """
+        jd_requirements = self._extract_experience_requirements(job_description)
+        resume_experience = self._extract_years_from_resume(resume)
+        return jd_requirements, resume_experience
+
     def calculate_experience_match(self, resume: str, job_description: str) -> Dict[str, any]:
         """
         Calculate how well resume experience matches job requirements.

@@ -2,6 +2,10 @@
 AI service router for LLM-powered features.
 """
 
+import asyncio
+import logging
+
+from app.config import get_settings
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.schemas.ai import (
@@ -30,16 +34,35 @@ from app.schemas.ats import (
     ExtractKeywordsRequest,
     ExtractKeywordsResponse,
     KeywordBreakdown,
-)
-from app.schemas.ats import KeywordSuggestion as ATSKeywordSuggestion
-from app.schemas.ats import KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest
-from app.schemas.ats import KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse
-from app.schemas.ats import (
+    KeywordSuggestion as ATSKeywordSuggestion,
+    KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest,
+    KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse,
     SectionScores,
 )
 from fastapi import APIRouter, Depends, HTTPException
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/ai", tags=["AI Services"])
+
+
+def _handle_ai_error(e: Exception, operation: str, user_id: int) -> HTTPException:
+    """
+    Handle AI service errors with appropriate logging and error messages.
+
+    In production, returns generic error messages to avoid exposing internal details.
+    In debug mode, includes the actual error message for debugging.
+    """
+    settings = get_settings()
+    logger.error(f"{operation} failed for user {user_id}: {str(e)}")
+
+    if settings.debug:
+        return HTTPException(status_code=500, detail=f"{operation} failed: {str(e)}")
+    else:
+        return HTTPException(
+            status_code=500,
+            detail=f"{operation} failed. Please try again later."
+        )
 
 
 @router.post("/tailor-resume", response_model=TailorResumeResponse)
@@ -52,7 +75,8 @@ async def tailor_resume(
 
     try:
         llm_service = get_llm_service()
-        result = llm_service.tailor_resume(
+        result = await asyncio.to_thread(
+            llm_service.tailor_resume,
             resume=request.resume_content,
             job_description=request.job_description,
         )
@@ -63,7 +87,7 @@ async def tailor_resume(
             keywords_added=[],
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to tailor resume: {str(e)}")
+        raise _handle_ai_error(e, "Failed to tailor resume", current_user.id)
 
 
 @router.post("/answer-question", response_model=AnswerQuestionResponse)
@@ -76,7 +100,8 @@ async def answer_question(
 
     try:
         llm_service = get_llm_service()
-        answer = llm_service.answer_application_question(
+        answer = await asyncio.to_thread(
+            llm_service.answer_application_question,
             question=request.question,
             question_type=request.question_type,
             resume=request.resume_content or "",
@@ -88,7 +113,7 @@ async def answer_question(
             tips=["Personalize further with specific examples", "Keep response concise"],
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate answer: {str(e)}")
+        raise _handle_ai_error(e, "Failed to generate answer", current_user.id)
 
 
 @router.post("/interview-prep", response_model=InterviewPrepResponse)
@@ -101,7 +126,8 @@ async def interview_prep(
 
     try:
         llm_service = get_llm_service()
-        answer = llm_service.generate_interview_answer(
+        answer = await asyncio.to_thread(
+            llm_service.generate_interview_answer,
             question=request.question,
             resume=request.resume_content or "",
             job_description=request.job_description or "",
@@ -119,9 +145,7 @@ async def interview_prep(
 
         return response
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate interview answer: {str(e)}"
-        )
+        raise _handle_ai_error(e, "Failed to generate interview answer", current_user.id)
 
 
 @router.post("/grammar-check", response_model=GrammarCorrectionResponse)
@@ -134,14 +158,17 @@ async def grammar_check(
 
     try:
         llm_service = get_llm_service()
-        corrected = llm_service.correct_grammar(request.text)
+        corrected = await asyncio.to_thread(
+            llm_service.correct_grammar,
+            request.text,
+        )
 
         return GrammarCorrectionResponse(
             corrected_text=corrected,
             corrections_made=[],
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to check grammar: {str(e)}")
+        raise _handle_ai_error(e, "Failed to check grammar", current_user.id)
 
 
 @router.post("/optimize-resume")
@@ -155,14 +182,15 @@ async def optimize_resume(
 
     try:
         llm_service = get_llm_service()
-        suggestions = llm_service.optimize_resume(
+        suggestions = await asyncio.to_thread(
+            llm_service.optimize_resume,
             resume=resume_content,
             job_description=job_description,
         )
 
         return {"suggestions": suggestions}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to optimize resume: {str(e)}")
+        raise _handle_ai_error(e, "Failed to optimize resume", current_user.id)
 
 
 @router.post("/networking-email", response_model=NetworkingEmailResponse)
@@ -175,7 +203,8 @@ async def generate_networking_email(
 
     try:
         llm_service = get_llm_service()
-        full_email = llm_service.generate_networking_email(
+        full_email = await asyncio.to_thread(
+            llm_service.generate_networking_email,
             recipient=request.recipient_name,
             company=request.company,
             purpose=request.purpose,
@@ -213,9 +242,7 @@ async def generate_networking_email(
             full_email=full_email,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate networking email: {str(e)}"
-        )
+        raise _handle_ai_error(e, "Failed to generate networking email", current_user.id)
 
 
 @router.post("/keyword-suggestions", response_model=KeywordSuggestionsResponse)
@@ -230,14 +257,19 @@ async def get_keyword_suggestions(
     try:
         # Analyze resume to find missing keywords if not provided
         analyzer = ATSAnalyzer()
-        analysis = analyzer.analyze_resume(request.resume_content, request.job_description)
+        analysis = await asyncio.to_thread(
+            analyzer.analyze_resume,
+            request.resume_content,
+            request.job_description,
+        )
 
         missing_keywords = request.missing_keywords or analysis.get("missing_keywords", [])
         matched_keywords = analysis.get("keyword_matches", [])
 
         # Get AI suggestions for incorporating keywords
         llm_service = get_llm_service()
-        suggestions = llm_service.suggest_keyword_additions(
+        suggestions = await asyncio.to_thread(
+            llm_service.suggest_keyword_additions,
             resume=request.resume_content,
             job_description=request.job_description,
             missing_keywords=missing_keywords,
@@ -249,7 +281,7 @@ async def get_keyword_suggestions(
             matched_keywords=matched_keywords,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}")
+        raise _handle_ai_error(e, "Failed to get keyword suggestions", current_user.id)
 
 
 @router.post("/job-match-score", response_model=JobMatchScoreResponse)
@@ -262,7 +294,11 @@ async def calculate_job_match_score(
 
     try:
         analyzer = ATSAnalyzer()
-        analysis = analyzer.analyze_resume(request.resume_content, request.job_description)
+        analysis = await asyncio.to_thread(
+            analyzer.analyze_resume,
+            request.resume_content,
+            request.job_description,
+        )
 
         return JobMatchScoreResponse(
             score=analysis.get("ats_score", 0),
@@ -273,9 +309,7 @@ async def calculate_job_match_score(
             found_skills=analysis.get("found_skills", {}),
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to calculate job match score: {str(e)}"
-        )
+        raise _handle_ai_error(e, "Failed to calculate job match score", current_user.id)
 
 
 # =============================================================================
@@ -322,7 +356,7 @@ async def ats_analyze(
             keyword_breakdown=KeywordBreakdown(**result.keyword_breakdown),
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to analyze resume: {str(e)}")
+        raise _handle_ai_error(e, "Failed to analyze resume", current_user.id)
 
 
 @router.post("/extract-keywords", response_model=ExtractKeywordsResponse)
@@ -356,7 +390,7 @@ async def extract_keywords(
             total_keywords=total,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to extract keywords: {str(e)}")
+        raise _handle_ai_error(e, "Failed to extract keywords", current_user.id)
 
 
 @router.post("/ats-keyword-suggestions", response_model=ATSKeywordSuggestionsResponse)
@@ -416,7 +450,7 @@ async def ats_keyword_suggestions(
             match_percentage=round(match_percentage, 1),
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get keyword suggestions: {str(e)}")
+        raise _handle_ai_error(e, "Failed to get keyword suggestions", current_user.id)
 
 
 @router.post("/experience-match", response_model=ExperienceMatchResponse)
@@ -446,8 +480,9 @@ async def calculate_experience_match(
         )
 
         # Also get the raw requirements for detailed view
-        jd_requirements = analyzer._extract_experience_requirements(request.job_description)
-        resume_experience = analyzer._extract_years_from_resume(request.resume_content)
+        jd_requirements, resume_experience = analyzer.extract_experience_details(
+            request.resume_content, request.job_description
+        )
 
         return ExperienceMatchResponse(
             match=ExperienceMatch(**experience_match),
@@ -455,6 +490,4 @@ async def calculate_experience_match(
             resume_experience=resume_experience,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to calculate experience match: {str(e)}"
-        )
+        raise _handle_ai_error(e, "Failed to calculate experience match", current_user.id)
