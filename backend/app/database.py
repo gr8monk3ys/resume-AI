@@ -1,29 +1,63 @@
 """
 Database configuration and session management.
+
+Supports both SQLite (development) and PostgreSQL (production).
+PostgreSQL includes connection pooling and async support for enterprise scale.
 """
 
 import os
+from contextlib import asynccontextmanager, contextmanager
+from typing import AsyncGenerator, Generator
+
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool, QueuePool, StaticPool
 
 from app.config import get_settings
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 settings = get_settings()
 
+
+def _is_sqlite() -> bool:
+    """Check if using SQLite database."""
+    return settings.database_url.startswith("sqlite")
+
+
+def _is_postgres() -> bool:
+    """Check if using PostgreSQL database."""
+    return "postgresql" in settings.database_url
+
+
+def _get_async_url() -> str:
+    """Convert sync database URL to async URL for PostgreSQL."""
+    url = settings.database_url
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql+psycopg2://"):
+        return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    return url
+
+
 # Ensure data directory exists for SQLite file databases
-if settings.database_url.startswith("sqlite:///") and ":memory:" not in settings.database_url:
+if _is_sqlite() and ":memory:" not in settings.database_url:
     db_path = settings.database_url.replace("sqlite:///", "")
     db_dir = os.path.dirname(db_path)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
 
-# SQLite-specific configuration
-if settings.database_url.startswith("sqlite"):
+
+# =============================================================================
+# SYNC ENGINE (for backward compatibility and migrations)
+# =============================================================================
+
+if _is_sqlite():
+    # SQLite configuration
     engine = create_engine(
         settings.database_url,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
+        echo=settings.db_echo,
     )
 
     # Enable foreign keys and WAL mode for SQLite
@@ -34,17 +68,77 @@ if settings.database_url.startswith("sqlite"):
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.close()
 
+elif _is_postgres():
+    # PostgreSQL configuration with connection pooling
+    engine = create_engine(
+        settings.database_url,
+        poolclass=QueuePool,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+        pool_recycle=settings.db_pool_recycle,
+        pool_pre_ping=settings.db_pool_pre_ping,
+        echo=settings.db_echo,
+    )
 else:
-    # PostgreSQL or other databases
-    engine = create_engine(settings.database_url)
+    # Generic database configuration
+    engine = create_engine(
+        settings.database_url,
+        echo=settings.db_echo,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+# =============================================================================
+# ASYNC ENGINE (for PostgreSQL high-performance operations)
+# =============================================================================
+
+async_engine = None
+AsyncSessionLocal = None
+
+if _is_postgres():
+    async_engine = create_async_engine(
+        _get_async_url(),
+        poolclass=QueuePool,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+        pool_recycle=settings.db_pool_recycle,
+        pool_pre_ping=settings.db_pool_pre_ping,
+        echo=settings.db_echo,
+    )
+
+    AsyncSessionLocal = async_sessionmaker(
+        bind=async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autocommit=False,
+        autoflush=False,
+    )
+
+
+# =============================================================================
+# BASE MODEL
+# =============================================================================
 
 Base = declarative_base()
 
 
-def get_db():
-    """Dependency for getting database session."""
+# =============================================================================
+# DEPENDENCY INJECTION
+# =============================================================================
+
+
+def get_db() -> Generator[Session, None, None]:
+    """
+    Dependency for getting synchronous database session.
+
+    Usage:
+        @router.get("/items")
+        def get_items(db: Session = Depends(get_db)):
+            return db.query(Item).all()
+    """
     db = SessionLocal()
     try:
         yield db
@@ -52,16 +146,245 @@ def get_db():
         db.close()
 
 
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency for getting asynchronous database session.
+
+    Only available when using PostgreSQL.
+
+    Usage:
+        @router.get("/items")
+        async def get_items(db: AsyncSession = Depends(get_async_db)):
+            result = await db.execute(select(Item))
+            return result.scalars().all()
+    """
+    if AsyncSessionLocal is None:
+        raise RuntimeError(
+            "Async database sessions are only available with PostgreSQL. "
+            "Current database URL does not support async operations."
+        )
+
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+
+@contextmanager
+def get_db_context() -> Generator[Session, None, None]:
+    """
+    Context manager for database session (non-dependency use).
+
+    Usage:
+        with get_db_context() as db:
+            db.query(Item).all()
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def get_async_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Async context manager for database session (non-dependency use).
+
+    Only available when using PostgreSQL.
+
+    Usage:
+        async with get_async_db_context() as db:
+            result = await db.execute(select(Item))
+    """
+    if AsyncSessionLocal is None:
+        raise RuntimeError(
+            "Async database sessions are only available with PostgreSQL."
+        )
+
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+
+# =============================================================================
+# HEALTH CHECKS
+# =============================================================================
+
+
+def check_db_health() -> dict:
+    """
+    Check database health and return connection info.
+
+    Returns:
+        dict with status, database type, and pool stats (if PostgreSQL)
+    """
+    try:
+        with get_db_context() as db:
+            if _is_sqlite():
+                db.execute(text("SELECT 1"))
+                return {
+                    "status": "healthy",
+                    "database": "sqlite",
+                    "pool": "static",
+                }
+            elif _is_postgres():
+                db.execute(text("SELECT 1"))
+                pool = engine.pool
+                return {
+                    "status": "healthy",
+                    "database": "postgresql",
+                    "pool": {
+                        "size": pool.size(),
+                        "checked_in": pool.checkedin(),
+                        "checked_out": pool.checkedout(),
+                        "overflow": pool.overflow(),
+                    },
+                }
+            else:
+                db.execute(text("SELECT 1"))
+                return {
+                    "status": "healthy",
+                    "database": "unknown",
+                }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+        }
+
+
+async def check_async_db_health() -> dict:
+    """
+    Check async database health (PostgreSQL only).
+
+    Returns:
+        dict with status and pool stats
+    """
+    if not _is_postgres() or async_engine is None:
+        return {
+            "status": "unavailable",
+            "reason": "Async database only available with PostgreSQL",
+        }
+
+    try:
+        async with get_async_db_context() as db:
+            await db.execute(text("SELECT 1"))
+            pool = async_engine.pool
+            return {
+                "status": "healthy",
+                "database": "postgresql_async",
+                "pool": {
+                    "size": pool.size(),
+                    "checked_in": pool.checkedin(),
+                    "checked_out": pool.checkedout(),
+                    "overflow": pool.overflow(),
+                },
+            }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+        }
+
+
+# =============================================================================
+# INITIALIZATION
+# =============================================================================
+
+
 def init_db():
-    """Initialize database tables."""
+    """
+    Initialize database tables directly using SQLAlchemy metadata.
+
+    WARNING: This function is provided for DEVELOPMENT and TESTING only.
+
+    For PRODUCTION deployments, use Alembic migrations instead:
+        cd backend
+        alembic upgrade head
+
+    Why use migrations in production?
+    1. Schema versioning - Track all database changes over time
+    2. Rollback capability - Safely revert changes if needed
+    3. Data preservation - Migrations can handle data transformations
+    4. Team coordination - Everyone stays on the same schema version
+    5. Audit trail - Clear history of what changed and when
+
+    Migration commands:
+        # Check current revision
+        alembic current
+
+        # Show migration history
+        alembic history
+
+        # Apply all migrations
+        alembic upgrade head
+
+        # Rollback one migration
+        alembic downgrade -1
+
+        # Generate new migration from model changes
+        alembic revision --autogenerate -m "description"
+
+    See backend/alembic/versions/ for migration files.
+    """
+    # Import all models to register them with Base
     from app.models import (
-        cover_letter,
-        job_alert,
-        job_application,
-        job_filters,
-        profile,
-        resume,
-        user,
+        CareerJournalEntry,
+        CoverLetter,
+        JobApplication,
+        Profile,
+        Resume,
+        User,
     )
+    from app.models.job_alert import JobAlert
+    from app.models.job_filters import ApplicationQuestion, CompanyFilter, KeywordFilter
 
     Base.metadata.create_all(bind=engine)
+
+
+async def dispose_engines():
+    """
+    Dispose of all database engines.
+
+    Call this during application shutdown.
+    """
+    engine.dispose()
+    if async_engine is not None:
+        await async_engine.dispose()
+
+
+def get_database_info() -> dict:
+    """
+    Get information about the current database configuration.
+
+    Returns:
+        dict with database type, URL (sanitized), and pool settings
+    """
+    # Sanitize URL to hide password
+    url = settings.database_url
+    if "@" in url:
+        # Hide password in URL
+        parts = url.split("@")
+        prefix = parts[0].rsplit(":", 1)[0]
+        url = f"{prefix}:***@{parts[1]}"
+
+    info = {
+        "type": "sqlite" if _is_sqlite() else "postgresql" if _is_postgres() else "unknown",
+        "url": url,
+        "async_available": _is_postgres(),
+    }
+
+    if _is_postgres():
+        info["pool"] = {
+            "size": settings.db_pool_size,
+            "max_overflow": settings.db_max_overflow,
+            "timeout": settings.db_pool_timeout,
+            "recycle": settings.db_pool_recycle,
+            "pre_ping": settings.db_pool_pre_ping,
+        }
+
+    return info
