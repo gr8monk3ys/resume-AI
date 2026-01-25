@@ -15,7 +15,7 @@ class Profile(Base):
     __tablename__ = "profiles"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     name = Column(String, nullable=False, default="New User")
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
