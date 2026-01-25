@@ -1,5 +1,6 @@
 /// <reference types="node" />
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 declare namespace NodeJS {
   interface ProcessEnv {
     // Node environment
