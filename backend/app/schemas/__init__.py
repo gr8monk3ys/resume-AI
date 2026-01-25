@@ -35,6 +35,10 @@ from app.schemas.job_import import (
     JobSource,
     JobType,
 )
+from app.schemas.pagination import (
+    PaginatedResponse,
+    PaginationParams,
+)
 from app.schemas.profile import (
     ProfileCreate,
     ProfileResponse,
@@ -104,6 +108,9 @@ __all__ = [
     "ImportResult",
     "ImportError",
     "JobPreviewResponse",
+    # Pagination
+    "PaginatedResponse",
+    "PaginationParams",
     # Scheduler
     "ScheduledJobCreate",
     "ScheduledJobUpdate",
