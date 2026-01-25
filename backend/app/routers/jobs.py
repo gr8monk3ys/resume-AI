@@ -10,7 +10,9 @@ from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
+from app.schemas.pagination import PaginatedResponse, PaginationParams
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
@@ -27,16 +29,28 @@ def get_user_profile(user: User, db: Session) -> Profile:
     return profile
 
 
-@router.get("", response_model=List[JobResponse])
+@router.get("", response_model=PaginatedResponse[JobResponse])
 async def list_jobs(
     status_filter: Optional[JobStatus] = Query(None, alias="status"),
     search: Optional[str] = None,
+    pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List all job applications for current user."""
+    """
+    List job applications for current user with pagination.
+
+    Args:
+        status_filter: Filter by job status (optional)
+        search: Search term for company/position (optional)
+        pagination: Pagination parameters (page, limit)
+
+    Returns:
+        Paginated list of job applications with metadata
+    """
     profile = get_user_profile(current_user, db)
 
+    # Build base query with filters
     query = db.query(JobApplication).filter(JobApplication.profile_id == profile.id)
 
     if status_filter:
@@ -49,26 +63,43 @@ async def list_jobs(
             | (JobApplication.position.ilike(search_term))
         )
 
-    jobs = query.order_by(JobApplication.updated_at.desc()).all()
-    return jobs
+    # Get total count efficiently using SQL COUNT
+    total = query.count()
+
+    # Apply pagination and ordering
+    jobs = (
+        query.order_by(JobApplication.updated_at.desc())
+        .offset(pagination.skip)
+        .limit(pagination.limit)
+        .all()
+    )
+
+    return PaginatedResponse.create(
+        items=jobs,
+        total=total,
+        page=pagination.page,
+        limit=pagination.limit,
+    )
 
 
 @router.get("/stats")
 async def get_job_stats(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
-    """Get job application statistics."""
+    """Get job application statistics using SQL aggregation for performance."""
     profile = get_user_profile(current_user, db)
 
-    jobs = db.query(JobApplication).filter(JobApplication.profile_id == profile.id).all()
+    # Use SQL GROUP BY for efficient aggregation instead of Python iteration
+    status_counts_query = (
+        db.query(JobApplication.status, func.count(JobApplication.id))
+        .filter(JobApplication.profile_id == profile.id)
+        .group_by(JobApplication.status)
+        .all()
+    )
+    status_counts = dict(status_counts_query)
 
-    # Status breakdown
-    status_counts = {}
-    for job in jobs:
-        status_counts[job.status] = status_counts.get(job.status, 0) + 1
-
-    # Calculate response rate (interviews / applications)
-    total = len(jobs)
+    # Calculate totals from aggregated data
+    total = sum(status_counts.values())
     applied = status_counts.get("Applied", 0)
     interviews = status_counts.get("Interview", 0) + status_counts.get("Phone Screen", 0)
     offers = status_counts.get("Offer", 0)

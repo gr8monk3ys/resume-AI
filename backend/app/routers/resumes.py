@@ -2,13 +2,17 @@
 Resumes router.
 """
 
-from typing import List
+import asyncio
+import logging
+from typing import List, Optional
 
+from app.config import get_settings
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.profile import Profile
 from app.models.resume import Resume
 from app.models.user import User
+from app.schemas.pagination import PaginatedResponse, PaginationParams
 from app.schemas.resume import (
     ATSAnalysisRequest,
     ATSAnalysisResponse,
@@ -16,10 +20,26 @@ from app.schemas.resume import (
     ResumeResponse,
     ResumeUpdate,
 )
+# Module-level imports for better performance (avoid repeated lazy imports)
+from app.services.resume_analyzer import ATSAnalyzer
+from app.services.file_parser import parse_file
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/resumes", tags=["Resumes"])
+
+# Singleton ATSAnalyzer instance to avoid repeated instantiation
+_ats_analyzer: Optional[ATSAnalyzer] = None
+
+
+def get_ats_analyzer() -> ATSAnalyzer:
+    """Get or create the singleton ATSAnalyzer instance."""
+    global _ats_analyzer
+    if _ats_analyzer is None:
+        _ats_analyzer = ATSAnalyzer()
+    return _ats_analyzer
 
 
 def get_user_profile(user: User, db: Session) -> Profile:
@@ -33,19 +53,43 @@ def get_user_profile(user: User, db: Session) -> Profile:
     return profile
 
 
-@router.get("", response_model=List[ResumeResponse])
+@router.get("", response_model=PaginatedResponse[ResumeResponse])
 async def list_resumes(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    pagination: PaginationParams = Depends(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """List all resumes for current user."""
+    """
+    List resumes for current user with pagination.
+
+    Args:
+        pagination: Pagination parameters (page, limit)
+
+    Returns:
+        Paginated list of resumes with metadata
+    """
     profile = get_user_profile(current_user, db)
+
+    # Build base query
+    query = db.query(Resume).filter(Resume.profile_id == profile.id)
+
+    # Get total count efficiently using SQL COUNT
+    total = query.count()
+
+    # Apply pagination and ordering
     resumes = (
-        db.query(Resume)
-        .filter(Resume.profile_id == profile.id)
-        .order_by(Resume.updated_at.desc())
+        query.order_by(Resume.updated_at.desc())
+        .offset(pagination.skip)
+        .limit(pagination.limit)
         .all()
     )
-    return resumes
+
+    return PaginatedResponse.create(
+        items=resumes,
+        total=total,
+        page=pagination.page,
+        limit=pagination.limit,
+    )
 
 
 @router.post("", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
@@ -137,9 +181,8 @@ async def analyze_resume(
     current_user: User = Depends(get_current_user),
 ):
     """Analyze resume for ATS compatibility."""
-    from app.services.resume_analyzer import ATSAnalyzer
-
-    analyzer = ATSAnalyzer()
+    # Use singleton analyzer to avoid repeated instantiation
+    analyzer = get_ats_analyzer()
     result = analyzer.analyze_resume(request.resume_content, request.job_description)
 
     return ATSAnalysisResponse(
@@ -157,7 +200,8 @@ async def upload_resume(
     current_user: User = Depends(get_current_user),
 ):
     """Upload and parse a resume file."""
-    from app.services.file_parser import parse_file
+    settings = get_settings()
+    max_file_size = settings.max_file_size_mb * 1024 * 1024  # Convert MB to bytes
 
     # Validate file type
     allowed_types = [
@@ -168,8 +212,23 @@ async def upload_resume(
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type. Allowed: txt, pdf, docx")
 
-    # Read file content
+    # Check file size before reading entire content
+    # First, check Content-Length header if available
+    if file.size is not None and file.size > max_file_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {settings.max_file_size_mb} MB."
+        )
+
+    # Read file content with size limit
     content = await file.read()
+
+    # Verify actual content size (in case Content-Length was missing or incorrect)
+    if len(content) > max_file_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size is {settings.max_file_size_mb} MB."
+        )
 
     # Determine file type
     if file.content_type == "text/plain":
@@ -179,11 +238,23 @@ async def upload_resume(
     else:
         file_type = "docx"
 
-    # Parse file
+    # Parse file (run in thread pool to avoid blocking async event loop)
     try:
-        parsed_content = parse_file(content, file_type)
+        parsed_content = await asyncio.to_thread(parse_file, content, file_type)
+    except ValueError as e:
+        # ValueError is raised by our security checks - safe to show
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse file: {str(e)}")
+        # Log detailed error server-side, return generic message to client
+        settings = get_settings()
+        logger.error(f"Failed to parse file for user {current_user.id}: {str(e)}")
+        if settings.debug:
+            raise HTTPException(status_code=400, detail=f"Failed to parse file: {str(e)}")
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to parse file. Please ensure the file is valid and try again."
+            )
 
     return {
         "filename": file.filename,
