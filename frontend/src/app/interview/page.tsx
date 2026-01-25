@@ -1,11 +1,5 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { useAuth } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
-import { aiApi, resumesApi } from '@/lib/api'
-import type { Resume, InterviewPrepResponse } from '@/types'
-import { cn, generateId } from '@/lib/utils'
 import {
   MessageSquare,
   Lightbulb,
@@ -30,6 +24,26 @@ import {
   Copy,
   Check,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'react'
+
+import { aiApi, resumesApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { cn, generateId } from '@/lib/utils'
+
+import type { Resume } from '@/types'
+
+// Loading skeleton for tab transitions
+function TabLoadingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-8 bg-gray-200 rounded w-1/4" />
+      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-48 bg-gray-200 rounded" />
+    </div>
+  )
+}
 
 // ============================================================================
 // Types
@@ -305,14 +319,12 @@ const CATEGORY_COLORS: Record<QuestionCategory, string> = {
 // ============================================================================
 
 interface QuestionBankTabProps {
-  token: string
   resumes: Resume[]
   selectedResume: Resume | null
   jobDescription: string
 }
 
 function QuestionBankTab({
-  token,
   resumes: _resumes,
   selectedResume,
   jobDescription,
@@ -346,15 +358,14 @@ function QuestionBankTab({
   const generateExampleAnswer = async (question: Question) => {
     setGeneratingExample(question.id)
     try {
-      const response = await aiApi.interviewPrep(token, {
-        question: question.text,
-        resume_content: selectedResume?.content,
-        job_description: jobDescription || undefined,
-        use_star_method: question.category === 'Behavioral',
-      })
+      const response = await aiApi.interviewPrep(
+        question.text,
+        selectedResume?.content,
+        jobDescription || undefined
+      )
       setExampleAnswers((prev) => ({
         ...prev,
-        [question.id]: (response as InterviewPrepResponse).answer,
+        [question.id]: (response).answer,
       }))
     } catch (error) {
       console.error('Failed to generate example answer:', error)
@@ -368,12 +379,12 @@ function QuestionBankTab({
     setIsGettingFeedback(true)
     setFeedback(null)
     try {
-      const response = await aiApi.interviewPrep(token, {
-        question: `Please provide feedback on this interview answer. Question: "${practiceQuestion.text}" Answer: "${practiceAnswer}"`,
-        resume_content: selectedResume?.content,
-        job_description: jobDescription || undefined,
-      })
-      setFeedback((response as InterviewPrepResponse).answer)
+      const response = await aiApi.interviewPrep(
+        `Please provide feedback on this interview answer. Question: "${practiceQuestion.text}" Answer: "${practiceAnswer}"`,
+        selectedResume?.content,
+        jobDescription || undefined
+      )
+      setFeedback((response).answer)
     } catch (error) {
       console.error('Failed to get feedback:', error)
       setFeedback('Failed to get feedback. Please try again.')
@@ -423,6 +434,14 @@ function QuestionBankTab({
             <div
               className="p-4 cursor-pointer hover:bg-gray-50"
               onClick={() => toggleExpand(question.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  toggleExpand(question.id)
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
@@ -477,7 +496,7 @@ function QuestionBankTab({
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      generateExampleAnswer(question)
+                      void generateExampleAnswer(question)
                     }}
                     disabled={generatingExample === question.id}
                     className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
@@ -546,10 +565,11 @@ function QuestionBankTab({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="practice-answer" className="block text-sm font-medium text-gray-700 mb-1">
                   Your Answer
                 </label>
                 <textarea
+                  id="practice-answer"
                   value={practiceAnswer}
                   onChange={(e) => setPracticeAnswer(e.target.value)}
                   rows={8}
@@ -559,7 +579,7 @@ function QuestionBankTab({
               </div>
 
               <button
-                onClick={handleGetFeedback}
+                onClick={() => { void handleGetFeedback() }}
                 disabled={!practiceAnswer.trim() || isGettingFeedback}
                 className="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center"
               >
@@ -598,13 +618,12 @@ function QuestionBankTab({
 // ============================================================================
 
 interface STARBuilderTabProps {
-  token: string
   stories: STARStory[]
   onSaveStory: (story: STARStory) => void
   onDeleteStory: (id: string) => void
 }
 
-function STARBuilderTab({ token, stories, onSaveStory, onDeleteStory }: STARBuilderTabProps) {
+function STARBuilderTab({ stories, onSaveStory, onDeleteStory }: STARBuilderTabProps) {
   const [formData, setFormData] = useState({
     title: '',
     situation: '',
@@ -674,11 +693,12 @@ Action: ${formData.action}
 Result: ${formData.result}
       `.trim()
 
-      const response = await aiApi.interviewPrep(token, {
-        question: `Please polish and improve this STAR story while keeping the same structure. Make it more compelling and professional: ${storyText}`,
-        use_star_method: true,
-      })
-      setPolishedStory((response as InterviewPrepResponse).answer)
+      const response = await aiApi.interviewPrep(
+        `Please polish and improve this STAR story while keeping the same structure. Make it more compelling and professional: ${storyText}`,
+        undefined,
+        undefined
+      )
+      setPolishedStory((response).answer)
     } catch (error) {
       console.error('Failed to polish story:', error)
     } finally {
@@ -707,10 +727,11 @@ Result: ${formData.result}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-title" className="block text-sm font-medium text-gray-700 mb-1">
               Story Title
             </label>
             <input
+              id="story-title"
               type="text"
               required
               value={formData.title}
@@ -721,7 +742,7 @@ Result: ${formData.result}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-situation" className="block text-sm font-medium text-gray-700 mb-1">
               <span className="inline-flex items-center gap-1">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center font-bold">
                   S
@@ -730,6 +751,7 @@ Result: ${formData.result}
               </span>
             </label>
             <textarea
+              id="story-situation"
               required
               value={formData.situation}
               onChange={(e) => setFormData({ ...formData, situation: e.target.value })}
@@ -740,7 +762,7 @@ Result: ${formData.result}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-task" className="block text-sm font-medium text-gray-700 mb-1">
               <span className="inline-flex items-center gap-1">
                 <span className="w-5 h-5 rounded-full bg-green-100 text-green-800 text-xs flex items-center justify-center font-bold">
                   T
@@ -749,6 +771,7 @@ Result: ${formData.result}
               </span>
             </label>
             <textarea
+              id="story-task"
               required
               value={formData.task}
               onChange={(e) => setFormData({ ...formData, task: e.target.value })}
@@ -759,7 +782,7 @@ Result: ${formData.result}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-action" className="block text-sm font-medium text-gray-700 mb-1">
               <span className="inline-flex items-center gap-1">
                 <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-bold">
                   A
@@ -768,6 +791,7 @@ Result: ${formData.result}
               </span>
             </label>
             <textarea
+              id="story-action"
               required
               value={formData.action}
               onChange={(e) => setFormData({ ...formData, action: e.target.value })}
@@ -778,7 +802,7 @@ Result: ${formData.result}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-result" className="block text-sm font-medium text-gray-700 mb-1">
               <span className="inline-flex items-center gap-1">
                 <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 text-xs flex items-center justify-center font-bold">
                   R
@@ -787,6 +811,7 @@ Result: ${formData.result}
               </span>
             </label>
             <textarea
+              id="story-result"
               required
               value={formData.result}
               onChange={(e) => setFormData({ ...formData, result: e.target.value })}
@@ -797,10 +822,11 @@ Result: ${formData.result}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-tags" className="block text-sm font-medium text-gray-700 mb-1">
               Tags (comma separated)
             </label>
             <input
+              id="story-tags"
               type="text"
               value={formData.tags}
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
@@ -812,7 +838,7 @@ Result: ${formData.result}
           <div className="flex gap-2 pt-2">
             <button
               type="button"
-              onClick={handlePolish}
+              onClick={() => { void handlePolish() }}
               disabled={isPolishing || !formData.situation || !formData.task || !formData.action || !formData.result}
               className="flex-1 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center"
             >
@@ -854,7 +880,7 @@ Result: ${formData.result}
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-amber-800">AI Polished Version</h4>
               <button
-                onClick={() => copyToClipboard(polishedStory, 'polished')}
+                onClick={() => { void copyToClipboard(polishedStory, 'polished') }}
                 className="p-1 text-amber-600 hover:text-amber-800"
                 aria-label="Copy to clipboard"
               >
@@ -956,12 +982,11 @@ Result: ${formData.result}
 // ============================================================================
 
 interface CompanyResearchTabProps {
-  token: string
   research: CompanyResearch
   onUpdateResearch: (research: CompanyResearch) => void
 }
 
-function CompanyResearchTab({ token, research, onUpdateResearch }: CompanyResearchTabProps) {
+function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabProps) {
   const [companyInput, setCompanyInput] = useState(research.companyName)
   const [isGenerating, setIsGenerating] = useState(false)
 
@@ -969,11 +994,13 @@ function CompanyResearchTab({ token, research, onUpdateResearch }: CompanyResear
     if (!companyInput.trim()) return
     setIsGenerating(true)
     try {
-      const response = await aiApi.interviewPrep(token, {
-        question: `Generate interview talking points and research insights for someone interviewing at ${companyInput}. Include: company background, recent news, culture insights, and suggested questions to ask. Format as bullet points.`,
-      })
+      const response = await aiApi.interviewPrep(
+        `Generate interview talking points and research insights for someone interviewing at ${companyInput}. Include: company background, recent news, culture insights, and suggested questions to ask. Format as bullet points.`,
+        undefined,
+        undefined
+      )
 
-      const points = (response as InterviewPrepResponse).answer
+      const points = (response).answer
         .split('\n')
         .filter((line) => line.trim())
         .map((line) => line.replace(/^[-*]\s*/, '').trim())
@@ -1019,7 +1046,7 @@ function CompanyResearchTab({ token, research, onUpdateResearch }: CompanyResear
               placeholder="Enter company name..."
             />
             <button
-              onClick={handleGenerateTalkingPoints}
+              onClick={() => { void handleGenerateTalkingPoints() }}
               disabled={isGenerating || !companyInput.trim()}
               className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center"
             >
@@ -1060,10 +1087,11 @@ function CompanyResearchTab({ token, research, onUpdateResearch }: CompanyResear
 
           {/* Notes */}
           <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="research-notes" className="block text-sm font-medium text-gray-700 mb-1">
               Your Research Notes
             </label>
             <textarea
+              id="research-notes"
               value={research.notes}
               onChange={(e) => onUpdateResearch({ ...research, notes: e.target.value })}
               rows={6}
@@ -1130,14 +1158,12 @@ function CompanyResearchTab({ token, research, onUpdateResearch }: CompanyResear
 // ============================================================================
 
 interface PracticeModeTabProps {
-  token: string
   resumes: Resume[]
   selectedResume: Resume | null
   jobDescription: string
 }
 
 function PracticeModeTab({
-  token,
   resumes: _resumes,
   selectedResume,
   jobDescription,
@@ -1194,7 +1220,7 @@ function PracticeModeTab({
     const categoryQuestions = SAMPLE_QUESTIONS.filter((q) => q.category === selectedCategory)
     const randomIndex = Math.floor(Math.random() * categoryQuestions.length)
     const question = categoryQuestions[randomIndex]
-    setCurrentQuestion(question)
+    setCurrentQuestion(question ?? null)
     setAnswer('')
     setFeedback(null)
     resetTimer()
@@ -1205,8 +1231,8 @@ function PracticeModeTab({
     pauseTimer()
     setIsGettingFeedback(true)
     try {
-      const response = await aiApi.interviewPrep(token, {
-        question: `You are an interview coach. Evaluate this interview answer and provide:
+      const response = await aiApi.interviewPrep(
+        `You are an interview coach. Evaluate this interview answer and provide:
 1. A score from 1-10
 2. Analysis of clarity, structure, and relevance
 3. Specific improvement suggestions
@@ -1221,21 +1247,21 @@ SUGGESTIONS:
 - [suggestion 1]
 - [suggestion 2]
 - [suggestion 3]`,
-        resume_content: selectedResume?.content,
-        job_description: jobDescription || undefined,
-      })
+        selectedResume?.content,
+        jobDescription || undefined
+      )
 
-      const responseText = (response as InterviewPrepResponse).answer
+      const responseText = (response).answer
 
       // Parse the response
       const scoreMatch = responseText.match(/SCORE:\s*(\d+)/i)
-      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5
+      const score = scoreMatch ? parseInt(scoreMatch[1] ?? '5', 10) : 5
 
       const analysisMatch = responseText.match(/ANALYSIS:\s*([\s\S]*?)(?=SUGGESTIONS:|$)/i)
-      const analysis = analysisMatch ? analysisMatch[1].trim() : responseText
+      const analysis = analysisMatch?.[1]?.trim() ?? responseText
 
       const suggestionsMatch = responseText.match(/SUGGESTIONS:\s*([\s\S]*)/i)
-      const suggestionsText = suggestionsMatch ? suggestionsMatch[1] : ''
+      const suggestionsText = suggestionsMatch?.[1] ?? ''
       const suggestions = suggestionsText
         .split('\n')
         .filter((line) => line.trim().startsWith('-'))
@@ -1285,8 +1311,9 @@ SUGGESTIONS:
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Category:</label>
+            <label htmlFor="practice-category" className="text-sm font-medium text-gray-700">Category:</label>
             <select
+              id="practice-category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as QuestionCategory)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1355,10 +1382,11 @@ SUGGESTIONS:
 
               {/* Answer Input */}
               <div className="bg-white rounded-lg shadow p-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="practice-mode-answer" className="block text-sm font-medium text-gray-700 mb-2">
                   Your Answer
                 </label>
                 <textarea
+                  id="practice-mode-answer"
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   rows={10}
@@ -1367,7 +1395,7 @@ SUGGESTIONS:
                 />
 
                 <button
-                  onClick={handleGetFeedback}
+                  onClick={() => { void handleGetFeedback() }}
                   disabled={!answer.trim() || isGettingFeedback}
                   className="mt-4 w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center"
                 >
@@ -1557,7 +1585,7 @@ SUGGESTIONS:
 // ============================================================================
 
 export default function InterviewCenterPage() {
-  const { user, tokens, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   // State
@@ -1582,38 +1610,38 @@ export default function InterviewCenterPage() {
   }, [user, authLoading, router])
 
   const loadData = useCallback(async () => {
-    if (!tokens?.access_token) return
+    if (!isAuthenticated) return
 
     try {
-      const resumesData = await resumesApi.list(tokens.access_token)
-      setResumes(resumesData as Resume[])
-      if ((resumesData as Resume[]).length > 0) {
-        setSelectedResume((resumesData as Resume[])[0])
+      const resumesData = await resumesApi.list()
+      setResumes(resumesData)
+      if ((resumesData).length > 0) {
+        setSelectedResume((resumesData)[0] ?? null)
       }
     } catch (error) {
       console.error('Failed to load resumes:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [tokens])
+  }, [isAuthenticated])
 
   // Load data
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadData()
+    if (isAuthenticated) {
+      void loadData()
     }
-  }, [tokens, loadData])
+  }, [isAuthenticated, loadData])
 
   // Load saved data from localStorage
   useEffect(() => {
     const storedStories = localStorage.getItem('star_stories')
     if (storedStories) {
-      setStarStories(JSON.parse(storedStories))
+      setStarStories(JSON.parse(storedStories) as STARStory[])
     }
 
     const storedResearch = localStorage.getItem('company_research')
     if (storedResearch) {
-      setCompanyResearch(JSON.parse(storedResearch))
+      setCompanyResearch(JSON.parse(storedResearch) as CompanyResearch)
     }
   }, [])
 
@@ -1673,10 +1701,11 @@ export default function InterviewCenterPage() {
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="resume-select" className="block text-sm font-medium text-gray-700 mb-1">
               Select Resume (for personalized answers)
             </label>
             <select
+              id="resume-select"
               value={selectedResume?.id || ''}
               onChange={(e) => {
                 const resume = resumes.find((r) => r.id === Number(e.target.value))
@@ -1694,10 +1723,11 @@ export default function InterviewCenterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="job-description" className="block text-sm font-medium text-gray-700 mb-1">
               Job Description (optional)
             </label>
             <textarea
+              id="job-description"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               rows={2}
@@ -1730,41 +1760,39 @@ export default function InterviewCenterPage() {
         </nav>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'questions' && (
-        <QuestionBankTab
-          token={tokens?.access_token || ''}
-          resumes={resumes}
-          selectedResume={selectedResume}
-          jobDescription={jobDescription}
-        />
-      )}
+      {/* Tab Content - Wrapped in Suspense for better code splitting */}
+      <Suspense fallback={<TabLoadingSkeleton />}>
+        {activeTab === 'questions' && (
+          <QuestionBankTab
+            resumes={resumes}
+            selectedResume={selectedResume}
+            jobDescription={jobDescription}
+          />
+        )}
 
-      {activeTab === 'star' && (
-        <STARBuilderTab
-          token={tokens?.access_token || ''}
-          stories={starStories}
-          onSaveStory={handleSaveStory}
-          onDeleteStory={handleDeleteStory}
-        />
-      )}
+        {activeTab === 'star' && (
+          <STARBuilderTab
+            stories={starStories}
+            onSaveStory={handleSaveStory}
+            onDeleteStory={handleDeleteStory}
+          />
+        )}
 
-      {activeTab === 'research' && (
-        <CompanyResearchTab
-          token={tokens?.access_token || ''}
-          research={companyResearch}
-          onUpdateResearch={handleUpdateResearch}
-        />
-      )}
+        {activeTab === 'research' && (
+          <CompanyResearchTab
+            research={companyResearch}
+            onUpdateResearch={handleUpdateResearch}
+          />
+        )}
 
-      {activeTab === 'practice' && (
-        <PracticeModeTab
-          token={tokens?.access_token || ''}
-          resumes={resumes}
-          selectedResume={selectedResume}
-          jobDescription={jobDescription}
-        />
-      )}
+        {activeTab === 'practice' && (
+          <PracticeModeTab
+            resumes={resumes}
+            selectedResume={selectedResume}
+            jobDescription={jobDescription}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }

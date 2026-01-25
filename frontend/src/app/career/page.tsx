@@ -1,11 +1,5 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useAuth } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
-import { aiApi, resumesApi } from '@/lib/api'
-import type { Resume, AnswerQuestionResponse } from '@/types'
-import { cn, formatDate, generateId } from '@/lib/utils'
 import {
   Plus,
   Trash2,
@@ -28,6 +22,14 @@ import {
   Briefcase,
   Award,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
+
+import { aiApi, resumesApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { cn, formatDate, generateId } from '@/lib/utils'
+
+import type { Resume } from '@/types'
 
 // ============================================================================
 // Types
@@ -59,6 +61,17 @@ type TabType = 'journal' | 'salary' | 'qa'
 // ============================================================================
 // Constants
 // ============================================================================
+
+// Loading skeleton for tab transitions
+function TabLoadingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-8 bg-gray-200 rounded w-1/4" />
+      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-48 bg-gray-200 rounded" />
+    </div>
+  )
+}
 
 const COMMON_TAGS = [
   'Leadership',
@@ -129,7 +142,7 @@ function getStoredAchievements(): Achievement[] {
   if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : []
+    return stored ? (JSON.parse(stored) as Achievement[]) : []
   } catch {
     return []
   }
@@ -148,11 +161,7 @@ function setStoredAchievements(achievements: Achievement[]): void {
 // Achievement Journal Tab
 // ============================================================================
 
-interface AchievementJournalTabProps {
-  token: string
-}
-
-function AchievementJournalTab({ token }: AchievementJournalTabProps) {
+function AchievementJournalTab() {
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -232,13 +241,11 @@ function AchievementJournalTab({ token }: AchievementJournalTabProps) {
     setEnhancingId(achievement.id)
     try {
       // Use the AI API to enhance the description
-      const response = await aiApi.answerQuestion(token, {
-        question: `Transform this raw achievement note into a polished, quantified resume bullet point using action verbs. Keep it concise (1-2 sentences max). Original: "${achievement.description}"`,
-        question_type: 'general',
-        max_length: 200,
-      })
+      const response = await aiApi.answerQuestion(
+        `Transform this raw achievement note into a polished, quantified resume bullet point using action verbs. Keep it concise (1-2 sentences max). Original: "${achievement.description}"`
+      )
 
-      const enhanced = (response as AnswerQuestionResponse).answer
+      const enhanced = (response).answer
       const updated = achievements.map((a) =>
         a.id === achievement.id
           ? { ...a, enhancedDescription: enhanced, updatedAt: new Date().toISOString() }
@@ -268,13 +275,11 @@ function AchievementJournalTab({ token }: AchievementJournalTabProps) {
 
     for (const achievement of toEnhance) {
       try {
-        const response = await aiApi.answerQuestion(token, {
-          question: `Transform this raw achievement note into a polished, quantified resume bullet point using action verbs. Keep it concise (1-2 sentences max). Original: "${achievement.description}"`,
-          question_type: 'general',
-          max_length: 200,
-        })
+        const response = await aiApi.answerQuestion(
+          `Transform this raw achievement note into a polished, quantified resume bullet point using action verbs. Keep it concise (1-2 sentences max). Original: "${achievement.description}"`
+        )
 
-        const enhanced = (response as AnswerQuestionResponse).answer
+        const enhanced = (response).answer
         updatedAchievements = updatedAchievements.map((a) =>
           a.id === achievement.id
             ? { ...a, enhancedDescription: enhanced, updatedAt: new Date().toISOString() }
@@ -315,7 +320,7 @@ function AchievementJournalTab({ token }: AchievementJournalTabProps) {
 
         <div className="flex gap-2">
           <button
-            onClick={handleBulkEnhance}
+            onClick={() => { void handleBulkEnhance() }}
             disabled={isBulkEnhancing}
             className="inline-flex items-center px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 disabled:opacity-50"
           >
@@ -445,7 +450,7 @@ function AchievementJournalTab({ token }: AchievementJournalTabProps) {
 
                 <div className="flex items-center gap-2 ml-4">
                   <button
-                    onClick={() => handleEnhanceAchievement(achievement)}
+                    onClick={() => { void handleEnhanceAchievement(achievement) }}
                     disabled={enhancingId === achievement.id}
                     className={cn(
                       'p-2 rounded hover:bg-purple-50 text-purple-600',
@@ -530,7 +535,7 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    onSave({ ...formData, date: formData.date ?? '' })
   }
 
   return (
@@ -551,10 +556,11 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="achievement-title" className="block text-sm font-medium text-gray-700 mb-1">
               Title <span className="text-red-500">*</span>
             </label>
             <input
+              id="achievement-title"
               type="text"
               required
               value={formData.title}
@@ -565,10 +571,11 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="achievement-date" className="block text-sm font-medium text-gray-700 mb-1">
               Date <span className="text-red-500">*</span>
             </label>
             <input
+              id="achievement-date"
               type="date"
               required
               value={formData.date}
@@ -578,10 +585,11 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="achievement-description" className="block text-sm font-medium text-gray-700 mb-1">
               Description <span className="text-red-500">*</span>
             </label>
             <textarea
+              id="achievement-description"
               required
               rows={4}
               value={formData.description}
@@ -595,7 +603,7 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+            <label htmlFor="achievement-tags" className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {formData.tags.map((tag) => (
                 <span
@@ -616,6 +624,7 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
             </div>
             <div className="flex gap-2">
               <input
+                id="achievement-tags"
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
@@ -678,11 +687,7 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
 // Salary Tools Tab
 // ============================================================================
 
-interface SalaryToolsTabProps {
-  token: string
-}
-
-function SalaryToolsTab({ token }: SalaryToolsTabProps) {
+function SalaryToolsTab() {
   const [compensation, setCompensation] = useState<CompensationData>({
     baseSalary: 100000,
     bonusPercentage: 10,
@@ -737,13 +742,9 @@ ${negotiationData.leveragePoints ? `Leverage Points: ${negotiationData.leverageP
 
 Please provide a professional, confident, and respectful negotiation script that I can adapt for my conversation. Include specific talking points and suggested phrases.`
 
-      const response = await aiApi.answerQuestion(token, {
-        question: prompt,
-        question_type: 'salary',
-        max_length: 1000,
-      })
+      const response = await aiApi.answerQuestion(prompt)
 
-      setGeneratedScript((response as AnswerQuestionResponse).answer)
+      setGeneratedScript((response).answer)
     } catch (error) {
       console.error('Failed to generate script:', error)
       alert('Failed to generate negotiation script. Please try again.')
@@ -753,7 +754,7 @@ Please provide a professional, confident, and respectful negotiation script that
   }
 
   const copyToClipboard = useCallback((text: string) => {
-    navigator.clipboard.writeText(text)
+    void navigator.clipboard.writeText(text)
   }, [])
 
   return (
@@ -768,7 +769,7 @@ Please provide a professional, confident, and respectful negotiation script that
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="base-salary" className="block text-sm font-medium text-gray-700 mb-1">
                 Base Salary
               </label>
               <div className="relative">
@@ -776,6 +777,7 @@ Please provide a professional, confident, and respectful negotiation script that
                   $
                 </span>
                 <input
+                  id="base-salary"
                   type="number"
                   min={0}
                   value={compensation.baseSalary}
@@ -791,11 +793,12 @@ Please provide a professional, confident, and respectful negotiation script that
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="bonus-percentage" className="block text-sm font-medium text-gray-700 mb-1">
                 Bonus Percentage
               </label>
               <div className="relative">
                 <input
+                  id="bonus-percentage"
                   type="number"
                   min={0}
                   max={100}
@@ -818,7 +821,7 @@ Please provide a professional, confident, and respectful negotiation script that
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="stock-value" className="block text-sm font-medium text-gray-700 mb-1">
                 Stock/Equity Value (Annual)
               </label>
               <div className="relative">
@@ -826,6 +829,7 @@ Please provide a professional, confident, and respectful negotiation script that
                   $
                 </span>
                 <input
+                  id="stock-value"
                   type="number"
                   min={0}
                   value={compensation.stockValue}
@@ -841,7 +845,7 @@ Please provide a professional, confident, and respectful negotiation script that
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="benefits-value" className="block text-sm font-medium text-gray-700 mb-1">
                 Benefits Value (Health, 401k Match, etc.)
               </label>
               <div className="relative">
@@ -849,6 +853,7 @@ Please provide a professional, confident, and respectful negotiation script that
                   $
                 </span>
                 <input
+                  id="benefits-value"
                   type="number"
                   min={0}
                   value={compensation.benefitsValue}
@@ -864,7 +869,7 @@ Please provide a professional, confident, and respectful negotiation script that
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="other-compensation" className="block text-sm font-medium text-gray-700 mb-1">
                 Other Compensation (Signing Bonus, Relocation, etc.)
               </label>
               <div className="relative">
@@ -872,6 +877,7 @@ Please provide a professional, confident, and respectful negotiation script that
                   $
                 </span>
                 <input
+                  id="other-compensation"
                   type="number"
                   min={0}
                   value={compensation.otherCompensation}
@@ -912,10 +918,11 @@ Please provide a professional, confident, and respectful negotiation script that
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="negotiation-scenario" className="block text-sm font-medium text-gray-700 mb-1">
                 Scenario
               </label>
               <select
+                id="negotiation-scenario"
                 value={negotiationData.scenario}
                 onChange={(e) =>
                   setNegotiationData({
@@ -938,7 +945,7 @@ Please provide a professional, confident, and respectful negotiation script that
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="current-offer" className="block text-sm font-medium text-gray-700 mb-1">
                   Current Offer
                 </label>
                 <div className="relative">
@@ -946,6 +953,7 @@ Please provide a professional, confident, and respectful negotiation script that
                     $
                   </span>
                   <input
+                    id="current-offer"
                     type="number"
                     min={0}
                     value={negotiationData.currentOffer}
@@ -962,7 +970,7 @@ Please provide a professional, confident, and respectful negotiation script that
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="target-salary" className="block text-sm font-medium text-gray-700 mb-1">
                   Target Salary
                 </label>
                 <div className="relative">
@@ -970,6 +978,7 @@ Please provide a professional, confident, and respectful negotiation script that
                     $
                   </span>
                   <input
+                    id="target-salary"
                     type="number"
                     min={0}
                     value={negotiationData.targetSalary}
@@ -988,10 +997,11 @@ Please provide a professional, confident, and respectful negotiation script that
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
                   Company (Optional)
                 </label>
                 <input
+                  id="company-name"
                   type="text"
                   value={negotiationData.companyName}
                   onChange={(e) =>
@@ -1006,10 +1016,11 @@ Please provide a professional, confident, and respectful negotiation script that
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="role-level" className="block text-sm font-medium text-gray-700 mb-1">
                   Role Level (Optional)
                 </label>
                 <input
+                  id="role-level"
                   type="text"
                   value={negotiationData.roleLevel}
                   onChange={(e) =>
@@ -1025,10 +1036,11 @@ Please provide a professional, confident, and respectful negotiation script that
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="leverage-points" className="block text-sm font-medium text-gray-700 mb-1">
                 Leverage Points (Optional)
               </label>
               <textarea
+                id="leverage-points"
                 rows={2}
                 value={negotiationData.leveragePoints}
                 onChange={(e) =>
@@ -1043,7 +1055,7 @@ Please provide a professional, confident, and respectful negotiation script that
             </div>
 
             <button
-              onClick={handleGenerateScript}
+              onClick={() => { void handleGenerateScript() }}
               disabled={isGenerating}
               className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
@@ -1113,11 +1125,10 @@ Please provide a professional, confident, and respectful negotiation script that
 // ============================================================================
 
 interface ApplicationQATabProps {
-  token: string
   resumes: Resume[]
 }
 
-function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
+function ApplicationQATab({ resumes }: ApplicationQATabProps) {
   const [selectedQuestion, setSelectedQuestion] = useState('')
   const [customQuestion, setCustomQuestion] = useState('')
   const [selectedResumeId, setSelectedResumeId] = useState('')
@@ -1130,8 +1141,6 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
   const selectedResume = resumes.find((r) => r.id === Number(selectedResumeId))
   const questionToUse = selectedQuestion === 'custom' ? customQuestion : selectedQuestion
 
-  const selectedQuestionData = COMMON_QUESTIONS.find((q) => q.label === selectedQuestion)
-
   const handleGenerateAnswer = async () => {
     if (!questionToUse) {
       alert('Please select or enter a question.')
@@ -1143,15 +1152,12 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
     setTips([])
 
     try {
-      const response = await aiApi.answerQuestion(token, {
-        question: questionToUse,
-        question_type: selectedQuestionData?.type || 'general',
-        resume_content: selectedResume?.content,
-        job_description: jobDescription || undefined,
-        max_length: 500,
-      })
+      const response = await aiApi.answerQuestion(
+        questionToUse,
+        `Resume: ${selectedResume?.content || ''}\n\nJob Description: ${jobDescription || ''}`
+      )
 
-      const data = response as AnswerQuestionResponse
+      const data = response
       setGeneratedAnswer(data.answer)
       if (data.tips) {
         setTips(data.tips)
@@ -1165,7 +1171,7 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
   }
 
   const copyToClipboard = useCallback(() => {
-    navigator.clipboard.writeText(generatedAnswer)
+    void navigator.clipboard.writeText(generatedAnswer)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }, [generatedAnswer])
@@ -1184,10 +1190,11 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="select-question" className="block text-sm font-medium text-gray-700 mb-1">
                   Common Questions
                 </label>
                 <select
+                  id="select-question"
                   value={selectedQuestion}
                   onChange={(e) => setSelectedQuestion(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1204,10 +1211,11 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
 
               {selectedQuestion === 'custom' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="custom-question" className="block text-sm font-medium text-gray-700 mb-1">
                     Your Question
                   </label>
                   <input
+                    id="custom-question"
                     type="text"
                     value={customQuestion}
                     onChange={(e) => setCustomQuestion(e.target.value)}
@@ -1228,10 +1236,11 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="select-resume" className="block text-sm font-medium text-gray-700 mb-1">
                   Select Resume
                 </label>
                 <select
+                  id="select-resume"
                   value={selectedResumeId}
                   onChange={(e) => setSelectedResumeId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1249,10 +1258,11 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="job-description" className="block text-sm font-medium text-gray-700 mb-1">
                   Job Description
                 </label>
                 <textarea
+                  id="job-description"
                   rows={4}
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
@@ -1264,7 +1274,7 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
           </div>
 
           <button
-            onClick={handleGenerateAnswer}
+            onClick={() => { void handleGenerateAnswer() }}
             disabled={isGenerating || !questionToUse}
             className="w-full inline-flex items-center justify-center px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -1359,7 +1369,7 @@ function ApplicationQATab({ token, resumes }: ApplicationQATabProps) {
 // ============================================================================
 
 export default function CareerToolsPage() {
-  const { user, tokens, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<TabType>('journal')
@@ -1374,24 +1384,24 @@ export default function CareerToolsPage() {
   }, [user, authLoading, router])
 
   const loadResumes = useCallback(async () => {
-    if (!tokens?.access_token) return
+    if (!isAuthenticated) return
 
     try {
-      const resumesData = await resumesApi.list(tokens.access_token)
-      setResumes(resumesData as Resume[])
+      const resumesData = await resumesApi.list()
+      setResumes(resumesData)
     } catch (error) {
       console.error('Failed to load resumes:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [tokens])
+  }, [isAuthenticated])
 
   // Load resumes for Q&A tab
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadResumes()
+    if (isAuthenticated) {
+      void loadResumes()
     }
-  }, [tokens, loadResumes])
+  }, [isAuthenticated, loadResumes])
 
   // Loading state
   if (authLoading || isLoading) {
@@ -1438,18 +1448,20 @@ export default function CareerToolsPage() {
         </nav>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'journal' && tokens?.access_token && (
-        <AchievementJournalTab token={tokens.access_token} />
-      )}
+      {/* Tab Content - Wrapped in Suspense for better code splitting */}
+      <Suspense fallback={<TabLoadingSkeleton />}>
+        {activeTab === 'journal' && isAuthenticated && (
+          <AchievementJournalTab />
+        )}
 
-      {activeTab === 'salary' && tokens?.access_token && (
-        <SalaryToolsTab token={tokens.access_token} />
-      )}
+        {activeTab === 'salary' && isAuthenticated && (
+          <SalaryToolsTab />
+        )}
 
-      {activeTab === 'qa' && tokens?.access_token && (
-        <ApplicationQATab token={tokens.access_token} resumes={resumes} />
-      )}
+        {activeTab === 'qa' && isAuthenticated && (
+          <ApplicationQATab resumes={resumes} />
+        )}
+      </Suspense>
     </div>
   )
 }

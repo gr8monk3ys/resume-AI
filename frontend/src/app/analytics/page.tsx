@@ -1,25 +1,5 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useAuth } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
-import { jobsApi, resumesApi } from '@/lib/api'
-import type {
-  JobApplication,
-  JobStatus,
-  Resume,
-  DateRangeOption,
-  TimelinePeriod,
-  AnalyticsFilters,
-  AnalyticsOverview,
-  TimelineDataPoint,
-  ConversionFunnelStage,
-  SourcePerformance,
-  CompanyStats,
-  ResumePerformance,
-  ActivityLogEntry,
-} from '@/types'
-import { cn, formatDate } from '@/lib/utils'
 import {
   BarChart3,
   TrendingUp,
@@ -40,6 +20,28 @@ import {
   LineChart,
   RefreshCw,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+
+import { jobsApi, resumesApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { cn, formatDate } from '@/lib/utils'
+
+import type {
+  JobApplication,
+  JobStatus,
+  Resume,
+  DateRangeOption,
+  TimelinePeriod,
+  AnalyticsFilters,
+  AnalyticsOverview,
+  TimelineDataPoint,
+  ConversionFunnelStage,
+  SourcePerformance,
+  CompanyStats,
+  ResumePerformance,
+  ActivityLogEntry,
+} from '@/types'
 
 // ============================================================================
 // Constants
@@ -286,7 +288,7 @@ function calculateConversionFunnel(jobs: JobApplication[]): ConversionFunnelStag
   ]
 
   return stages.map((stage, index) => {
-    const prevCount = index === 0 ? stage.count : stages[index - 1].count
+    const prevCount = index === 0 ? stage.count : (stages[index - 1]?.count ?? 0)
     return {
       ...stage,
       percentage: applied > 0 ? Math.round((stage.count / applied) * 100) : 0,
@@ -302,7 +304,7 @@ function calculateSourcePerformance(jobs: JobApplication[]): SourcePerformance[]
   const distribution = [0.35, 0.25, 0.15, 0.1, 0.1, 0.05] // LinkedIn, Indeed, etc.
 
   return APPLICATION_SOURCES.map((source, index) => {
-    const count = Math.round(totalJobs * distribution[index])
+    const count = Math.round(totalJobs * (distribution[index] ?? 0))
     const responses = Math.round(count * (0.2 + Math.random() * 0.15))
     const interviews = Math.round(responses * (0.3 + Math.random() * 0.2))
     const offers = Math.round(interviews * (0.1 + Math.random() * 0.1))
@@ -346,7 +348,7 @@ function calculateCompanyStats(jobs: JobApplication[]): CompanyStats[] {
     let avgResponseTime: number | null = null
     if (jobsWithResponse.length > 0) {
       const totalDays = jobsWithResponse.reduce((sum, job) => {
-        const applied = new Date(job.application_date!)
+        const applied = new Date(job.application_date ?? '')
         const updated = new Date(job.updated_at)
         return sum + Math.ceil((updated.getTime() - applied.getTime()) / (1000 * 60 * 60 * 24))
       }, 0)
@@ -396,14 +398,22 @@ function calculateResumePerformance(
 function generateActivityLog(jobs: JobApplication[]): ActivityLogEntry[] {
   const activities: ActivityLogEntry[] = jobs
     .slice(0, 20)
-    .map((job) => ({
-      id: job.id,
-      timestamp: job.updated_at,
-      type: (job.status === 'Offer' ? 'offer' : job.status === 'Interview' ? 'interview' : job.status === 'Applied' ? 'application' : 'status_change') as ActivityLogEntry['type'],
-      description: `${job.status === 'Applied' ? 'Applied to' : `Status changed to ${job.status} for`} ${job.position}`,
-      company: job.company,
-      position: job.position,
-    }))
+    .map((job) => {
+      const getType = (): ActivityLogEntry['type'] => {
+        if (job.status === 'Offer') return 'offer'
+        if (job.status === 'Interview') return 'interview'
+        if (job.status === 'Applied') return 'application'
+        return 'status_change'
+      }
+      return {
+        id: job.id,
+        timestamp: job.updated_at,
+        type: getType(),
+        description: `${job.status === 'Applied' ? 'Applied to' : `Status changed to ${job.status} for`} ${job.position}`,
+        company: job.company,
+        position: job.position,
+      }
+    })
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   return activities
@@ -1092,7 +1102,7 @@ function ActivityLog({ data }: ActivityLogProps) {
 // ============================================================================
 
 export default function AnalyticsPage() {
-  const { user, tokens, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   // Data state
@@ -1119,33 +1129,33 @@ export default function AnalyticsPage() {
 
   // Load data
   const loadData = useCallback(async () => {
-    if (!tokens?.access_token) return
+    if (!isAuthenticated) return
 
     try {
       const [jobsData, resumesData] = await Promise.all([
-        jobsApi.list(tokens.access_token),
-        resumesApi.list(tokens.access_token),
+        jobsApi.list(),
+        resumesApi.list(),
       ])
 
-      setJobs(jobsData as JobApplication[])
-      setResumes(resumesData as Resume[])
+      setJobs(jobsData)
+      setResumes(resumesData)
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
     }
-  }, [tokens])
+  }, [isAuthenticated])
 
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadData()
+    if (isAuthenticated) {
+      void loadData()
     }
-  }, [tokens, loadData])
+  }, [isAuthenticated, loadData])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
-    loadData()
+    void loadData()
   }
 
   // Filter jobs based on current filters
@@ -1331,10 +1341,11 @@ export default function AnalyticsPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="filter-date-range" className="block text-xs font-medium text-gray-500 mb-1">
                 Date Range
               </label>
               <select
+                id="filter-date-range"
                 value={filters.dateRange}
                 onChange={(e) =>
                   setFilters({ ...filters, dateRange: e.target.value as DateRangeOption })
@@ -1352,10 +1363,11 @@ export default function AnalyticsPage() {
             {filters.dateRange === 'custom' && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <label htmlFor="filter-start-date" className="block text-xs font-medium text-gray-500 mb-1">
                     Start Date
                   </label>
                   <input
+                    id="filter-start-date"
                     type="date"
                     value={filters.customStartDate || ''}
                     onChange={(e) =>
@@ -1365,10 +1377,11 @@ export default function AnalyticsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <label htmlFor="filter-end-date" className="block text-xs font-medium text-gray-500 mb-1">
                     End Date
                   </label>
                   <input
+                    id="filter-end-date"
                     type="date"
                     value={filters.customEndDate || ''}
                     onChange={(e) =>
@@ -1381,10 +1394,11 @@ export default function AnalyticsPage() {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="filter-status" className="block text-xs font-medium text-gray-500 mb-1">
                 Status
               </label>
               <select
+                id="filter-status"
                 value={filters.status || ''}
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value as JobStatus | '' })
@@ -1401,10 +1415,11 @@ export default function AnalyticsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="filter-source" className="block text-xs font-medium text-gray-500 mb-1">
                 Source
               </label>
               <select
+                id="filter-source"
                 value={filters.source || ''}
                 onChange={(e) => setFilters({ ...filters, source: e.target.value })}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"

@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
-import { aiApi, resumesApi } from '@/lib/api';
-import type { Resume, TailorResumeResponse, AnswerQuestionResponse, InterviewPrepResponse } from '@/types';
 import { Bot, FileText, MessageSquare, Mic } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+
+import { aiApi, resumesApi } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+
+import type { Resume } from '@/types';
+
 
 type Tool = 'tailor' | 'question' | 'interview';
 
 export default function AIAssistantPage() {
-  const { user, tokens, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [selectedTool, setSelectedTool] = useState<Tool>('tailor');
   const [resumes, setResumes] = useState<Resume[]>([]);
@@ -27,34 +30,34 @@ export default function AIAssistantPage() {
   }, [user, authLoading, router]);
 
   const loadResumes = useCallback(async () => {
-    if (!tokens?.access_token) return;
+    if (!isAuthenticated) return;
     try {
-      const data = await resumesApi.list(tokens.access_token);
-      setResumes(data as Resume[]);
-      if ((data as Resume[]).length > 0) {
-        setSelectedResume((data as Resume[])[0]);
+      const data = await resumesApi.list();
+      setResumes(data);
+      if ((data).length > 0) {
+        setSelectedResume((data)[0] ?? null);
       }
     } catch (error) {
       console.error('Failed to load resumes:', error);
     }
-  }, [tokens]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadResumes();
+    if (isAuthenticated) {
+      void loadResumes()
     }
-  }, [tokens, loadResumes]);
+  }, [isAuthenticated, loadResumes])
 
   const handleTailorResume = async () => {
-    if (!tokens?.access_token || !selectedResume) return;
+    if (!isAuthenticated || !selectedResume) return;
     setIsLoading(true);
     setResult('');
     try {
-      const response = await aiApi.tailorResume(tokens.access_token, {
-        resume_content: selectedResume.content,
-        job_description: jobDescription,
-      });
-      setResult((response as TailorResumeResponse).tailored_resume);
+      const response = await aiApi.tailorResume(
+        selectedResume.content,
+        jobDescription
+      );
+      setResult((response).tailored_resume);
     } catch (error) {
       console.error('Failed to tailor resume:', error);
       setResult('Error: Failed to tailor resume. Please try again.');
@@ -64,16 +67,15 @@ export default function AIAssistantPage() {
   };
 
   const handleAnswerQuestion = async () => {
-    if (!tokens?.access_token) return;
+    if (!isAuthenticated) return;
     setIsLoading(true);
     setResult('');
     try {
-      const response = await aiApi.answerQuestion(tokens.access_token, {
+      const response = await aiApi.answerQuestion(
         question,
-        resume_content: selectedResume?.content,
-        job_description: jobDescription,
-      });
-      setResult((response as AnswerQuestionResponse).answer);
+        `Resume: ${selectedResume?.content || ''}\n\nJob Description: ${jobDescription}`
+      );
+      setResult((response).answer);
     } catch (error) {
       console.error('Failed to answer question:', error);
       setResult('Error: Failed to generate answer. Please try again.');
@@ -83,16 +85,16 @@ export default function AIAssistantPage() {
   };
 
   const handleInterviewPrep = async () => {
-    if (!tokens?.access_token) return;
+    if (!isAuthenticated) return;
     setIsLoading(true);
     setResult('');
     try {
-      const response = await aiApi.interviewPrep(tokens.access_token, {
+      const response = await aiApi.interviewPrep(
         question,
-        resume_content: selectedResume?.content,
-        job_description: jobDescription,
-      });
-      setResult((response as InterviewPrepResponse).answer);
+        selectedResume?.content,
+        jobDescription
+      );
+      setResult((response).answer);
     } catch (error) {
       console.error('Failed to prepare interview answer:', error);
       setResult('Error: Failed to generate answer. Please try again.');
@@ -148,8 +150,9 @@ export default function AIAssistantPage() {
         {/* Input Panel */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Select Resume</label>
+            <label htmlFor="resume-select" className="block text-sm font-medium text-gray-700 mb-1">Select Resume</label>
             <select
+              id="resume-select"
               value={selectedResume?.id || ''}
               onChange={(e) => {
                 const resume = resumes.find(r => r.id === Number(e.target.value));
@@ -165,8 +168,9 @@ export default function AIAssistantPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Job Description</label>
+            <label htmlFor="job-description" className="block text-sm font-medium text-gray-700 mb-1">Job Description</label>
             <textarea
+              id="job-description"
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               rows={6}
@@ -177,10 +181,11 @@ export default function AIAssistantPage() {
 
           {(selectedTool === 'question' || selectedTool === 'interview') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="question-input" className="block text-sm font-medium text-gray-700 mb-1">
                 {selectedTool === 'question' ? 'Application Question' : 'Interview Question'}
               </label>
               <textarea
+                id="question-input"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 rows={3}
@@ -195,9 +200,9 @@ export default function AIAssistantPage() {
 
           <button
             onClick={() => {
-              if (selectedTool === 'tailor') handleTailorResume();
-              else if (selectedTool === 'question') handleAnswerQuestion();
-              else handleInterviewPrep();
+              if (selectedTool === 'tailor') void handleTailorResume()
+              else if (selectedTool === 'question') void handleAnswerQuestion()
+              else void handleInterviewPrep()
             }}
             disabled={isLoading || !selectedResume}
             className="w-full py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
@@ -218,8 +223,8 @@ export default function AIAssistantPage() {
 
         {/* Output Panel */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Result</label>
-          <div className="bg-white border border-gray-300 rounded-md p-4 min-h-[400px]">
+          <label htmlFor="result-output" className="block text-sm font-medium text-gray-700 mb-1">Result</label>
+          <div id="result-output" role="region" aria-live="polite" className="bg-white border border-gray-300 rounded-md p-4 min-h-[400px]">
             {result ? (
               <pre className="whitespace-pre-wrap text-sm">{result}</pre>
             ) : (

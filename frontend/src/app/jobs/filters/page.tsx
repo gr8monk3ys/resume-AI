@@ -1,21 +1,5 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { useAuth } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { filtersApi } from '@/lib/api'
-import type {
-  CompanyFilter,
-  CompanyFilterType,
-  KeywordFilter,
-  KeywordFilterType,
-  KeywordAppliesTo,
-  QuestionTemplate,
-  QuestionTemplateType,
-  QuestionTemplateCategory,
-} from '@/types'
-import { cn, formatDate } from '@/lib/utils'
 import {
   Building2,
   Tag,
@@ -31,6 +15,25 @@ import {
   Edit2,
   Eye,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+
+import { filtersApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { cn, formatDate } from '@/lib/utils'
+
+import type {
+  CompanyFilter,
+  CompanyFilterType,
+  KeywordFilter,
+  KeywordFilterType,
+  KeywordAppliesTo,
+  QuestionTemplate,
+  QuestionTemplateType,
+  QuestionTemplateCategory,
+} from '@/types'
+
 
 // ============================================================================
 // Types and Constants
@@ -186,13 +189,14 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
 
       {/* Add Form */}
       {showAddForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4 space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 rounded-lg p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Company Name <span className="text-red-500">*</span>
               </label>
               <input
+                id="company-name"
                 type="text"
                 required
                 value={newCompany}
@@ -202,10 +206,11 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company-filter-type" className="block text-sm font-medium text-gray-700 mb-1">
                 Filter Type
               </label>
               <select
+                id="company-filter-type"
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as CompanyFilterType)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -215,10 +220,11 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company-reason" className="block text-sm font-medium text-gray-700 mb-1">
                 Reason (Optional)
               </label>
               <input
+                id="company-reason"
                 type="text"
                 value={newReason}
                 onChange={(e) => setNewReason(e.target.value)}
@@ -294,7 +300,7 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
-                    onClick={() => onDelete(filter.id)}
+                    onClick={() => void onDelete(filter.id)}
                     className="p-1 text-gray-400 hover:text-red-600"
                     aria-label="Delete filter"
                   >
@@ -388,12 +394,13 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="import-company-names" className="block text-sm font-medium text-gray-700 mb-1">
               Company Names
             </label>
             <textarea
+              id="import-company-names"
               rows={6}
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -406,10 +413,11 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="import-filter-type" className="block text-sm font-medium text-gray-700 mb-1">
               Filter Type
             </label>
             <select
+              id="import-filter-type"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as CompanyFilterType)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -420,10 +428,11 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="import-reason" className="block text-sm font-medium text-gray-700 mb-1">
               Reason (Optional)
             </label>
             <input
+              id="import-reason"
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -561,7 +570,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
           ).map((keyword) => (
             <button
               key={keyword}
-              onClick={() => handleQuickAdd(keyword, 'exclude')}
+              onClick={() => void handleQuickAdd(keyword, 'exclude')}
               className="inline-flex items-center px-3 py-1 text-sm bg-red-50 text-red-700 rounded-full hover:bg-red-100 border border-red-200"
             >
               <Plus className="w-3 h-3 mr-1" />
@@ -577,7 +586,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
           ).map((keyword) => (
             <button
               key={keyword}
-              onClick={() => handleQuickAdd(keyword, 'require')}
+              onClick={() => void handleQuickAdd(keyword, 'require')}
               className="inline-flex items-center px-3 py-1 text-sm bg-green-50 text-green-700 rounded-full hover:bg-green-100 border border-green-200"
             >
               <Plus className="w-3 h-3 mr-1" />
@@ -589,13 +598,14 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
 
       {/* Add Form */}
       {showAddForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4 space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 rounded-lg p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="keyword-text" className="block text-sm font-medium text-gray-700 mb-1">
                 Keyword <span className="text-red-500">*</span>
               </label>
               <input
+                id="keyword-text"
                 type="text"
                 required
                 value={newKeyword}
@@ -605,10 +615,11 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="keyword-filter-type" className="block text-sm font-medium text-gray-700 mb-1">
                 Filter Type
               </label>
               <select
+                id="keyword-filter-type"
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as KeywordFilterType)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -618,10 +629,11 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="keyword-applies-to" className="block text-sm font-medium text-gray-700 mb-1">
                 Applies To
               </label>
               <select
+                id="keyword-applies-to"
                 value={newAppliesTo}
                 onChange={(e) => setNewAppliesTo(e.target.value as KeywordAppliesTo)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -699,7 +711,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
-                    onClick={() => onDelete(filter.id)}
+                    onClick={() => void onDelete(filter.id)}
                     className="p-1 text-gray-400 hover:text-red-600"
                     aria-label="Delete filter"
                   >
@@ -878,7 +890,7 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
 
         <div className="flex gap-2">
           <button
-            onClick={onImportDefaults}
+            onClick={() => void onImportDefaults()}
             className="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Download className="w-4 h-4 mr-2" />
@@ -896,17 +908,18 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <form onSubmit={handleSubmit} className="bg-gray-50 rounded-lg p-4 space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 rounded-lg p-4 space-y-4">
           <h3 className="font-medium text-gray-900">
             {editingTemplate ? 'Edit Template' : 'Add New Template'}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-question-pattern" className="block text-sm font-medium text-gray-700 mb-1">
                 Question Pattern <span className="text-red-500">*</span>
               </label>
               <input
+                id="template-question-pattern"
                 type="text"
                 required
                 value={formData.question_pattern}
@@ -919,10 +932,11 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-answer" className="block text-sm font-medium text-gray-700 mb-1">
                 Answer <span className="text-red-500">*</span>
               </label>
               <input
+                id="template-answer"
                 type="text"
                 required
                 value={formData.answer}
@@ -932,10 +946,11 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-answer-type" className="block text-sm font-medium text-gray-700 mb-1">
                 Answer Type
               </label>
               <select
+                id="template-answer-type"
                 value={formData.answer_type}
                 onChange={(e) => setFormData({ ...formData, answer_type: e.target.value as QuestionTemplateType })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -948,10 +963,11 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-category" className="block text-sm font-medium text-gray-700 mb-1">
                 Category
               </label>
               <select
+                id="template-category"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as QuestionTemplateCategory })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -1049,7 +1065,7 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => onDelete(template.id)}
+                      onClick={() => void onDelete(template.id)}
                       className="p-1 text-gray-400 hover:text-red-600"
                       aria-label="Delete template"
                     >
@@ -1068,7 +1084,7 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
               <div>
                 <p>No answer templates yet.</p>
                 <button
-                  onClick={onImportDefaults}
+                  onClick={() => void onImportDefaults()}
                   className="mt-2 text-primary-600 hover:text-primary-700 font-medium"
                 >
                   Import default templates
@@ -1196,7 +1212,7 @@ function PreviewTemplateModal({ template, onClose }: PreviewTemplateModalProps) 
 // ============================================================================
 
 export default function JobFiltersPage() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   // State
@@ -1213,17 +1229,13 @@ export default function JobFiltersPage() {
     }
   }, [user, authLoading, router])
 
-  // Load data
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!isAuthenticated) return
     try {
       const [companies, keywords, templates] = await Promise.all([
         filtersApi.getCompanyFilters(),
         filtersApi.getKeywordFilters(),
-        filtersApi.getQuestionTemplates(),
+        filtersApi.listQuestionTemplates(),
       ])
       setCompanyFilters(companies)
       setKeywordFilters(keywords)
@@ -1233,32 +1245,53 @@ export default function JobFiltersPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [isAuthenticated])
+
+  // Load data
+  useEffect(() => {
+    if (isAuthenticated) {
+      void loadData()
+    }
+  }, [isAuthenticated, loadData])
 
   // Company filter handlers
   const handleAddCompanyFilter = async (data: { company_name: string; filter_type: CompanyFilterType; reason?: string }) => {
-    const newFilter = await filtersApi.createCompanyFilter(data)
+    if (!isAuthenticated) return
+    const newFilter = await filtersApi.createCompanyFilter({ ...data, reason: data.reason ?? null })
     setCompanyFilters([...companyFilters, newFilter])
   }
 
   const handleDeleteCompanyFilter = async (id: string) => {
+    if (!isAuthenticated) return
     if (!confirm('Are you sure you want to delete this filter?')) return
     await filtersApi.deleteCompanyFilter(id)
     setCompanyFilters(companyFilters.filter((f) => f.id !== id))
   }
 
   const handleImportCompanyFilters = async (companies: string[], filterType: CompanyFilterType, reason?: string) => {
-    const newFilters = await filtersApi.importCompanyFilters(companies, filterType, reason)
+    if (!isAuthenticated) return
+    // Import companies one by one since there's no bulk import API
+    const newFilters: CompanyFilter[] = []
+    for (const company of companies) {
+      const newFilter = await filtersApi.createCompanyFilter({
+        company_name: company,
+        filter_type: filterType,
+        reason: reason ?? null,
+      })
+      newFilters.push(newFilter)
+    }
     setCompanyFilters([...companyFilters, ...newFilters])
   }
 
   // Keyword filter handlers
   const handleAddKeywordFilter = async (data: { keyword: string; filter_type: KeywordFilterType; applies_to: KeywordAppliesTo }) => {
+    if (!isAuthenticated) return
     const newFilter = await filtersApi.createKeywordFilter(data)
     setKeywordFilters([...keywordFilters, newFilter])
   }
 
   const handleDeleteKeywordFilter = async (id: string) => {
+    if (!isAuthenticated) return
     if (!confirm('Are you sure you want to delete this filter?')) return
     await filtersApi.deleteKeywordFilter(id)
     setKeywordFilters(keywordFilters.filter((f) => f.id !== id))
@@ -1266,29 +1299,28 @@ export default function JobFiltersPage() {
 
   // Question template handlers
   const handleAddQuestionTemplate = async (data: { question_pattern: string; answer: string; answer_type: QuestionTemplateType; category: QuestionTemplateCategory }) => {
+    if (!isAuthenticated) return
     const newTemplate = await filtersApi.createQuestionTemplate(data)
     setQuestionTemplates([...questionTemplates, newTemplate])
   }
 
   const handleUpdateQuestionTemplate = async (id: string, data: Partial<QuestionTemplate>) => {
+    if (!isAuthenticated) return
     const updated = await filtersApi.updateQuestionTemplate(id, data)
     setQuestionTemplates(questionTemplates.map((t) => (t.id === id ? updated : t)))
   }
 
   const handleDeleteQuestionTemplate = async (id: string) => {
+    if (!isAuthenticated) return
     if (!confirm('Are you sure you want to delete this template?')) return
     await filtersApi.deleteQuestionTemplate(id)
     setQuestionTemplates(questionTemplates.filter((t) => t.id !== id))
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   const handleImportDefaults = async () => {
-    const newTemplates = await filtersApi.importDefaults()
-    if (newTemplates.length === 0) {
-      alert('All default templates are already imported.')
-    } else {
-      setQuestionTemplates([...questionTemplates, ...newTemplates])
-      alert(`Imported ${newTemplates.length} new templates.`)
-    }
+    // This feature needs to be implemented differently - either add to API or handle locally
+    alert('Import defaults feature requires additional backend implementation.')
   }
 
   // Loading state

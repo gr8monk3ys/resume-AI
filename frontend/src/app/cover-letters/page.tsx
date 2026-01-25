@@ -1,15 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
-import { coverLettersApi, resumesApi } from '@/lib/api';
-import type { CoverLetter, Resume } from '@/types';
-import { formatDate } from '@/lib/utils';
 import { Mail, Trash2, Wand2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+
+import { coverLettersApi, resumesApi, aiApi } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { formatDate } from '@/lib/utils';
+
+import type { CoverLetter, Resume } from '@/types';
 
 export default function CoverLettersPage() {
-  const { user, tokens, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [coverLetters, setCoverLetters] = useState<CoverLetter[]>([]);
   const [resumes, setResumes] = useState<Resume[]>([]);
@@ -23,32 +25,32 @@ export default function CoverLettersPage() {
   }, [user, authLoading, router]);
 
   const loadData = useCallback(async () => {
-    if (!tokens?.access_token) return;
+    if (!isAuthenticated) return;
     try {
       const [lettersData, resumesData] = await Promise.all([
-        coverLettersApi.list(tokens.access_token),
-        resumesApi.list(tokens.access_token),
+        coverLettersApi.list(),
+        resumesApi.list(),
       ]);
-      setCoverLetters(lettersData as CoverLetter[]);
-      setResumes(resumesData as Resume[]);
+      setCoverLetters(lettersData);
+      setResumes(resumesData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [tokens]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadData();
+    if (isAuthenticated) {
+      void loadData();
     }
-  }, [tokens, loadData]);
+  }, [isAuthenticated, loadData]);
 
   const deleteCoverLetter = async (id: number) => {
-    if (!tokens?.access_token) return;
+    if (!isAuthenticated) return;
     if (!confirm('Are you sure you want to delete this cover letter?')) return;
     try {
-      await coverLettersApi.delete(tokens.access_token, id);
+      await coverLettersApi.delete(id);
       setCoverLetters(coverLetters.filter(cl => cl.id !== id));
     } catch (error) {
       console.error('Failed to delete cover letter:', error);
@@ -106,7 +108,7 @@ export default function CoverLettersPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => deleteCoverLetter(letter.id)}
+                  onClick={() => void deleteCoverLetter(letter.id)}
                   className="text-gray-400 hover:text-red-600"
                 >
                   <Trash2 className="w-5 h-5" />
@@ -128,7 +130,6 @@ export default function CoverLettersPage() {
             setCoverLetters([newLetter, ...coverLetters]);
             setShowGenerator(false);
           }}
-          token={tokens?.access_token || ''}
           resumes={resumes}
         />
       )}
@@ -139,12 +140,10 @@ export default function CoverLettersPage() {
 function GeneratorModal({
   onClose,
   onGenerate,
-  token,
   resumes,
 }: {
   onClose: () => void;
   onGenerate: (letter: CoverLetter) => void;
-  token: string;
   resumes: Resume[];
 }) {
   const [formData, setFormData] = useState({
@@ -162,12 +161,15 @@ function GeneratorModal({
 
     setIsGenerating(true);
     try {
-      const newLetter = await coverLettersApi.generate(token, {
-        resume_content: selectedResume.content,
-        job_description: formData.job_description,
-        company_name: formData.company_name,
-        position: formData.position,
-      }) as CoverLetter;
+      const generated = await aiApi.generateCoverLetter(
+        selectedResume.content,
+        formData.job_description,
+        formData.company_name
+      );
+      // Create the cover letter with the generated content
+      const newLetter = await coverLettersApi.create({
+        content: generated.cover_letter,
+      });
       onGenerate(newLetter);
     } catch (error) {
       console.error('Failed to generate cover letter:', error);
@@ -181,10 +183,11 @@ function GeneratorModal({
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
         <h2 className="text-xl font-bold mb-4">Generate Cover Letter</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Select Resume</label>
+            <label htmlFor="select-resume" className="block text-sm font-medium text-gray-700">Select Resume</label>
             <select
+              id="select-resume"
               required
               value={formData.resume_id}
               onChange={(e) => setFormData({ ...formData, resume_id: e.target.value })}
@@ -199,8 +202,9 @@ function GeneratorModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Company Name</label>
+              <label htmlFor="company-name" className="block text-sm font-medium text-gray-700">Company Name</label>
               <input
+                id="company-name"
                 type="text"
                 required
                 value={formData.company_name}
@@ -209,8 +213,9 @@ function GeneratorModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Position</label>
+              <label htmlFor="position" className="block text-sm font-medium text-gray-700">Position</label>
               <input
+                id="position"
                 type="text"
                 required
                 value={formData.position}
@@ -221,8 +226,9 @@ function GeneratorModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Job Description</label>
+            <label htmlFor="job-description" className="block text-sm font-medium text-gray-700">Job Description</label>
             <textarea
+              id="job-description"
               required
               rows={6}
               value={formData.job_description}
