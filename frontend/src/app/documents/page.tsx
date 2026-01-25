@@ -1,11 +1,5 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
-import { coverLettersApi, resumesApi, jobsApi, aiApi } from '@/lib/api'
-import type { CoverLetter, Resume, JobApplication } from '@/types'
-import { cn, formatDate } from '@/lib/utils'
 import {
   FileText,
   Mail,
@@ -23,6 +17,14 @@ import {
   Sparkles,
   RefreshCw,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback, Suspense } from 'react'
+
+import { coverLettersApi, resumesApi, jobsApi, aiApi } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
+import { cn, formatDate } from '@/lib/utils'
+
+import type { CoverLetter, Resume, JobApplication } from '@/types'
 
 // Tab types
 type TabId = 'cover-letters' | 'networking' | 'professional' | 'composer'
@@ -39,6 +41,17 @@ const TABS: Tab[] = [
   { id: 'professional', label: 'Professional Emails', icon: <Mail className="w-4 h-4" /> },
   { id: 'composer', label: 'Custom Composer', icon: <FileEdit className="w-4 h-4" /> },
 ]
+
+// Loading skeleton for tab transitions
+function TabLoadingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-8 bg-gray-200 rounded w-1/4" />
+      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-48 bg-gray-200 rounded" />
+    </div>
+  )
+}
 
 // Email types for networking
 type NetworkingEmailType = 'informational' | 'inquiry' | 'thank-you' | 'follow-up'
@@ -186,7 +199,7 @@ const TONE_OPTIONS: ToneConfig[] = [
 ]
 
 export default function DocumentsPage() {
-  const { user, tokens, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabId>('cover-letters')
 
@@ -204,7 +217,7 @@ export default function DocumentsPage() {
     )
   }
 
-  if (!user || !tokens?.access_token) {
+  if (!user || !isAuthenticated) {
     return null
   }
 
@@ -237,11 +250,13 @@ export default function DocumentsPage() {
         </nav>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'cover-letters' && <CoverLettersTab token={tokens.access_token} />}
-      {activeTab === 'networking' && <NetworkingEmailsTab token={tokens.access_token} />}
-      {activeTab === 'professional' && <ProfessionalEmailsTab token={tokens.access_token} />}
-      {activeTab === 'composer' && <CustomComposerTab token={tokens.access_token} />}
+      {/* Tab Content - Wrapped in Suspense for better code splitting */}
+      <Suspense fallback={<TabLoadingSkeleton />}>
+        {activeTab === 'cover-letters' && <CoverLettersTab />}
+        {activeTab === 'networking' && <NetworkingEmailsTab />}
+        {activeTab === 'professional' && <ProfessionalEmailsTab />}
+        {activeTab === 'composer' && <CustomComposerTab />}
+      </Suspense>
     </div>
   )
 }
@@ -250,7 +265,7 @@ export default function DocumentsPage() {
 // Cover Letters Tab
 // =============================================================================
 
-function CoverLettersTab({ token }: { token: string }) {
+function CoverLettersTab() {
   const [coverLetters, setCoverLetters] = useState<CoverLetter[]>([])
   const [resumes, setResumes] = useState<Resume[]>([])
   const [jobs, setJobs] = useState<JobApplication[]>([])
@@ -265,29 +280,29 @@ function CoverLettersTab({ token }: { token: string }) {
     setError(null)
     try {
       const [lettersData, resumesData, jobsData] = await Promise.all([
-        coverLettersApi.list(token),
-        resumesApi.list(token),
-        jobsApi.list(token),
+        coverLettersApi.list(),
+        resumesApi.list(),
+        jobsApi.list(),
       ])
-      setCoverLetters(lettersData as CoverLetter[])
-      setResumes(resumesData as Resume[])
-      setJobs(jobsData as JobApplication[])
+      setCoverLetters(lettersData)
+      setResumes(resumesData)
+      setJobs(jobsData)
     } catch (err) {
       console.error('Failed to load data:', err)
       setError('Failed to load data. Please try again.')
     } finally {
       setIsLoading(false)
     }
-  }, [token])
+  }, [])
 
   useEffect(() => {
-    loadData()
+    void loadData()
   }, [loadData])
 
   const deleteCoverLetter = async (id: number) => {
     if (!confirm('Are you sure you want to delete this cover letter?')) return
     try {
-      await coverLettersApi.delete(token, id)
+      await coverLettersApi.delete(id)
       setCoverLetters(coverLetters.filter((cl) => cl.id !== id))
     } catch (err) {
       console.error('Failed to delete cover letter:', err)
@@ -324,7 +339,7 @@ function CoverLettersTab({ token }: { token: string }) {
         <AlertCircle className="w-12 h-12 mx-auto text-red-400" />
         <p className="mt-4 text-red-600">{error}</p>
         <button
-          onClick={loadData}
+          onClick={() => void loadData()}
           className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
           Try Again
@@ -384,7 +399,7 @@ function CoverLettersTab({ token }: { token: string }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => copyToClipboard(letter.content, letter.id)}
+                      onClick={() => void copyToClipboard(letter.content, letter.id)}
                       className="p-2 text-gray-400 hover:text-primary-600 rounded-md hover:bg-gray-100"
                       title="Copy to clipboard"
                       aria-label="Copy to clipboard"
@@ -404,7 +419,7 @@ function CoverLettersTab({ token }: { token: string }) {
                       <Pencil className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => deleteCoverLetter(letter.id)}
+                      onClick={() => void deleteCoverLetter(letter.id)}
                       className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
                       title="Delete"
                       aria-label="Delete cover letter"
@@ -431,7 +446,6 @@ function CoverLettersTab({ token }: { token: string }) {
             setCoverLetters([newLetter, ...coverLetters])
             setShowGenerator(false)
           }}
-          token={token}
           resumes={resumes}
           jobs={jobs}
         />
@@ -448,7 +462,6 @@ function CoverLettersTab({ token }: { token: string }) {
             )
             setEditingLetter(null)
           }}
-          token={token}
         />
       )}
     </div>
@@ -458,13 +471,11 @@ function CoverLettersTab({ token }: { token: string }) {
 function CoverLetterGeneratorModal({
   onClose,
   onGenerate,
-  token,
   resumes,
   jobs,
 }: {
   onClose: () => void
   onGenerate: (letter: CoverLetter) => void
-  token: string
   resumes: Resume[]
   jobs: JobApplication[]
 }) {
@@ -508,14 +519,12 @@ function CoverLetterGeneratorModal({
     setIsGenerating(true)
     setError(null)
     try {
-      const result = await coverLettersApi.generate(token, {
-        resume_content: selectedResume.content,
-        job_description: formData.job_description,
-        company_name: formData.company_name,
-        position: formData.position,
-        tone: formData.tone,
-      })
-      setGeneratedContent((result as CoverLetter).content)
+      const result = await aiApi.generateCoverLetter(
+        selectedResume.content,
+        formData.job_description,
+        formData.company_name
+      )
+      setGeneratedContent(result.cover_letter)
     } catch (err) {
       console.error('Failed to generate cover letter:', err)
       setError('Failed to generate cover letter. Please try again.')
@@ -528,11 +537,11 @@ function CoverLetterGeneratorModal({
     if (!generatedContent) return
 
     try {
-      const newLetter = await coverLettersApi.create(token, {
+      const newLetter = await coverLettersApi.create({
         content: generatedContent,
         job_application_id: formData.job_application_id ? Number(formData.job_application_id) : undefined,
       })
-      onGenerate(newLetter as CoverLetter)
+      onGenerate(newLetter)
     } catch (err) {
       console.error('Failed to save cover letter:', err)
       setError('Failed to save cover letter. Please try again.')
@@ -543,17 +552,24 @@ function CoverLetterGeneratorModal({
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      role="dialog"
-      aria-modal="true"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          onClose()
+        }
+      }}
+      role="button"
+      aria-label="Close dialog"
+      tabIndex={0}
     >
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
         <h2 className="text-xl font-bold mb-4">Generate Cover Letter</h2>
 
         {!generatedContent ? (
-          <form onSubmit={handleGenerate} className="space-y-4">
+          <form onSubmit={(e) => void handleGenerate(e)} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Link to Job Application (Optional)</label>
+              <label htmlFor="job-application-link" className="block text-sm font-medium text-gray-700">Link to Job Application (Optional)</label>
               <select
+                id="job-application-link"
                 value={formData.job_application_id}
                 onChange={(e) => handleJobSelect(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
@@ -568,8 +584,9 @@ function CoverLetterGeneratorModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Select Resume</label>
+              <label htmlFor="select-resume-cover" className="block text-sm font-medium text-gray-700">Select Resume</label>
               <select
+                id="select-resume-cover"
                 required
                 value={formData.resume_id}
                 onChange={(e) => setFormData({ ...formData, resume_id: e.target.value })}
@@ -586,8 +603,9 @@ function CoverLetterGeneratorModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                <label htmlFor="company-name-cover" className="block text-sm font-medium text-gray-700">Company Name</label>
                 <input
+                  id="company-name-cover"
                   type="text"
                   required
                   value={formData.company_name}
@@ -597,8 +615,9 @@ function CoverLetterGeneratorModal({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Position</label>
+                <label htmlFor="position-cover" className="block text-sm font-medium text-gray-700">Position</label>
                 <input
+                  id="position-cover"
                   type="text"
                   required
                   value={formData.position}
@@ -610,8 +629,9 @@ function CoverLetterGeneratorModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Job Description</label>
+              <label htmlFor="job-description-cover" className="block text-sm font-medium text-gray-700">Job Description</label>
               <textarea
+                id="job-description-cover"
                 required
                 rows={6}
                 value={formData.job_description}
@@ -622,7 +642,7 @@ function CoverLetterGeneratorModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Tone</label>
+              <div className="block text-sm font-medium text-gray-700" role="group" aria-label="Tone">Tone</div>
               <div className="mt-2 flex gap-4">
                 {(['professional', 'enthusiastic', 'formal'] as const).map((tone) => (
                   <label key={tone} className="flex items-center">
@@ -678,8 +698,9 @@ function CoverLetterGeneratorModal({
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Generated Cover Letter</label>
+              <label htmlFor="generated-cover-letter" className="block text-sm font-medium text-gray-700 mb-2">Generated Cover Letter</label>
               <textarea
+                id="generated-cover-letter"
                 value={generatedContent}
                 onChange={(e) => setGeneratedContent(e.target.value)}
                 rows={16}
@@ -712,7 +733,7 @@ function CoverLetterGeneratorModal({
                 </button>
                 <button
                   type="button"
-                  onClick={handleSave}
+                  onClick={() => void handleSave()}
                   className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center"
                 >
                   <FileText className="w-4 h-4 mr-2" />
@@ -732,13 +753,11 @@ function CoverLetterEditModal({
   jobs,
   onClose,
   onSave,
-  token,
 }: {
   letter: CoverLetter
   jobs: JobApplication[]
   onClose: () => void
   onSave: (letter: CoverLetter) => void
-  token: string
 }) {
   const [content, setContent] = useState(letter.content)
   const [jobApplicationId, setJobApplicationId] = useState<string>(
@@ -752,12 +771,12 @@ function CoverLetterEditModal({
     setError(null)
     try {
       // The API doesn't have an update endpoint shown, so we delete and recreate
-      await coverLettersApi.delete(token, letter.id)
-      const newLetter = await coverLettersApi.create(token, {
+      await coverLettersApi.delete(letter.id)
+      const newLetter = await coverLettersApi.create({
         content,
         job_application_id: jobApplicationId ? Number(jobApplicationId) : undefined,
       })
-      onSave(newLetter as CoverLetter)
+      onSave(newLetter)
     } catch (err) {
       console.error('Failed to save cover letter:', err)
       setError('Failed to save cover letter. Please try again.')
@@ -770,16 +789,23 @@ function CoverLetterEditModal({
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      role="dialog"
-      aria-modal="true"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          onClose()
+        }
+      }}
+      role="button"
+      aria-label="Close dialog"
+      tabIndex={0}
     >
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
         <h2 className="text-xl font-bold mb-4">Edit Cover Letter</h2>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Link to Job Application</label>
+            <label htmlFor="edit-job-application-link" className="block text-sm font-medium text-gray-700">Link to Job Application</label>
             <select
+              id="edit-job-application-link"
               value={jobApplicationId}
               onChange={(e) => setJobApplicationId(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
@@ -794,8 +820,9 @@ function CoverLetterEditModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+            <label htmlFor="edit-cover-letter-content" className="block text-sm font-medium text-gray-700 mb-2">Content</label>
             <textarea
+              id="edit-cover-letter-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={16}
@@ -819,7 +846,7 @@ function CoverLetterEditModal({
             </button>
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => void handleSave()}
               disabled={isSaving}
               className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center"
             >
@@ -846,7 +873,7 @@ function CoverLetterEditModal({
 // Networking Emails Tab
 // =============================================================================
 
-function NetworkingEmailsTab({ token }: { token: string }) {
+function NetworkingEmailsTab() {
   const [emailType, setEmailType] = useState<NetworkingEmailType>('informational')
   const [formData, setFormData] = useState({
     recipientName: '',
@@ -885,10 +912,9 @@ BODY:
     setGeneratedEmail(null)
 
     try {
-      const result = await aiApi.answerQuestion(token, {
-        question: generateEmailPrompt(),
-        question_type: 'general',
-      })
+      const result = await aiApi.answerQuestion(
+        generateEmailPrompt()
+      )
 
       // Parse the response
       const response = result.answer
@@ -897,8 +923,8 @@ BODY:
 
       if (subjectMatch && bodyMatch) {
         setGeneratedEmail({
-          subject: subjectMatch[1].trim(),
-          body: bodyMatch[1].trim(),
+          subject: subjectMatch[1]?.trim() ?? '',
+          body: bodyMatch[1]?.trim() ?? '',
         })
       } else {
         // Fallback parsing
@@ -951,12 +977,13 @@ BODY:
           </div>
         </div>
 
-        <form onSubmit={handleGenerate} className="bg-white rounded-lg shadow p-6 space-y-4">
+        <form onSubmit={(e) => void handleGenerate(e)} className="bg-white rounded-lg shadow p-6 space-y-4">
           <h3 className="text-lg font-medium text-gray-900">Email Details</h3>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Recipient Name</label>
+            <label htmlFor="networking-recipient-name" className="block text-sm font-medium text-gray-700">Recipient Name</label>
             <input
+              id="networking-recipient-name"
               type="text"
               required
               value={formData.recipientName}
@@ -967,8 +994,9 @@ BODY:
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Company</label>
+            <label htmlFor="networking-company" className="block text-sm font-medium text-gray-700">Company</label>
             <input
+              id="networking-company"
               type="text"
               required
               value={formData.company}
@@ -979,8 +1007,9 @@ BODY:
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Purpose</label>
+            <label htmlFor="networking-purpose" className="block text-sm font-medium text-gray-700">Purpose</label>
             <textarea
+              id="networking-purpose"
               required
               rows={3}
               value={formData.purpose}
@@ -991,8 +1020,9 @@ BODY:
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Your Background</label>
+            <label htmlFor="networking-background" className="block text-sm font-medium text-gray-700">Your Background</label>
             <textarea
+              id="networking-background"
               required
               rows={3}
               value={formData.yourBackground}
@@ -1036,7 +1066,7 @@ BODY:
               <h3 className="text-lg font-medium text-gray-900">Generated Email</h3>
               <button
                 onClick={() =>
-                  copyToClipboard(`Subject: ${generatedEmail.subject}\n\n${generatedEmail.body}`, 'all')
+                  void copyToClipboard(`Subject: ${generatedEmail.subject}\n\n${generatedEmail.body}`, 'all')
                 }
                 className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
               >
@@ -1057,9 +1087,9 @@ BODY:
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">Subject</label>
+                  <span className="block text-sm font-medium text-gray-700">Subject</span>
                   <button
-                    onClick={() => copyToClipboard(generatedEmail.subject, 'subject')}
+                    onClick={() => void copyToClipboard(generatedEmail.subject, 'subject')}
                     className="text-xs text-primary-600 hover:text-primary-700"
                   >
                     {copied === 'subject' ? 'Copied!' : 'Copy'}
@@ -1072,9 +1102,9 @@ BODY:
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">Body</label>
+                  <span className="block text-sm font-medium text-gray-700">Body</span>
                   <button
-                    onClick={() => copyToClipboard(generatedEmail.body, 'body')}
+                    onClick={() => void copyToClipboard(generatedEmail.body, 'body')}
                     className="text-xs text-primary-600 hover:text-primary-700"
                   >
                     {copied === 'body' ? 'Copied!' : 'Copy'}
@@ -1104,7 +1134,7 @@ BODY:
 // Professional Emails Tab
 // =============================================================================
 
-function ProfessionalEmailsTab({ token }: { token: string }) {
+function ProfessionalEmailsTab() {
   const [selectedTemplate, setSelectedTemplate] = useState<ProfessionalTemplateId>('post-interview')
   const [placeholderValues, setPlaceholderValues] = useState<Record<string, string>>({})
   const [isCustomizing, setIsCustomizing] = useState(false)
@@ -1142,10 +1172,7 @@ SUBJECT: [improved subject]
 BODY:
 [improved body]`
 
-      const result = await aiApi.answerQuestion(token, {
-        question: prompt,
-        question_type: 'general',
-      })
+      const result = await aiApi.answerQuestion(prompt)
 
       const response = result.answer
       const subjectMatch = response.match(/SUBJECT:\s*([^\n]+?)(?:\n|BODY:)/i)
@@ -1153,8 +1180,8 @@ BODY:
 
       if (subjectMatch && bodyMatch) {
         setCustomizedContent({
-          subject: subjectMatch[1].trim(),
-          body: bodyMatch[1].trim(),
+          subject: subjectMatch[1]?.trim() ?? '',
+          body: bodyMatch[1]?.trim() ?? '',
         })
       }
     } catch (err) {
@@ -1232,7 +1259,7 @@ BODY:
           </div>
 
           <button
-            onClick={handleCustomize}
+            onClick={() => void handleCustomize()}
             disabled={isCustomizing}
             className="mt-6 w-full inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
           >
@@ -1263,7 +1290,7 @@ BODY:
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-gray-900">Preview</h3>
             <button
-              onClick={() => copyToClipboard(`Subject: ${displaySubject}\n\n${displayBody}`, 'all')}
+              onClick={() => void copyToClipboard(`Subject: ${displaySubject}\n\n${displayBody}`, 'all')}
               className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
             >
               {copied === 'all' ? (
@@ -1283,9 +1310,9 @@ BODY:
           <div className="space-y-4">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-medium text-gray-700">Subject</label>
+                <span className="block text-sm font-medium text-gray-700">Subject</span>
                 <button
-                  onClick={() => copyToClipboard(displaySubject, 'subject')}
+                  onClick={() => void copyToClipboard(displaySubject, 'subject')}
                   className="text-xs text-primary-600 hover:text-primary-700"
                 >
                   {copied === 'subject' ? 'Copied!' : 'Copy'}
@@ -1298,9 +1325,9 @@ BODY:
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-medium text-gray-700">Body</label>
+                <span className="block text-sm font-medium text-gray-700">Body</span>
                 <button
-                  onClick={() => copyToClipboard(displayBody, 'body')}
+                  onClick={() => void copyToClipboard(displayBody, 'body')}
                   className="text-xs text-primary-600 hover:text-primary-700"
                 >
                   {copied === 'body' ? 'Copied!' : 'Copy'}
@@ -1330,7 +1357,7 @@ BODY:
 // Custom Composer Tab
 // =============================================================================
 
-function CustomComposerTab({ token }: { token: string }) {
+function CustomComposerTab() {
   const [content, setContent] = useState('')
   const [selectedTone, setSelectedTone] = useState<ToneOption | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -1354,9 +1381,40 @@ function CustomComposerTab({ token }: { token: string }) {
     setCorrections([])
 
     try {
-      const result = await aiApi.grammarCheck(token, { text: content })
-      setProcessedContent(result.corrected_text)
-      setCorrections(result.corrections_made || [])
+      const result = await aiApi.answerQuestion(
+        `Please check the following text for grammar, spelling, and punctuation errors. Provide:
+1. The corrected text
+2. A list of corrections made
+
+Format the response as:
+CORRECTED:
+[corrected text]
+
+CORRECTIONS:
+- [correction 1]
+- [correction 2]
+
+Text to check:
+${content}`
+      )
+      // Parse the response
+      const response = result.answer
+      const correctedMatch = response.match(/CORRECTED:\s*([\s\S]+?)(?:CORRECTIONS:|$)/i)
+      const correctionsMatch = response.match(/CORRECTIONS:\s*([\s\S]+)/i)
+
+      if (correctedMatch) {
+        setProcessedContent(correctedMatch[1]?.trim() ?? '')
+      } else {
+        setProcessedContent(response)
+      }
+
+      if (correctionsMatch) {
+        const correctionsList = (correctionsMatch[1] ?? '')
+          .split('\n')
+          .map((line) => line.replace(/^-\s*/, '').trim())
+          .filter((line) => line.length > 0)
+        setCorrections(correctionsList)
+      }
     } catch (err) {
       console.error('Failed to check grammar:', err)
       setError('Failed to check grammar. Please try again.')
@@ -1383,10 +1441,9 @@ function CustomComposerTab({ token }: { token: string }) {
     }
 
     try {
-      const result = await aiApi.answerQuestion(token, {
-        question: `Rewrite the following text to have a ${toneDescriptions[tone]} tone. Maintain the core message but adjust the language and style accordingly:\n\n${content}`,
-        question_type: 'general',
-      })
+      const result = await aiApi.answerQuestion(
+        `Rewrite the following text to have a ${toneDescriptions[tone]} tone. Maintain the core message but adjust the language and style accordingly:\n\n${content}`
+      )
       setProcessedContent(result.answer)
     } catch (err) {
       console.error('Failed to adjust tone:', err)
@@ -1440,7 +1497,7 @@ function CustomComposerTab({ token }: { token: string }) {
             <h3 className="text-lg font-medium text-gray-900">Compose</h3>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => copyToClipboard(content)}
+                onClick={() => void copyToClipboard(content)}
                 disabled={!content.trim()}
                 className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
               >
@@ -1477,7 +1534,7 @@ function CustomComposerTab({ token }: { token: string }) {
 
           <div className="mt-4 flex flex-wrap gap-3">
             <button
-              onClick={handleGrammarCheck}
+              onClick={() => void handleGrammarCheck()}
               disabled={isProcessing || !content.trim()}
               className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
             >
@@ -1500,7 +1557,7 @@ function CustomComposerTab({ token }: { token: string }) {
             {TONE_OPTIONS.map((tone) => (
               <button
                 key={tone.id}
-                onClick={() => handleToneAdjust(tone.id)}
+                onClick={() => void handleToneAdjust(tone.id)}
                 disabled={isProcessing || !content.trim()}
                 className={cn(
                   'px-3 py-2 text-sm rounded-md transition-colors disabled:opacity-50',
@@ -1566,7 +1623,7 @@ function CustomComposerTab({ token }: { token: string }) {
               </h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => copyToClipboard(processedContent)}
+                  onClick={() => void copyToClipboard(processedContent)}
                   className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   <Copy className="w-4 h-4 mr-1" />
@@ -1619,21 +1676,27 @@ function CustomComposerTab({ token }: { token: string }) {
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={(e) => e.target === e.currentTarget && setShowSaveDialog(false)}
-          role="dialog"
-          aria-modal="true"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+              setShowSaveDialog(false)
+            }
+          }}
+          role="button"
+          aria-label="Close dialog"
+          tabIndex={0}
         >
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h2 className="text-xl font-bold mb-4">Save as Template</h2>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Template Name</label>
+              <label htmlFor="template-name-input" className="block text-sm font-medium text-gray-700">Template Name</label>
               <input
+                id="template-name-input"
                 type="text"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                 placeholder="My Email Template"
-                autoFocus
               />
             </div>
 

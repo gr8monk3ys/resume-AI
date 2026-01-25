@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/lib/auth';
-import { useRouter } from 'next/navigation';
-import { profileApi } from '@/lib/api';
-import type { Profile } from '@/types';
 import { User, Save } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+
+import { profileApi } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+
+import type { Profile } from '@/types';
+
 
 export default function ProfilePage() {
-  const { user, tokens, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,30 +25,30 @@ export default function ProfilePage() {
   }, [user, authLoading, router]);
 
   const loadProfile = useCallback(async () => {
-    if (!tokens?.access_token) return;
+    if (!isAuthenticated) return;
     try {
-      const data = await profileApi.get(tokens.access_token);
-      setProfile(data as Profile);
+      const data = await profileApi.get();
+      setProfile(data);
     } catch (error) {
       console.error('Failed to load profile:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [tokens]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadProfile();
+    if (isAuthenticated) {
+      void loadProfile()
     }
-  }, [tokens, loadProfile]);
+  }, [isAuthenticated, loadProfile])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tokens?.access_token || !profile) return;
+    if (!isAuthenticated || !profile) return;
     setIsSaving(true);
     setMessage('');
     try {
-      const updated = await profileApi.update(tokens.access_token, {
+      const updated = await profileApi.update({
         name: profile.name,
         email: profile.email || undefined,
         phone: profile.phone || undefined,
@@ -53,7 +56,7 @@ export default function ProfilePage() {
         github: profile.github || undefined,
         portfolio: profile.portfolio || undefined,
       });
-      setProfile(updated as Profile);
+      setProfile(updated);
       setMessage('Profile saved successfully!');
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -86,7 +89,7 @@ export default function ProfilePage() {
         <p className="text-gray-500">Manage your personal information</p>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white rounded-lg shadow p-6 space-y-6">
+      <form onSubmit={(e) => void handleSave(e)} className="bg-white rounded-lg shadow p-6 space-y-6">
         {message && (
           <div className={`p-3 rounded-md text-sm ${
             message.includes('success') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
@@ -107,8 +110,9 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Full Name</label>
+            <label htmlFor="profile-name" className="block text-sm font-medium text-gray-700">Full Name</label>
             <input
+              id="profile-name"
               type="text"
               value={profile.name}
               onChange={(e) => setProfile({ ...profile, name: e.target.value })}
@@ -117,8 +121,9 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700">Email</label>
             <input
+              id="profile-email"
               type="email"
               value={profile.email || ''}
               onChange={(e) => setProfile({ ...profile, email: e.target.value })}
@@ -127,8 +132,9 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone</label>
+            <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700">Phone</label>
             <input
+              id="profile-phone"
               type="tel"
               value={profile.phone || ''}
               onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
@@ -137,8 +143,9 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">LinkedIn</label>
+            <label htmlFor="profile-linkedin" className="block text-sm font-medium text-gray-700">LinkedIn</label>
             <input
+              id="profile-linkedin"
               type="url"
               value={profile.linkedin || ''}
               onChange={(e) => setProfile({ ...profile, linkedin: e.target.value })}
@@ -148,8 +155,9 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">GitHub</label>
+            <label htmlFor="profile-github" className="block text-sm font-medium text-gray-700">GitHub</label>
             <input
+              id="profile-github"
               type="url"
               value={profile.github || ''}
               onChange={(e) => setProfile({ ...profile, github: e.target.value })}
@@ -159,8 +167,9 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Portfolio</label>
+            <label htmlFor="profile-portfolio" className="block text-sm font-medium text-gray-700">Portfolio</label>
             <input
+              id="profile-portfolio"
               type="url"
               value={profile.portfolio || ''}
               onChange={(e) => setProfile({ ...profile, portfolio: e.target.value })}

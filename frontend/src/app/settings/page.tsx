@@ -1,16 +1,5 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
-import { useAuth } from '@/lib/auth'
-import { useRouter } from 'next/navigation'
-import {
-  profileApi,
-  resumesApi,
-  jobsApi,
-  coverLettersApi,
-  ApiError,
-} from '@/lib/api'
-import type { Profile, JobStats, Resume, CoverLetter, JobApplication } from '@/types'
 import {
   User,
   Save,
@@ -33,7 +22,20 @@ import {
   Lock,
   RefreshCw,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState, useCallback, useMemo } from 'react'
+
+import {
+  profileApi,
+  resumesApi,
+  jobsApi,
+  coverLettersApi,
+  ApiError,
+} from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
+
+import type { Profile, JobStats, Resume, CoverLetter, JobApplication } from '@/types'
 
 // Types
 interface TabConfig {
@@ -347,7 +349,7 @@ function HealthIndicator({
 
 // Main Settings Page Component
 export default function SettingsPage() {
-  const { user, tokens, isLoading: authLoading, logout } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth()
   const router = useRouter()
 
   // State
@@ -390,16 +392,16 @@ export default function SettingsPage() {
 
   // Load data
   const loadData = useCallback(async () => {
-    if (!tokens?.access_token) return
+    if (!isAuthenticated) return
 
     setIsLoading(true)
     try {
       const [profileData, statsData, resumesData, coverLettersData, jobsData] = await Promise.all([
-        profileApi.get(tokens.access_token),
-        jobsApi.getStats(tokens.access_token),
-        resumesApi.list(tokens.access_token),
-        coverLettersApi.list(tokens.access_token),
-        jobsApi.list(tokens.access_token),
+        profileApi.get(),
+        jobsApi.getStats(),
+        resumesApi.list(),
+        coverLettersApi.list(),
+        jobsApi.list(),
       ])
       setProfile(profileData)
       setJobStats(statsData)
@@ -412,13 +414,13 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [tokens])
+  }, [isAuthenticated])
 
   useEffect(() => {
-    if (tokens?.access_token) {
-      loadData()
+    if (isAuthenticated) {
+      void loadData()
     }
-  }, [tokens, loadData])
+  }, [isAuthenticated, loadData])
 
   // Clear message after 5 seconds
   useEffect(() => {
@@ -426,6 +428,7 @@ export default function SettingsPage() {
       const timer = setTimeout(() => setMessage(null), 5000)
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [message])
 
   // Validate profile fields
@@ -456,7 +459,7 @@ export default function SettingsPage() {
   // Save profile
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!tokens?.access_token || !profile) return
+    if (!isAuthenticated || !profile) return
 
     if (!validateProfile()) {
       setMessage({ type: 'error', text: 'Please fix validation errors before saving' })
@@ -467,7 +470,7 @@ export default function SettingsPage() {
     setMessage(null)
 
     try {
-      const updated = await profileApi.update(tokens.access_token, {
+      const updated = await profileApi.update({
         name: profile.name,
         email: profile.email || undefined,
         phone: profile.phone || undefined,
@@ -591,11 +594,11 @@ export default function SettingsPage() {
 
   // Delete functions
   const handleDeleteAllApplications = async () => {
-    if (!tokens?.access_token) return
+    if (!isAuthenticated) return
 
     try {
       // Delete each application
-      await Promise.all(jobs.map((job) => jobsApi.delete(tokens.access_token, job.id)))
+      await Promise.all(jobs.map((job) => jobsApi.delete(job.id)))
       setJobs([])
       setJobStats((prev) => (prev ? { ...prev, total: 0, status_breakdown: {} } : null))
       setMessage({ type: 'success', text: 'All applications deleted successfully' })
@@ -608,14 +611,14 @@ export default function SettingsPage() {
   }
 
   const handleDeleteAllData = async () => {
-    if (!tokens?.access_token) return
+    if (!isAuthenticated) return
 
     try {
       // Delete all data in parallel
       await Promise.all([
-        ...jobs.map((job) => jobsApi.delete(tokens.access_token, job.id)),
-        ...resumes.map((resume) => resumesApi.delete(tokens.access_token, resume.id)),
-        ...coverLetters.map((cl) => coverLettersApi.delete(tokens.access_token, cl.id)),
+        ...jobs.map((job) => jobsApi.delete(job.id)),
+        ...resumes.map((resume) => resumesApi.delete(resume.id)),
+        ...coverLetters.map((cl) => coverLettersApi.delete(cl.id)),
       ])
       setJobs([])
       setResumes([])
@@ -630,7 +633,7 @@ export default function SettingsPage() {
     }
   }
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = () => {
     // Placeholder - would need delete account API
     setMessage({ type: 'error', text: 'Account deletion is not yet implemented' })
     setDeleteAccountDialog(false)
@@ -745,7 +748,7 @@ export default function SettingsPage() {
                 Profile Information
               </h2>
 
-              <form onSubmit={handleSaveProfile} className="space-y-6">
+              <form onSubmit={(e) => { void handleSaveProfile(e) }} className="space-y-6">
                 {/* User Info */}
                 <div className="flex items-center space-x-4 pb-6 border-b">
                   <div className="bg-primary-100 rounded-full p-4">
@@ -1066,7 +1069,7 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {Object.entries(jobStats?.status_breakdown || {}).map(
                     ([status, count]) => (
-                      <StatusBadge key={status} status={status} count={count as number} />
+                      <StatusBadge key={status} status={status} count={count} />
                     )
                   )}
                   {(!jobStats?.status_breakdown ||
@@ -1088,7 +1091,7 @@ export default function SettingsPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-6">
                   Change Password
                 </h3>
-                <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+                <form onSubmit={(e) => { void handleChangePassword(e) }} className="space-y-4 max-w-md">
                   <PasswordInput
                     id="currentPassword"
                     label="Current Password"
@@ -1158,7 +1161,7 @@ export default function SettingsPage() {
                       </p>
                     </div>
                     <button
-                      onClick={logout}
+                      onClick={() => void logout()}
                       className="text-sm text-red-600 hover:text-red-700 font-medium"
                     >
                       Sign out all devices
@@ -1291,7 +1294,7 @@ export default function SettingsPage() {
                     System Health
                   </h3>
                   <button
-                    onClick={checkSystemHealth}
+                    onClick={() => { void checkSystemHealth() }}
                     disabled={isCheckingHealth}
                     className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-primary-600 bg-primary-50 rounded-md hover:bg-primary-100 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
@@ -1363,7 +1366,7 @@ export default function SettingsPage() {
         message={`This will permanently delete all ${jobs.length} job applications. This action cannot be undone.`}
         confirmText="Delete Applications"
         confirmVariant="danger"
-        onConfirm={handleDeleteAllApplications}
+        onConfirm={() => { void handleDeleteAllApplications() }}
         onCancel={() => setDeleteAppsDialog(false)}
       />
 
@@ -1375,7 +1378,7 @@ export default function SettingsPage() {
         confirmVariant="danger"
         requireTyping
         typingText="DELETE ALL DATA"
-        onConfirm={handleDeleteAllData}
+        onConfirm={() => { void handleDeleteAllData() }}
         onCancel={() => setDeleteAllDialog(false)}
       />
 
@@ -1387,7 +1390,7 @@ export default function SettingsPage() {
         confirmVariant="danger"
         requireTyping
         typingText="DELETE MY ACCOUNT"
-        onConfirm={handleDeleteAccount}
+        onConfirm={() => { void handleDeleteAccount() }}
         onCancel={() => {
           setDeleteAccountDialog(false)
         }}
