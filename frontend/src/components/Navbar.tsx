@@ -1,9 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-import { useAuth } from '@/lib/auth'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
 import {
   Home,
   FileText,
@@ -21,7 +17,13 @@ import {
   BarChart3,
   Filter,
 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
+
+import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
+
 
 /**
  * Navigation items for authenticated users
@@ -104,7 +106,7 @@ export function Navbar() {
    */
   const handleLogout = () => {
     setMobileMenuOpen(false)
-    logout()
+    void logout()
   }
 
   /**
