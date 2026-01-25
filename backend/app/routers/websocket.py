@@ -12,7 +12,7 @@ from app.database import SessionLocal
 from app.middleware.auth import decode_token
 from app.models.user import User
 from app.services.job_alerts import get_job_alert_service
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger(__name__)
 
@@ -148,11 +148,18 @@ async def authenticate_websocket(
 
     Returns:
         Tuple of (is_authenticated, user_id, error_message)
+
+    Security:
+        - Validates token signature and expiration
+        - Validates token type must be "access" (rejects refresh tokens)
+        - Validates token_version matches user's current token_version
+          (ensures tokens are invalidated after password change)
     """
     if not token:
         return False, None, "Authentication token required"
 
-    token_data = decode_token(token)
+    # Decode token with type validation (must be access token, not refresh)
+    token_data = decode_token(token, expected_type="access", validate_type=True)
     if token_data is None:
         return False, None, "Invalid or expired token"
 
@@ -164,6 +171,12 @@ async def authenticate_websocket(
             return False, None, "User not found"
         if not user.is_active:
             return False, None, "User account is deactivated"
+
+        # Validate token version to ensure token hasn't been invalidated
+        # This catches tokens issued before a password change
+        if token_data.token_version != user.token_version:
+            return False, None, "Token has been invalidated. Please log in again."
+
         return True, user.id, None
     finally:
         db.close()
@@ -198,7 +211,6 @@ async def check_alerts_for_user(user_id: int):
 async def websocket_alerts_endpoint(
     websocket: WebSocket,
     user_id: int,
-    token: str = Query(None),
 ):
     """
     WebSocket endpoint for real-time job alert notifications.
@@ -206,40 +218,110 @@ async def websocket_alerts_endpoint(
     Connect to receive instant notifications when new jobs match your alerts.
 
     Authentication:
-        Pass JWT token as query parameter: /ws/alerts/{user_id}?token=<jwt_token>
+        After connection, send an auth message: {"type": "auth", "token": "<jwt_token>"}
+        The server will close the connection if authentication fails or times out.
 
     Messages from server:
         - notification: New jobs match an alert
         - pong: Response to ping (keepalive)
         - error: Error message
-        - connected: Connection established
+        - connected: Connection established (after successful auth)
+        - auth_required: Sent immediately after connection, prompts for auth message
 
     Messages to server:
+        - auth: Authentication message with JWT token (required first)
         - ping: Request pong response (keepalive)
         - check: Manually trigger alert check
 
     Args:
         websocket: The WebSocket connection
         user_id: The user's ID (must match token)
-        token: JWT authentication token
     """
-    # Authenticate the connection
+    # Accept connection first, then wait for auth message
+    await websocket.accept()
+
+    # Send auth required message
+    await websocket.send_json(
+        {
+            "type": "auth_required",
+            "data": {"message": "Send auth message with token"},
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
+
+    # Wait for auth message with timeout (30 seconds)
+    try:
+        auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+        auth_message = json.loads(auth_data)
+
+        if auth_message.get("type") != "auth" or "token" not in auth_message:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "data": {"message": "Invalid auth message. Expected: {\"type\": \"auth\", \"token\": \"...\"}"},
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            )
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid auth message")
+            return
+
+        token = auth_message["token"]
+    except asyncio.TimeoutError:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "data": {"message": "Authentication timeout"},
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication timeout")
+        return
+    except json.JSONDecodeError:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "data": {"message": "Invalid JSON in auth message"},
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid JSON")
+        return
+
+    # Authenticate using the token from the message
     is_authenticated, authenticated_user_id, error = await authenticate_websocket(websocket, token)
 
     if not is_authenticated:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "data": {"message": error},
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason=error)
         return
 
     # Verify user_id in URL matches authenticated user
     if authenticated_user_id != user_id:
+        await websocket.send_json(
+            {
+                "type": "error",
+                "data": {"message": "User ID mismatch"},
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await websocket.close(
             code=status.WS_1008_POLICY_VIOLATION,
             reason="User ID mismatch",
         )
         return
 
-    # Accept connection
-    await manager.connect(websocket, user_id)
+    # Register connection with manager (already accepted above)
+    if user_id not in manager.active_connections:
+        manager.active_connections[user_id] = set()
+    manager.active_connections[user_id].add(websocket)
+    manager.connection_users[websocket] = user_id
+    logger.info(f"WebSocket authenticated and connected for user {user_id}")
 
     # Send connection confirmation
     await websocket.send_json(
