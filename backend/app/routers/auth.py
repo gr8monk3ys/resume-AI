@@ -67,10 +67,61 @@ from app.middleware.security import get_client_ip, get_user_agent
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserResponse
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """
+    Set HTTP-only authentication cookies with security flags.
+
+    Security considerations:
+    - HttpOnly: Prevents JavaScript access (XSS protection)
+    - Secure: Only sent over HTTPS (enabled in production)
+    - SameSite=Lax: Prevents CSRF while allowing top-level navigation
+    - Path restrictions: access_token for API, refresh_token only for refresh endpoint
+    """
+    # Access token cookie - used for API requests
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=settings.cookie_httponly,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.access_token_expire_minutes * 60,
+        path=settings.cookie_path,
+        domain=settings.cookie_domain,
+    )
+
+    # Refresh token cookie - only accessible at refresh endpoint for security
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=settings.cookie_httponly,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        max_age=settings.refresh_token_expire_days * 24 * 60 * 60,
+        path="/api/auth",  # Restrict refresh token to auth endpoints only
+        domain=settings.cookie_domain,
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """
+    Clear authentication cookies by setting them to expire immediately.
+    """
+    response.delete_cookie(
+        key="access_token",
+        path=settings.cookie_path,
+        domain=settings.cookie_domain,
+    )
+    response.delete_cookie(
+        key="refresh_token",
+        path="/api/auth",
+        domain=settings.cookie_domain,
+    )
 
 settings = get_settings()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -136,16 +187,25 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
     """
     Login and get access token.
 
+    Sets HTTP-only cookies for browser-based authentication while also returning
+    tokens in the response body for backward compatibility with API clients.
+
     Includes brute force protection:
     - Tracks failed login attempts
     - Rate limits login attempts per username
     - Locks account after too many failures
+
+    Security:
+    - Tokens are set as HTTP-only cookies (prevents XSS token theft)
+    - Secure flag enabled in production (HTTPS only)
+    - SameSite=Lax prevents CSRF attacks
     """
     username = form_data.username
     ip_address = get_client_ip(request)
@@ -235,38 +295,130 @@ async def login(
     user.last_login = datetime.now(timezone.utc)
     db.commit()
 
-    # Create tokens
+    # Create tokens with token_version for invalidation support
     token_data = {"sub": user.id, "username": user.username}
-    access_token = create_access_token(token_data)
-    refresh_token = create_refresh_token(token_data)
+    access_token = create_access_token(token_data, token_version=user.token_version)
+    refresh_token = create_refresh_token(token_data, token_version=user.token_version)
 
+    # Set HTTP-only cookies for browser-based authentication
+    set_auth_cookies(response, access_token, refresh_token)
+
+    # Also return tokens in body for backward compatibility with API clients
     return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
+class RefreshTokenRequest(BaseModel):
+    """Request model for refresh token - used when token is passed in body."""
+
+    refresh_token: Optional[str] = None
+
+
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
-    """Refresh access token using refresh token."""
-    token_data = decode_token(refresh_token)
+async def refresh_tokens(
+    request: Request,
+    response: Response,
+    body: Optional[RefreshTokenRequest] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Refresh access token using refresh token.
+
+    Accepts refresh token from:
+    1. HTTP-only cookie (preferred for browser clients)
+    2. Request body (for API clients without cookie support)
+
+    Sets new HTTP-only cookies on successful refresh.
+
+    Security validations:
+        - Token must be a valid refresh token (not an access token)
+        - Token version must match user's current token_version
+    """
+    # Try to get refresh token from cookie first, then from body
+    refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value and body and body.refresh_token:
+        refresh_token_value = body.refresh_token
+
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not provided",
+        )
+
+    # Decode with expected_type="refresh" to prevent access tokens from being used
+    token_data = decode_token(refresh_token_value, expected_type="refresh", validate_type=True)
 
     if token_data is None:
+        # Clear cookies on invalid token
+        clear_auth_cookies(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
 
     user = db.query(User).filter(User.id == token_data.user_id).first()
     if not user or not user.is_active:
+        clear_auth_cookies(response)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive"
         )
 
-    # Create new tokens
+    # Validate token version to ensure refresh token hasn't been invalidated
+    if token_data.token_version != user.token_version:
+        clear_auth_cookies(response)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been invalidated. Please log in again.",
+        )
+
+    # Create new tokens with current token_version
     new_token_data = {"sub": user.id, "username": user.username}
-    new_access_token = create_access_token(new_token_data)
-    new_refresh_token = create_refresh_token(new_token_data)
+    new_access_token = create_access_token(new_token_data, token_version=user.token_version)
+    new_refresh_token = create_refresh_token(new_token_data, token_version=user.token_version)
+
+    # Set new HTTP-only cookies
+    set_auth_cookies(response, new_access_token, new_refresh_token)
 
     return Token(
         access_token=new_access_token, refresh_token=new_refresh_token, token_type="bearer"
     )
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    response: Response,
+    current_user: Optional[User] = Depends(get_current_user),
+):
+    """
+    Logout and clear authentication cookies.
+
+    This endpoint:
+    1. Clears HTTP-only authentication cookies
+    2. Returns success even if not authenticated (idempotent)
+
+    Note: This does not invalidate the JWT tokens themselves.
+    For full session invalidation, use the password change endpoint
+    which increments token_version.
+    """
+    ip_address = get_client_ip(request)
+    request_id = getattr(request.state, "request_id", None)
+
+    # Log logout event if user was authenticated
+    if current_user:
+        audit_logger = get_audit_logger()
+        audit_logger.log_event(
+            AuditEventType.LOGOUT,
+            f"User {current_user.username} logged out",
+            user_id=current_user.id,
+            username=current_user.username,
+            ip_address=ip_address,
+            request_id=request_id,
+            success=True,
+        )
+
+    # Clear authentication cookies
+    clear_auth_cookies(response)
+
+    return {"message": "Successfully logged out"}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -370,8 +522,10 @@ async def change_password(
             detail=error_message,
         )
 
-    # Update password
+    # Update password and increment token_version to invalidate all existing tokens
+    # This forces all sessions to re-authenticate after a password change
     current_user.password_hash = get_password_hash(password_data.new_password)
+    current_user.token_version = (current_user.token_version or 0) + 1
     db.commit()
 
     # Log successful password change
@@ -382,4 +536,6 @@ async def change_password(
         request_id=request_id,
     )
 
-    return {"message": "Password changed successfully"}
+    return {
+        "message": "Password changed successfully. All existing sessions have been invalidated."
+    }
