@@ -24,7 +24,8 @@ FROM base AS deps
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies (production only, no dev deps)
-RUN uv sync --frozen --no-dev --no-install-project
+# Use --link-mode=copy to make the venv relocatable
+RUN uv sync --frozen --no-dev --no-install-project --link-mode=copy
 
 # =============================================================================
 # Production Stage

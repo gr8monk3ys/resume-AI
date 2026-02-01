@@ -98,14 +98,11 @@ async_engine = None
 AsyncSessionLocal = None
 
 if _is_postgres():
+    # Note: Async engines use AsyncAdaptedQueuePool by default when no poolclass is specified
+    # Explicitly using NullPool for simplicity in containerized environments
     async_engine = create_async_engine(
         _get_async_url(),
-        poolclass=QueuePool,
-        pool_size=settings.db_pool_size,
-        max_overflow=settings.db_max_overflow,
-        pool_timeout=settings.db_pool_timeout,
-        pool_recycle=settings.db_pool_recycle,
-        pool_pre_ping=settings.db_pool_pre_ping,
+        poolclass=NullPool,
         echo=settings.db_echo,
     )
 
