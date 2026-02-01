@@ -4,9 +4,10 @@ Job alert model for real-time job notifications.
 
 from datetime import datetime
 
-from app.database import Base
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+from app.database import Base
 
 
 class JobAlert(Base):

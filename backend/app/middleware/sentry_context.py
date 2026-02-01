@@ -52,9 +52,7 @@ class SentryUserContextMiddleware(BaseHTTPMiddleware):
         self.include_username = include_username
         self.include_ip_address = include_ip_address
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         Process request and attach user context to Sentry.
 

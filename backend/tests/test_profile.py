@@ -221,7 +221,9 @@ class TestProfileStats:
         """Test getting stats with various data."""
         # Create resumes
         for i in range(2):
-            resume = Resume(profile_id=test_profile.id, version_name=f"Resume {i}", content="Content")
+            resume = Resume(
+                profile_id=test_profile.id, version_name=f"Resume {i}", content="Content"
+            )
             db.add(resume)
 
         # Create job applications with different statuses
@@ -285,7 +287,12 @@ class TestProfileDataIntegrity:
 
     @pytest.mark.asyncio
     async def test_profile_user_id_is_set(
-        self, client: AsyncClient, db: Session, test_user: User, test_profile: Profile, auth_headers: dict
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        test_profile: Profile,
+        auth_headers: dict,
     ):
         """Test that profile is correctly linked to user."""
         response = await client.get("/api/profile", headers=auth_headers)

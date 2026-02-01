@@ -4,9 +4,10 @@ Job application model for tracking applications.
 
 from datetime import date, datetime
 
-from app.database import Base
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+from app.database import Base
 
 
 class JobApplication(Base):
@@ -36,7 +37,9 @@ class JobApplication(Base):
     job_url = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)  # Added index
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True
+    )  # Added index
 
     # HR Contact tracking fields
     recruiter_name = Column(String, nullable=True)

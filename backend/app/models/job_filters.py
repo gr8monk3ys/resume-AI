@@ -5,11 +5,12 @@ Job filtering models for company filters, keyword filters, and application quest
 from datetime import datetime
 from enum import Enum
 
-from app.database import Base
 from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+from app.database import Base
 
 
 class CompanyFilterType(str, Enum):

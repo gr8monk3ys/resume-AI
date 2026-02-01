@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import httpx
+
 from app.schemas.job_import import GitHubRepoFilter, JobData, JobSource
 from app.schemas.scheduler import ScrapeCriteria, ScrapeSource
 from app.services.job_importer import JobImporter, get_job_importer

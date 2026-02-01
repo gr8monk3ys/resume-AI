@@ -14,6 +14,15 @@ import uuid
 from datetime import datetime
 from typing import Callable, Optional
 
+from apscheduler.events import (
+    EVENT_JOB_ERROR,
+    EVENT_JOB_EXECUTED,
+    EVENT_JOB_MISSED,
+    JobExecutionEvent,
+)
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
 from app.schemas.scheduler import (
     JobSchedulerStatus,
     ScheduledJobCreate,
@@ -25,14 +34,6 @@ from app.schemas.scheduler import (
     TriggerJobResponse,
 )
 from app.services.job_scraper import JobScraper, get_job_scraper
-from apscheduler.events import (
-    EVENT_JOB_ERROR,
-    EVENT_JOB_EXECUTED,
-    EVENT_JOB_MISSED,
-    JobExecutionEvent,
-)
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 

@@ -53,6 +53,11 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
     return True, ""
 
 
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.audit import AuditEventType, get_audit_logger
 from app.middleware.auth import (
@@ -67,10 +72,6 @@ from app.middleware.security import get_client_ip, get_user_agent
 from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserResponse
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
@@ -122,6 +123,7 @@ def clear_auth_cookies(response: Response) -> None:
         path="/api/auth",
         domain=settings.cookie_domain,
     )
+
 
 settings = get_settings()
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])

@@ -75,9 +75,7 @@ class TestCareerJournalSearch:
             headers=auth_headers,
         )
 
-        response = await client.get(
-            "/api/career-journal?search=Promotion", headers=auth_headers
-        )
+        response = await client.get("/api/career-journal?search=Promotion", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -100,9 +98,7 @@ class TestCareerJournalSearch:
             headers=auth_headers,
         )
 
-        response = await client.get(
-            "/api/career-journal?search=team", headers=auth_headers
-        )
+        response = await client.get("/api/career-journal?search=team", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -133,9 +129,7 @@ class TestCareerJournalSearch:
             headers=auth_headers,
         )
 
-        response = await client.get(
-            "/api/career-journal?tag=leadership", headers=auth_headers
-        )
+        response = await client.get("/api/career-journal?tag=leadership", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -199,9 +193,7 @@ class TestCareerJournalCreate:
             "achievement_date": str(date.today()),
             "tags": ["achievement", "milestone"],
         }
-        response = await client.post(
-            "/api/career-journal", json=entry_data, headers=auth_headers
-        )
+        response = await client.post("/api/career-journal", json=entry_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["title"] == entry_data["title"]
@@ -219,9 +211,7 @@ class TestCareerJournalCreate:
             "title": "Minimal Entry",
             "description": "Just the basics",
         }
-        response = await client.post(
-            "/api/career-journal", json=entry_data, headers=auth_headers
-        )
+        response = await client.post("/api/career-journal", json=entry_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["title"] == entry_data["title"]
@@ -239,9 +229,7 @@ class TestCareerJournalCreate:
             "description": "Entry with many tags",
             "tags": tags,
         }
-        response = await client.post(
-            "/api/career-journal", json=entry_data, headers=auth_headers
-        )
+        response = await client.post("/api/career-journal", json=entry_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["tags"] == tags
@@ -373,15 +361,11 @@ class TestCareerJournalDelete:
     ):
         """Test successful entry deletion."""
         entry_id = test_journal_entry.id
-        response = await client.delete(
-            f"/api/career-journal/{entry_id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/career-journal/{entry_id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify entry is deleted
-        get_response = await client.get(
-            f"/api/career-journal/{entry_id}", headers=auth_headers
-        )
+        get_response = await client.get(f"/api/career-journal/{entry_id}", headers=auth_headers)
         assert get_response.status_code == 404
 
     @pytest.mark.asyncio
@@ -452,9 +436,7 @@ class TestEnhanceAchievement:
         self, client: AsyncClient, db: Session, test_journal_entry: CareerJournalEntry
     ):
         """Test enhancement without authentication."""
-        response = await client.post(
-            f"/api/career-journal/{test_journal_entry.id}/enhance"
-        )
+        response = await client.post(f"/api/career-journal/{test_journal_entry.id}/enhance")
         assert response.status_code == 401
 
 
@@ -545,9 +527,7 @@ class TestTagParsing:
         assert create_response.status_code == 201
 
         entry_id = create_response.json()["id"]
-        get_response = await client.get(
-            f"/api/career-journal/{entry_id}", headers=auth_headers
-        )
+        get_response = await client.get(f"/api/career-journal/{entry_id}", headers=auth_headers)
         assert get_response.status_code == 200
         data = get_response.json()
         assert isinstance(data["tags"], list)
@@ -563,9 +543,7 @@ class TestTagParsing:
             "description": "Entry without tags",
             "tags": [],
         }
-        response = await client.post(
-            "/api/career-journal", json=entry_data, headers=auth_headers
-        )
+        response = await client.post("/api/career-journal", json=entry_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         # Empty list might be stored as null or empty

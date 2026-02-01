@@ -4,6 +4,10 @@ Jobs router for job application tracking.
 
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
@@ -11,9 +15,6 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
 from app.schemas.pagination import PaginatedResponse, PaginationParams
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 

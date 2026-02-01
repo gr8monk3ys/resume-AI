@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from app.middleware.security import get_client_ip, get_user_agent
 from fastapi import Request, Response
 from sqlalchemy import (
     Boolean,
@@ -36,6 +35,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.middleware.security import get_client_ip, get_user_agent
 
 # Create a separate base for audit models
 AuditBase = declarative_base()

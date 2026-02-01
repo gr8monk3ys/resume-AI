@@ -9,6 +9,8 @@ Provides REST endpoints for:
 
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.schemas.scheduler import (
@@ -19,7 +21,6 @@ from app.schemas.scheduler import (
     TriggerJobResponse,
 )
 from app.services.scheduler import get_job_scheduler
-from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/api/scheduler", tags=["Scheduler"])
 

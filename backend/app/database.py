@@ -199,9 +199,7 @@ async def get_async_db_context() -> AsyncGenerator[AsyncSession, None]:
             result = await db.execute(select(Item))
     """
     if AsyncSessionLocal is None:
-        raise RuntimeError(
-            "Async database sessions are only available with PostgreSQL."
-        )
+        raise RuntimeError("Async database sessions are only available with PostgreSQL.")
 
     async with AsyncSessionLocal() as session:
         try:

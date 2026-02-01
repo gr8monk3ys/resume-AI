@@ -7,6 +7,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy.orm import Session
+
 from app.models.job_alert import JobAlert
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
@@ -17,7 +19,6 @@ from app.schemas.job_alert import (
     JobAlertUpdate,
     JobMatch,
 )
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 

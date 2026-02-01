@@ -250,9 +250,7 @@ class TestGrammarCheck:
         """Test successful grammar correction."""
         response = await client.post(
             "/api/ai/grammar-check",
-            json={
-                "text": "I has experience in software developement and im very good at it."
-            },
+            json={"text": "I has experience in software developement and im very good at it."},
             headers=auth_headers,
         )
         assert response.status_code == 200

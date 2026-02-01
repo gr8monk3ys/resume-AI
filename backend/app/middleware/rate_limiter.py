@@ -15,7 +15,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Dict, Optional, Protocol, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Protocol, Tuple
 
 from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -249,9 +249,7 @@ class RedisStorage:
                 logger.info("Redis connection established for rate limiting")
                 return self._redis
             except ImportError:
-                logger.error(
-                    "redis package not installed. Install with: pip install redis"
-                )
+                logger.error("redis package not installed. Install with: pip install redis")
                 return None
             except Exception as e:
                 logger.warning(f"Failed to connect to Redis: {e}. Falling back to allow requests.")
@@ -285,9 +283,7 @@ class RedisStorage:
                     last_update=float(bucket_data.get("last_update", time.time())),
                     max_tokens=int(bucket_data.get("max_tokens", config.bucket_size)),
                     refill_rate=float(
-                        bucket_data.get(
-                            "refill_rate", config.max_requests / config.window_seconds
-                        )
+                        bucket_data.get("refill_rate", config.max_requests / config.window_seconds)
                     ),
                 )
             else:
@@ -436,7 +432,9 @@ class RedisStorage:
         return {
             "backend": "redis",
             "connected": self._connected,
-            "redis_url": self._redis_url.split("@")[-1] if "@" in self._redis_url else self._redis_url,
+            "redis_url": (
+                self._redis_url.split("@")[-1] if "@" in self._redis_url else self._redis_url
+            ),
         }
 
     async def close(self) -> None:
@@ -686,9 +684,7 @@ class RateLimiterDependency:
 
         # Use atomic operation if available (Redis)
         if isinstance(storage, RedisStorage):
-            allowed, retry_after, _ = await storage.consume_token_atomic(
-                bucket_key, self.config
-            )
+            allowed, retry_after, _ = await storage.consume_token_atomic(bucket_key, self.config)
         else:
             bucket = await storage.get_bucket(bucket_key, self.config)
             allowed, retry_after = bucket.consume(1)

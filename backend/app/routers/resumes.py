@@ -6,6 +6,9 @@ import asyncio
 import logging
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
+
 from app.config import get_settings
 from app.database import get_db
 from app.middleware.auth import get_current_user
@@ -20,11 +23,10 @@ from app.schemas.resume import (
     ResumeResponse,
     ResumeUpdate,
 )
+from app.services.file_parser import parse_file
+
 # Module-level imports for better performance (avoid repeated lazy imports)
 from app.services.resume_analyzer import ATSAnalyzer
-from app.services.file_parser import parse_file
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +219,7 @@ async def upload_resume(
     if file.size is not None and file.size > max_file_size:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large. Maximum size is {settings.max_file_size_mb} MB."
+            detail=f"File too large. Maximum size is {settings.max_file_size_mb} MB.",
         )
 
     # Read file content with size limit
@@ -227,7 +229,7 @@ async def upload_resume(
     if len(content) > max_file_size:
         raise HTTPException(
             status_code=413,
-            detail=f"File too large. Maximum size is {settings.max_file_size_mb} MB."
+            detail=f"File too large. Maximum size is {settings.max_file_size_mb} MB.",
         )
 
     # Determine file type
@@ -253,7 +255,7 @@ async def upload_resume(
         else:
             raise HTTPException(
                 status_code=400,
-                detail="Failed to parse file. Please ensure the file is valid and try again."
+                detail="Failed to parse file. Please ensure the file is valid and try again.",
             )
 
     return {

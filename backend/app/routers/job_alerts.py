@@ -4,6 +4,9 @@ Job alerts router for managing job alert configurations.
 
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.user import User
@@ -14,8 +17,6 @@ from app.schemas.job_alert import (
     JobAlertUpdate,
 )
 from app.services.job_alerts import get_job_alert_service
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/alerts", tags=["Job Alerts"])
 

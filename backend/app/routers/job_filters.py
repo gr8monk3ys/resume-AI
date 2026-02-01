@@ -5,6 +5,9 @@ Job filters router for managing company filters, keyword filters, and applicatio
 import re
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.job_filters import (
@@ -33,8 +36,6 @@ from app.schemas.job_filters import (
     KeywordFilterListResponse,
     KeywordFilterResponse,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/filters", tags=["Job Filters"])
 

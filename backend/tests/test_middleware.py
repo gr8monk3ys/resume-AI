@@ -17,15 +17,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.middleware.rate_limiter import (
     DEFAULT_RATE_LIMITS,
     InMemoryStorage,
     RateLimitConfig,
+    RateLimiterDependency,
     RateLimitMiddleware,
     RateLimitType,
-    RateLimiterDependency,
     TokenBucket,
     classify_endpoint,
     get_client_identifier,
@@ -40,7 +40,6 @@ from app.middleware.security import (
     sanitize_string,
     strip_html_tags,
 )
-
 
 # =============================================================================
 # Token Bucket Unit Tests
@@ -357,9 +356,7 @@ class TestRequestIDMiddleware:
         """Test that provided request ID is used."""
         transport = ASGITransport(app=app_with_request_id)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.get(
-                "/test", headers={"X-Request-ID": "my-custom-id-123"}
-            )
+            response = await client.get("/test", headers={"X-Request-ID": "my-custom-id-123"})
 
         assert response.headers["X-Request-ID"] == "my-custom-id-123"
 
@@ -369,9 +366,7 @@ class TestRequestIDMiddleware:
         transport = ASGITransport(app=app_with_request_id)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             # Invalid: contains special characters
-            response = await client.get(
-                "/test", headers={"X-Request-ID": "invalid<script>id"}
-            )
+            response = await client.get("/test", headers={"X-Request-ID": "invalid<script>id"})
 
         # Should be replaced with a valid UUID
         assert response.headers["X-Request-ID"] != "invalid<script>id"

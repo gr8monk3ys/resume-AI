@@ -163,9 +163,7 @@ class TestJobFiltering:
             headers=auth_headers,
         )
 
-        response = await client.get(
-            "/api/jobs?status=Applied&search=Google", headers=auth_headers
-        )
+        response = await client.get("/api/jobs?status=Applied&search=Google", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 1
@@ -533,7 +531,5 @@ class TestJobIsolation:
         admin_auth_headers: dict,
     ):
         """Test that a user cannot delete another user's job."""
-        response = await client.delete(
-            f"/api/jobs/{test_job.id}", headers=admin_auth_headers
-        )
+        response = await client.delete(f"/api/jobs/{test_job.id}", headers=admin_auth_headers)
         assert response.status_code == 404

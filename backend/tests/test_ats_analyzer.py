@@ -193,7 +193,9 @@ class TestResumeAnalysis:
         - Leadership experience preferred
         """
 
-    def test_analyze_resume_returns_ats_result(self, analyzer, sample_resume, sample_job_description):
+    def test_analyze_resume_returns_ats_result(
+        self, analyzer, sample_resume, sample_job_description
+    ):
         """Test that analysis returns ATSResult."""
         result = analyzer.analyze_resume(sample_resume, sample_job_description)
 
@@ -205,7 +207,9 @@ class TestResumeAnalysis:
 
         assert 0 <= result.overall_score <= 100
 
-    def test_analyze_resume_keyword_match_score(self, analyzer, sample_resume, sample_job_description):
+    def test_analyze_resume_keyword_match_score(
+        self, analyzer, sample_resume, sample_job_description
+    ):
         """Test keyword match score."""
         result = analyzer.analyze_resume(sample_resume, sample_job_description)
 
@@ -252,7 +256,9 @@ class TestResumeAnalysis:
 
         assert isinstance(result.experience_match, dict)
 
-    def test_analyze_resume_keyword_breakdown(self, analyzer, sample_resume, sample_job_description):
+    def test_analyze_resume_keyword_breakdown(
+        self, analyzer, sample_resume, sample_job_description
+    ):
         """Test keyword breakdown."""
         result = analyzer.analyze_resume(sample_resume, sample_job_description)
 
@@ -414,7 +420,11 @@ class TestKeywordMatch:
 
     def test_perfect_match(self, analyzer):
         """Test perfect keyword match."""
-        resume_kw = {"technical_skills": ["Python", "React"], "soft_skills": [], "certifications": []}
+        resume_kw = {
+            "technical_skills": ["Python", "React"],
+            "soft_skills": [],
+            "certifications": [],
+        }
         jd_kw = {"technical_skills": ["Python", "React"], "soft_skills": [], "certifications": []}
 
         score, matched, missing = analyzer._calculate_keyword_match(resume_kw, jd_kw)
@@ -425,7 +435,11 @@ class TestKeywordMatch:
     def test_partial_match(self, analyzer):
         """Test partial keyword match."""
         resume_kw = {"technical_skills": ["Python"], "soft_skills": [], "certifications": []}
-        jd_kw = {"technical_skills": ["Python", "React", "AWS"], "soft_skills": [], "certifications": []}
+        jd_kw = {
+            "technical_skills": ["Python", "React", "AWS"],
+            "soft_skills": [],
+            "certifications": [],
+        }
 
         score, matched, missing = analyzer._calculate_keyword_match(resume_kw, jd_kw)
 
@@ -435,7 +449,11 @@ class TestKeywordMatch:
 
     def test_no_match(self, analyzer):
         """Test no keyword match."""
-        resume_kw = {"technical_skills": ["Java", "Spring"], "soft_skills": [], "certifications": []}
+        resume_kw = {
+            "technical_skills": ["Java", "Spring"],
+            "soft_skills": [],
+            "certifications": [],
+        }
         jd_kw = {"technical_skills": ["Python", "React"], "soft_skills": [], "certifications": []}
 
         score, matched, missing = analyzer._calculate_keyword_match(resume_kw, jd_kw)

@@ -352,8 +352,7 @@ class TestLockoutStatus:
     ):
         """Test checking lockout status for own account (requires auth)."""
         response = await client.get(
-            f"/api/auth/lockout-status/{test_user.username}",
-            headers=auth_headers
+            f"/api/auth/lockout-status/{test_user.username}", headers=auth_headers
         )
         assert response.status_code == 200
         data = response.json()

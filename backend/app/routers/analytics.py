@@ -20,16 +20,17 @@ from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.resume import Resume
 from app.models.user import User
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel
-from sqlalchemy import func
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 

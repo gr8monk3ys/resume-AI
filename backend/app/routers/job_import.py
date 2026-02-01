@@ -5,6 +5,9 @@ Job import router for importing jobs from URLs and GitHub repos.
 import logging
 from typing import Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
@@ -28,8 +31,6 @@ from app.services.job_importer import (
     JobImportError,
     get_job_importer,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 

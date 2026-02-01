@@ -12,28 +12,27 @@ Tests the complete authentication flow including:
 These tests verify end-to-end behavior with the database and all middleware.
 """
 
-import pytest
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.orm import Session
-from unittest.mock import patch, MagicMock
 
 from app.middleware.auth import (
     create_access_token,
     create_refresh_token,
     get_password_hash,
 )
-from app.models.user import User
 from app.models.profile import Profile
+from app.models.user import User
 
 
 class TestRegistrationFlow:
     """Integration tests for the complete registration flow."""
 
     @pytest.mark.asyncio
-    async def test_register_creates_user_and_profile(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_creates_user_and_profile(self, client: AsyncClient, db: Session):
         """Test that registration creates both user and profile records."""
         response = await client.post(
             "/api/auth/register",
@@ -114,9 +113,7 @@ class TestRegistrationFlow:
         assert "Email already registered" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_register_password_complexity_uppercase(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_password_complexity_uppercase(self, client: AsyncClient, db: Session):
         """Test that password requires uppercase letter."""
         response = await client.post(
             "/api/auth/register",
@@ -130,9 +127,7 @@ class TestRegistrationFlow:
         assert "uppercase" in response.json()["detail"][0]["msg"].lower()
 
     @pytest.mark.asyncio
-    async def test_register_password_complexity_lowercase(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_password_complexity_lowercase(self, client: AsyncClient, db: Session):
         """Test that password requires lowercase letter."""
         response = await client.post(
             "/api/auth/register",
@@ -146,9 +141,7 @@ class TestRegistrationFlow:
         assert "lowercase" in response.json()["detail"][0]["msg"].lower()
 
     @pytest.mark.asyncio
-    async def test_register_password_complexity_digit(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_password_complexity_digit(self, client: AsyncClient, db: Session):
         """Test that password requires a digit."""
         response = await client.post(
             "/api/auth/register",
@@ -194,9 +187,7 @@ class TestRegistrationFlow:
         assert "common weak pattern" in response.json()["detail"][0]["msg"].lower()
 
     @pytest.mark.asyncio
-    async def test_register_invalid_email_format(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_invalid_email_format(self, client: AsyncClient, db: Session):
         """Test that invalid email format is rejected."""
         response = await client.post(
             "/api/auth/register",
@@ -209,9 +200,7 @@ class TestRegistrationFlow:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_register_username_too_short(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_username_too_short(self, client: AsyncClient, db: Session):
         """Test that username must be at least 3 characters."""
         response = await client.post(
             "/api/auth/register",
@@ -224,9 +213,7 @@ class TestRegistrationFlow:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_register_username_too_long(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_register_username_too_long(self, client: AsyncClient, db: Session):
         """Test that username must not exceed 50 characters."""
         response = await client.post(
             "/api/auth/register",
@@ -323,9 +310,7 @@ class TestLoginFlow:
         assert "Incorrect username or password" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_login_nonexistent_user_fails(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_login_nonexistent_user_fails(self, client: AsyncClient, db: Session):
         """Test that nonexistent user returns 401."""
         response = await client.post(
             "/api/auth/login",
@@ -412,9 +397,7 @@ class TestTokenRefreshFlow:
         assert me_response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_refresh_invalid_token_fails(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_refresh_invalid_token_fails(self, client: AsyncClient, db: Session):
         """Test that invalid refresh token returns 401."""
         response = await client.post(
             "/api/auth/refresh",
@@ -461,9 +444,7 @@ class TestTokenRefreshFlow:
         """Test that old refresh tokens are invalidated after password change."""
         # Get initial refresh token
         token_data = {"sub": str(test_user.id), "username": test_user.username}
-        old_refresh_token = create_refresh_token(
-            token_data, token_version=test_user.token_version
-        )
+        old_refresh_token = create_refresh_token(token_data, token_version=test_user.token_version)
 
         # Change password (increments token_version)
         test_user.token_version = (test_user.token_version or 0) + 1
@@ -602,9 +583,7 @@ class TestPasswordChangeFlow:
         assert test_user.token_version > (original_token_version or 0)
 
     @pytest.mark.asyncio
-    async def test_change_password_requires_authentication(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_change_password_requires_authentication(self, client: AsyncClient, db: Session):
         """Test that password change requires authentication."""
         response = await client.post(
             "/api/auth/change-password",
@@ -620,18 +599,14 @@ class TestProtectedEndpointAccess:
     """Integration tests for protected endpoint access control."""
 
     @pytest.mark.asyncio
-    async def test_access_without_token_fails(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_access_without_token_fails(self, client: AsyncClient, db: Session):
         """Test that protected endpoints require a token."""
         response = await client.get("/api/auth/me")
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
 
     @pytest.mark.asyncio
-    async def test_access_with_invalid_token_fails(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_access_with_invalid_token_fails(self, client: AsyncClient, db: Session):
         """Test that invalid token is rejected."""
         response = await client.get(
             "/api/auth/me",
@@ -640,9 +615,7 @@ class TestProtectedEndpointAccess:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_access_with_malformed_header_fails(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_access_with_malformed_header_fails(self, client: AsyncClient, db: Session):
         """Test that malformed authorization header is rejected."""
         response = await client.get(
             "/api/auth/me",
@@ -651,9 +624,7 @@ class TestProtectedEndpointAccess:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_access_with_empty_bearer_fails(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_access_with_empty_bearer_fails(self, client: AsyncClient, db: Session):
         """Test that empty bearer token is rejected."""
         response = await client.get(
             "/api/auth/me",
@@ -728,9 +699,7 @@ class TestLockoutStatus:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_lockout_status_requires_auth(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_lockout_status_requires_auth(self, client: AsyncClient, db: Session):
         """Test that lockout status endpoint requires authentication."""
         response = await client.get("/api/auth/lockout-status/testuser")
         assert response.status_code == 401
@@ -740,9 +709,7 @@ class TestHealthEndpoints:
     """Integration tests for health and root endpoints."""
 
     @pytest.mark.asyncio
-    async def test_root_endpoint_returns_app_info(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_root_endpoint_returns_app_info(self, client: AsyncClient, db: Session):
         """Test that root endpoint returns application information."""
         response = await client.get("/")
         assert response.status_code == 200
@@ -752,18 +719,14 @@ class TestHealthEndpoints:
         assert data["status"] == "running"
 
     @pytest.mark.asyncio
-    async def test_health_endpoint_returns_healthy(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_health_endpoint_returns_healthy(self, client: AsyncClient, db: Session):
         """Test that health endpoint returns healthy status."""
         response = await client.get("/health")
         assert response.status_code == 200
         assert response.json()["status"] == "healthy"
 
     @pytest.mark.asyncio
-    async def test_health_endpoint_no_auth_required(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_health_endpoint_no_auth_required(self, client: AsyncClient, db: Session):
         """Test that health endpoint does not require authentication."""
         # Explicitly no headers
         response = await client.get("/health")
@@ -775,9 +738,12 @@ class TestUserIsolation:
 
     @pytest.mark.asyncio
     async def test_user_can_only_see_own_info(
-        self, client: AsyncClient, db: Session,
-        test_user: User, auth_headers: dict,
-        second_user: User
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        auth_headers: dict,
+        second_user: User,
     ):
         """Test that /me endpoint only shows current user's info."""
         response = await client.get("/api/auth/me", headers=auth_headers)
@@ -788,9 +754,13 @@ class TestUserIsolation:
 
     @pytest.mark.asyncio
     async def test_tokens_are_user_specific(
-        self, client: AsyncClient, db: Session,
-        test_user: User, auth_headers: dict,
-        second_user: User, second_user_auth_headers: dict
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        auth_headers: dict,
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that tokens are specific to each user."""
         # First user's token

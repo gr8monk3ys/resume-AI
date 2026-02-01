@@ -5,6 +5,9 @@ Career journal router for tracking achievements and milestones.
 import json
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
 from app.database import get_db
 from app.middleware.auth import get_current_user
 from app.models.career_journal import CareerJournalEntry
@@ -17,8 +20,6 @@ from app.schemas.career_journal import (
     EnhanceAchievementRequest,
     EnhanceAchievementResponse,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/api/career-journal", tags=["Career Journal"])
 

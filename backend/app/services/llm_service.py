@@ -19,13 +19,14 @@ import httpx
 from cachetools import TTLCache
 from tenacity import (
     RetryError,
+    before_sleep_log,
     retry,
     retry_if_exception,
     stop_after_attempt,
-    wait_exponential_jitter,
     wait_exponential,
-    before_sleep_log,
+    wait_exponential_jitter,
 )
+
 from app.config import get_settings
 
 # Configure logging for retry operations
@@ -124,27 +125,43 @@ def is_retryable_error(exception: BaseException) -> bool:
     # Check for provider-specific retryable errors
     # OpenAI
     try:
-        from openai import APITimeoutError, APIConnectionError, RateLimitError, InternalServerError
-        if isinstance(exception, (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)):
+        from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
+
+        if isinstance(
+            exception, (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
+        ):
             return True
     except ImportError:
         pass
 
     # Anthropic
     try:
-        from anthropic import APITimeoutError as AnthropicTimeoutError
         from anthropic import APIConnectionError as AnthropicConnectionError
-        from anthropic import RateLimitError as AnthropicRateLimitError
+        from anthropic import APITimeoutError as AnthropicTimeoutError
         from anthropic import InternalServerError as AnthropicInternalServerError
-        if isinstance(exception, (AnthropicTimeoutError, AnthropicConnectionError,
-                                   AnthropicRateLimitError, AnthropicInternalServerError)):
+        from anthropic import RateLimitError as AnthropicRateLimitError
+
+        if isinstance(
+            exception,
+            (
+                AnthropicTimeoutError,
+                AnthropicConnectionError,
+                AnthropicRateLimitError,
+                AnthropicInternalServerError,
+            ),
+        ):
             return True
     except ImportError:
         pass
 
     # Google - check for server errors
     try:
-        from google.api_core.exceptions import ServiceUnavailable, DeadlineExceeded, ResourceExhausted
+        from google.api_core.exceptions import (
+            DeadlineExceeded,
+            ResourceExhausted,
+            ServiceUnavailable,
+        )
+
         if isinstance(exception, (ServiceUnavailable, DeadlineExceeded, ResourceExhausted)):
             return True
     except ImportError:
@@ -156,9 +173,16 @@ def is_retryable_error(exception: BaseException) -> bool:
 def _classify_openai_error(e: Exception) -> LLMProviderError:
     """Classify an OpenAI exception into the appropriate LLMProviderError subclass."""
     try:
-        from openai import APITimeoutError, APIConnectionError, RateLimitError
-        from openai import InternalServerError, BadRequestError, AuthenticationError
-        from openai import PermissionDeniedError, NotFoundError
+        from openai import (
+            APIConnectionError,
+            APITimeoutError,
+            AuthenticationError,
+            BadRequestError,
+            InternalServerError,
+            NotFoundError,
+            PermissionDeniedError,
+            RateLimitError,
+        )
 
         if isinstance(e, APITimeoutError):
             return LLMTimeoutError(f"OpenAI API timeout: {str(e)}")
@@ -168,8 +192,10 @@ def _classify_openai_error(e: Exception) -> LLMProviderError:
             return LLMRateLimitError(f"OpenAI rate limit exceeded: {str(e)}")
         if isinstance(e, InternalServerError):
             return LLMServerError(f"OpenAI server error: {str(e)}", status_code=500)
-        if isinstance(e, (BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError)):
-            status = getattr(e, 'status_code', 400)
+        if isinstance(
+            e, (BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError)
+        ):
+            status = getattr(e, "status_code", 400)
             return LLMClientError(f"OpenAI client error: {str(e)}", status_code=status)
     except ImportError:
         pass
@@ -180,9 +206,16 @@ def _classify_openai_error(e: Exception) -> LLMProviderError:
 def _classify_anthropic_error(e: Exception) -> LLMProviderError:
     """Classify an Anthropic exception into the appropriate LLMProviderError subclass."""
     try:
-        from anthropic import APITimeoutError, APIConnectionError, RateLimitError
-        from anthropic import InternalServerError, BadRequestError, AuthenticationError
-        from anthropic import PermissionDeniedError, NotFoundError
+        from anthropic import (
+            APIConnectionError,
+            APITimeoutError,
+            AuthenticationError,
+            BadRequestError,
+            InternalServerError,
+            NotFoundError,
+            PermissionDeniedError,
+            RateLimitError,
+        )
 
         if isinstance(e, APITimeoutError):
             return LLMTimeoutError(f"Anthropic API timeout: {str(e)}")
@@ -192,8 +225,10 @@ def _classify_anthropic_error(e: Exception) -> LLMProviderError:
             return LLMRateLimitError(f"Anthropic rate limit exceeded: {str(e)}")
         if isinstance(e, InternalServerError):
             return LLMServerError(f"Anthropic server error: {str(e)}", status_code=500)
-        if isinstance(e, (BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError)):
-            status = getattr(e, 'status_code', 400)
+        if isinstance(
+            e, (BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError)
+        ):
+            status = getattr(e, "status_code", 400)
             return LLMClientError(f"Anthropic client error: {str(e)}", status_code=status)
     except ImportError:
         pass
@@ -205,8 +240,13 @@ def _classify_google_error(e: Exception) -> LLMProviderError:
     """Classify a Google exception into the appropriate LLMProviderError subclass."""
     try:
         from google.api_core.exceptions import (
-            ServiceUnavailable, DeadlineExceeded, ResourceExhausted,
-            InvalidArgument, Unauthenticated, PermissionDenied, NotFound
+            DeadlineExceeded,
+            InvalidArgument,
+            NotFound,
+            PermissionDenied,
+            ResourceExhausted,
+            ServiceUnavailable,
+            Unauthenticated,
         )
 
         if isinstance(e, DeadlineExceeded):
@@ -234,9 +274,13 @@ def _classify_httpx_error(e: Exception, provider_name: str = "HTTP") -> LLMProvi
         if status == 429:
             return LLMRateLimitError(f"{provider_name} rate limit exceeded: HTTP {status}")
         if status in RETRYABLE_STATUS_CODES:
-            return LLMServerError(f"{provider_name} server error: HTTP {status}", status_code=status)
+            return LLMServerError(
+                f"{provider_name} server error: HTTP {status}", status_code=status
+            )
         if status in CLIENT_ERROR_STATUS_CODES:
-            return LLMClientError(f"{provider_name} client error: HTTP {status}", status_code=status)
+            return LLMClientError(
+                f"{provider_name} client error: HTTP {status}", status_code=status
+            )
         return LLMProviderError(f"{provider_name} error: HTTP {status}", status_code=status)
 
     return LLMProviderError(f"{provider_name} error: {str(e)}")
@@ -267,7 +311,9 @@ def create_retry_decorator(
     max_retries = max_retries if max_retries is not None else settings.llm_max_retries
     initial_delay = initial_delay if initial_delay is not None else settings.llm_retry_delay
     max_delay = max_delay if max_delay is not None else settings.llm_retry_max_delay
-    exponential_base = exponential_base if exponential_base is not None else settings.llm_retry_exponential_base
+    exponential_base = (
+        exponential_base if exponential_base is not None else settings.llm_retry_exponential_base
+    )
     jitter = jitter if jitter is not None else settings.llm_retry_jitter
 
     # Choose wait strategy based on jitter setting
@@ -367,6 +413,7 @@ class OpenAIProvider(BaseLLMProvider):
 
     def invoke(self, prompt: str) -> str:
         """Invoke with retry logic."""
+
         @self._retry_decorator
         def _invoke_with_retry():
             try:
@@ -445,6 +492,7 @@ class AnthropicProvider(BaseLLMProvider):
 
     def invoke(self, prompt: str) -> str:
         """Invoke with retry logic."""
+
         @self._retry_decorator
         def _invoke_with_retry():
             try:
@@ -522,6 +570,7 @@ class GoogleProvider(BaseLLMProvider):
 
     def invoke(self, prompt: str) -> str:
         """Invoke with retry logic."""
+
         @self._retry_decorator
         def _invoke_with_retry():
             try:
@@ -590,6 +639,7 @@ class OllamaProvider(BaseLLMProvider):
 
     def invoke(self, prompt: str) -> str:
         """Invoke with retry logic."""
+
         @self._retry_decorator
         def _invoke_with_retry():
             try:

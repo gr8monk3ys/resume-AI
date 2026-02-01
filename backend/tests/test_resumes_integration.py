@@ -13,14 +13,15 @@ These tests verify end-to-end behavior with the database and all middleware.
 """
 
 import io
-import pytest
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.orm import Session
-from unittest.mock import patch, MagicMock
 
-from app.models.resume import Resume
 from app.models.profile import Profile
+from app.models.resume import Resume
 from app.models.user import User
 
 
@@ -323,9 +324,7 @@ class TestFileUpload:
         assert response.status_code in [200, 400]
 
     @pytest.mark.asyncio
-    async def test_upload_requires_authentication(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_upload_requires_authentication(self, client: AsyncClient, db: Session):
         """Test that file upload requires authentication."""
         files = {"file": ("resume.txt", b"content", "text/plain")}
         response = await client.post("/api/resumes/upload", files=files)
@@ -459,9 +458,7 @@ class TestATSAnalysis:
         assert data["ats_score"] <= 20
 
     @pytest.mark.asyncio
-    async def test_analyze_resume_requires_authentication(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_analyze_resume_requires_authentication(self, client: AsyncClient, db: Session):
         """Test that ATS analysis requires authentication."""
         response = await client.post(
             "/api/resumes/analyze",
@@ -731,7 +728,7 @@ class TestResumeEdgeCases:
         response = await client.post("/api/resumes", json=resume_data, headers=auth_headers)
         assert response.status_code == 201
         assert "O'Brien" in response.json()["content"]
-        assert 'C++' in response.json()["content"]
+        assert "C++" in response.json()["content"]
 
     @pytest.mark.asyncio
     async def test_create_resume_unicode_content(
@@ -773,6 +770,7 @@ class TestResumeEdgeCases:
 
         # Small delay to ensure different timestamp
         import asyncio
+
         await asyncio.sleep(0.1)
 
         response = await client.put(
@@ -892,9 +890,7 @@ class TestResumeIntegrationWithJobs:
         job_id = job_response.json()["id"]
 
         # Delete resume
-        delete_response = await client.delete(
-            f"/api/resumes/{resume_id}", headers=auth_headers
-        )
+        delete_response = await client.delete(f"/api/resumes/{resume_id}", headers=auth_headers)
         assert delete_response.status_code == 204
 
         # Job should still exist (with null resume_id or preserved reference)

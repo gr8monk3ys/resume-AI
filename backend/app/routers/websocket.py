@@ -8,11 +8,12 @@ import logging
 from datetime import datetime
 from typing import Dict, Set
 
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+
 from app.database import SessionLocal
 from app.middleware.auth import decode_token
 from app.models.user import User
 from app.services.job_alerts import get_job_alert_service
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger(__name__)
 
@@ -258,11 +259,15 @@ async def websocket_alerts_endpoint(
             await websocket.send_json(
                 {
                     "type": "error",
-                    "data": {"message": "Invalid auth message. Expected: {\"type\": \"auth\", \"token\": \"...\"}"},
+                    "data": {
+                        "message": 'Invalid auth message. Expected: {"type": "auth", "token": "..."}'
+                    },
                     "timestamp": datetime.utcnow().isoformat(),
                 }
             )
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid auth message")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Invalid auth message"
+            )
             return
 
         token = auth_message["token"]

@@ -11,15 +11,16 @@ Cookie-based auth provides XSS protection by preventing JavaScript access to tok
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from app.config import get_settings
-from app.database import get_db
-from app.models.user import User
-from app.schemas.user import TokenData
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+
+from app.config import get_settings
+from app.database import get_db
+from app.models.user import User
+from app.schemas.user import TokenData
 
 settings = get_settings()
 

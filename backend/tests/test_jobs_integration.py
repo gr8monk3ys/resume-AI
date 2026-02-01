@@ -12,8 +12,9 @@ Tests the complete job application management flow including:
 These tests verify end-to-end behavior with the database and all middleware.
 """
 
-import pytest
 from datetime import date, datetime
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
@@ -420,9 +421,7 @@ class TestJobListAndFiltering:
             headers=auth_headers,
         )
 
-        response = await client.get(
-            "/api/jobs?status=Applied&search=Google", headers=auth_headers
-        )
+        response = await client.get("/api/jobs?status=Applied&search=Google", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert len(data["items"]) == 1
@@ -642,9 +641,13 @@ class TestJobUserIsolation:
 
     @pytest.mark.asyncio
     async def test_user_cannot_see_other_users_jobs(
-        self, client: AsyncClient, db: Session,
-        test_job: JobApplication, auth_headers: dict,
-        second_user: User, second_user_auth_headers: dict
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_job: JobApplication,
+        auth_headers: dict,
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that users cannot see each other's jobs."""
         # test_job belongs to test_user
@@ -657,21 +660,25 @@ class TestJobUserIsolation:
 
     @pytest.mark.asyncio
     async def test_user_cannot_access_other_users_job(
-        self, client: AsyncClient, db: Session,
+        self,
+        client: AsyncClient,
+        db: Session,
         test_job: JobApplication,
-        second_user: User, second_user_auth_headers: dict
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that user cannot access another user's specific job."""
-        response = await client.get(
-            f"/api/jobs/{test_job.id}", headers=second_user_auth_headers
-        )
+        response = await client.get(f"/api/jobs/{test_job.id}", headers=second_user_auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_user_cannot_update_other_users_job(
-        self, client: AsyncClient, db: Session,
+        self,
+        client: AsyncClient,
+        db: Session,
         test_job: JobApplication,
-        second_user: User, second_user_auth_headers: dict
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that user cannot update another user's job."""
         response = await client.put(
@@ -683,14 +690,15 @@ class TestJobUserIsolation:
 
     @pytest.mark.asyncio
     async def test_user_cannot_delete_other_users_job(
-        self, client: AsyncClient, db: Session,
+        self,
+        client: AsyncClient,
+        db: Session,
         test_job: JobApplication,
-        second_user: User, second_user_auth_headers: dict
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that user cannot delete another user's job."""
-        response = await client.delete(
-            f"/api/jobs/{test_job.id}", headers=second_user_auth_headers
-        )
+        response = await client.delete(f"/api/jobs/{test_job.id}", headers=second_user_auth_headers)
         assert response.status_code == 404
 
         # Verify job still exists for original user
@@ -699,9 +707,12 @@ class TestJobUserIsolation:
 
     @pytest.mark.asyncio
     async def test_user_cannot_update_other_users_job_status(
-        self, client: AsyncClient, db: Session,
+        self,
+        client: AsyncClient,
+        db: Session,
         test_job: JobApplication,
-        second_user: User, second_user_auth_headers: dict
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that user cannot update status of another user's job."""
         response = await client.patch(
@@ -712,9 +723,13 @@ class TestJobUserIsolation:
 
     @pytest.mark.asyncio
     async def test_stats_only_show_own_jobs(
-        self, client: AsyncClient, db: Session,
-        test_profile: Profile, auth_headers: dict,
-        second_user: User, second_user_auth_headers: dict
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_profile: Profile,
+        auth_headers: dict,
+        second_user: User,
+        second_user_auth_headers: dict,
     ):
         """Test that stats only include user's own jobs."""
         # Create jobs for test_user
@@ -803,8 +818,12 @@ class TestJobEdgeCases:
 
     @pytest.mark.asyncio
     async def test_create_job_with_resume_reference(
-        self, client: AsyncClient, db: Session,
-        test_profile: Profile, test_resume, auth_headers: dict
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_profile: Profile,
+        test_resume,
+        auth_headers: dict,
     ):
         """Test creating a job with a resume ID reference."""
         job_data = {

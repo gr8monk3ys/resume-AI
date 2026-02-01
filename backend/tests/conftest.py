@@ -57,14 +57,13 @@ clear_settings_cache()
 # Now import app modules - they will pick up the test environment variables
 from app.database import Base, get_db
 from app.main import app
-from app.middleware.auth import create_access_token, get_password_hash
 from app.middleware import audit as audit_module
+from app.middleware.auth import create_access_token, get_password_hash
 from app.models.career_journal import CareerJournalEntry
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.resume import Resume
 from app.models.user import User
-
 
 # ==============================================================================
 # Test Database Setup
@@ -190,6 +189,7 @@ async def client(app_with_db: FastAPI, db: Session) -> AsyncGenerator[AsyncClien
 
     Uses httpx.AsyncClient for async testing with FastAPI.
     """
+
     # Override the get_db dependency to use our test session
     def get_test_db():
         try:

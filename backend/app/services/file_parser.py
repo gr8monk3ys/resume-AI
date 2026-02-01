@@ -128,7 +128,10 @@ def _validate_magic_bytes(file_content: bytes, claimed_type: str) -> Tuple[bool,
     if claimed_type in ("docx", "doc"):
         if header.startswith(MAGIC_BYTES["docx"]):
             return True, claimed_type
-        return False, f"File does not have valid {claimed_type.upper()} signature (expected ZIP/PK header)"
+        return (
+            False,
+            f"File does not have valid {claimed_type.upper()} signature (expected ZIP/PK header)",
+        )
 
     # Unknown file type - cannot validate magic bytes
     return True, claimed_type
@@ -234,9 +237,7 @@ def parse_docx(file_content: bytes) -> str:
 
             # Check decompressed size limit
             if total_length > MAX_DECOMPRESSED_SIZE:
-                raise ValueError(
-                    "Extracted text exceeds maximum allowed size."
-                )
+                raise ValueError("Extracted text exceeds maximum allowed size.")
 
             text.append(para_text)
 

@@ -161,9 +161,7 @@ class TestCoverLetterRead:
         db.commit()
         db.refresh(cover_letter)
 
-        response = await client.get(
-            f"/api/cover-letters/{cover_letter.id}", headers=auth_headers
-        )
+        response = await client.get(f"/api/cover-letters/{cover_letter.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == cover_letter.id

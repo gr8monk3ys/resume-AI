@@ -20,6 +20,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
+
 from app.schemas.job_import import (
     BulkImportResponse,
     GitHubRepoFilter,

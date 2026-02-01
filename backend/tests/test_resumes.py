@@ -379,8 +379,6 @@ class TestResumeIsolation:
         """Test that a user cannot access another user's resume."""
         # Admin user tries to access test_user's resume
         # Should not find it because it belongs to a different profile
-        response = await client.get(
-            f"/api/resumes/{test_resume.id}", headers=admin_auth_headers
-        )
+        response = await client.get(f"/api/resumes/{test_resume.id}", headers=admin_auth_headers)
         # Should return 404 because the resume doesn't belong to admin's profile
         assert response.status_code == 404

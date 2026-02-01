@@ -5,6 +5,8 @@ AI service router for LLM-powered features.
 import asyncio
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException
+
 from app.config import get_settings
 from app.middleware.auth import get_current_user
 from app.models.user import User
@@ -34,12 +36,13 @@ from app.schemas.ats import (
     ExtractKeywordsRequest,
     ExtractKeywordsResponse,
     KeywordBreakdown,
-    KeywordSuggestion as ATSKeywordSuggestion,
-    KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest,
-    KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse,
+)
+from app.schemas.ats import KeywordSuggestion as ATSKeywordSuggestion
+from app.schemas.ats import KeywordSuggestionsRequest as ATSKeywordSuggestionsRequest
+from app.schemas.ats import KeywordSuggestionsResponse as ATSKeywordSuggestionsResponse
+from app.schemas.ats import (
     SectionScores,
 )
-from fastapi import APIRouter, Depends, HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +62,7 @@ def _handle_ai_error(e: Exception, operation: str, user_id: int) -> HTTPExceptio
     if settings.debug:
         return HTTPException(status_code=500, detail=f"{operation} failed: {str(e)}")
     else:
-        return HTTPException(
-            status_code=500,
-            detail=f"{operation} failed. Please try again later."
-        )
+        return HTTPException(status_code=500, detail=f"{operation} failed. Please try again later.")
 
 
 @router.post("/tailor-resume", response_model=TailorResumeResponse)

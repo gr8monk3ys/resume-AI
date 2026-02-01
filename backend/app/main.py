@@ -17,6 +17,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import sentry_sdk
+from fastapi import Depends, FastAPI, HTTPException
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -27,8 +28,8 @@ from app.middleware.audit import AuditMiddleware, init_audit_logger
 from app.middleware.rate_limiter import (
     DEFAULT_RATE_LIMITS,
     RateLimitConfig,
-    RateLimitMiddleware,
     RateLimiterDependency,
+    RateLimitMiddleware,
     RateLimitType,
     create_rate_limit_storage,
 )
@@ -55,7 +56,6 @@ from app.routers import (
     websocket,
 )
 from app.services.scheduler import get_job_scheduler
-from fastapi import Depends, FastAPI, HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,9 @@ def _filter_sensitive_data(event, hint):
             elif isinstance(value, dict):
                 redacted[key] = redact_dict(value)
             elif isinstance(value, list):
-                redacted[key] = [redact_dict(item) if isinstance(item, dict) else item for item in value]
+                redacted[key] = [
+                    redact_dict(item) if isinstance(item, dict) else item for item in value
+                ]
             else:
                 redacted[key] = value
         return redacted

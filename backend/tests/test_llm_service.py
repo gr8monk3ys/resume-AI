@@ -9,24 +9,24 @@ Tests:
 - Error handling
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.services.llm_service import (
+    _PROVIDERS,
     BaseLLMProvider,
     LLMConfigurationError,
     LLMError,
     LLMProviderError,
     LLMService,
     MockProvider,
-    _PROVIDERS,
     clear_llm_cache,
     get_llm_cache_stats,
     get_llm_provider,
     get_llm_service,
     reset_llm_service,
 )
-
 
 # =============================================================================
 # Mock Provider Tests
@@ -472,9 +472,7 @@ class TestLLMServiceIntegration:
         assert len(keywords) > 0
 
         # Step 3: Tailor the resume
-        tailored = service.tailor_resume(
-            resume, job_description, "Tech Corp", "Senior Developer"
-        )
+        tailored = service.tailor_resume(resume, job_description, "Tech Corp", "Senior Developer")
         assert len(tailored) > 0
 
     def test_full_application_workflow(self, service: LLMService):
