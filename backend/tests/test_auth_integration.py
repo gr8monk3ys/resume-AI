@@ -381,7 +381,7 @@ class TestTokenRefreshFlow:
 
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": refresh_token},
+            json={"refresh_token": refresh_token},
         )
         assert response.status_code == 200
         data = response.json()
@@ -399,7 +399,7 @@ class TestTokenRefreshFlow:
 
         refresh_response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": refresh_token},
+            json={"refresh_token": refresh_token},
         )
         assert refresh_response.status_code == 200
         new_access_token = refresh_response.json()["access_token"]
@@ -418,7 +418,7 @@ class TestTokenRefreshFlow:
         """Test that invalid refresh token returns 401."""
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": "invalid-token-string"},
+            json={"refresh_token": "invalid-token-string"},
         )
         assert response.status_code == 401
         assert "Invalid refresh token" in response.json()["detail"]
@@ -435,7 +435,7 @@ class TestTokenRefreshFlow:
 
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": tampered_token},
+            json={"refresh_token": tampered_token},
         )
         assert response.status_code == 401
 
@@ -449,7 +449,7 @@ class TestTokenRefreshFlow:
 
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": access_token},
+            json={"refresh_token": access_token},
         )
         # Should fail because it's an access token, not a refresh token
         assert response.status_code == 401
@@ -473,7 +473,7 @@ class TestTokenRefreshFlow:
         # Old refresh token should now be invalid
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": old_refresh_token},
+            json={"refresh_token": old_refresh_token},
         )
         assert response.status_code == 401
         assert "invalidated" in response.json()["detail"].lower()
@@ -626,7 +626,7 @@ class TestProtectedEndpointAccess:
         """Test that protected endpoints require a token."""
         response = await client.get("/api/auth/me")
         assert response.status_code == 401
-        assert "Not authenticated" in response.json()["detail"]
+        assert "Could not validate credentials" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_access_with_invalid_token_fails(

@@ -30,7 +30,7 @@ class TestUserRegistration:
             json={
                 "username": "newuser",
                 "email": "newuser@example.com",
-                "password": "securepassword123",
+                "password": "SecurePass123!",  # 12+ chars, upper, lower, digit, special
                 "full_name": "New User",
             },
         )
@@ -54,7 +54,7 @@ class TestUserRegistration:
             json={
                 "username": test_user.username,  # Same username
                 "email": "different@example.com",
-                "password": "password123",
+                "password": "SecurePass123!",  # Valid password
             },
         )
         assert response.status_code == 400
@@ -70,7 +70,7 @@ class TestUserRegistration:
             json={
                 "username": "differentuser",
                 "email": test_user.email,  # Same email
-                "password": "password123",
+                "password": "SecurePass123!",  # Valid password
             },
         )
         assert response.status_code == 400
@@ -181,13 +181,13 @@ class TestTokenRefresh:
     @pytest.mark.asyncio
     async def test_refresh_token_success(self, client: AsyncClient, db: Session, test_user: User):
         """Test successful token refresh."""
-        # Create a valid refresh token
+        # Create a valid refresh token with token_version
         token_data = {"sub": str(test_user.id), "username": test_user.username}
-        refresh_token = create_refresh_token(token_data)
+        refresh_token = create_refresh_token(token_data, token_version=test_user.token_version)
 
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": refresh_token},
+            json={"refresh_token": refresh_token},
         )
         assert response.status_code == 200
         data = response.json()
@@ -200,7 +200,7 @@ class TestTokenRefresh:
         """Test token refresh with invalid token."""
         response = await client.post(
             "/api/auth/refresh",
-            params={"refresh_token": "invalid-token"},
+            json={"refresh_token": "invalid-token"},
         )
         assert response.status_code == 401
         assert "Invalid refresh token" in response.json()["detail"]
@@ -229,7 +229,7 @@ class TestProtectedEndpoints:
         """Test accessing protected endpoint without token."""
         response = await client.get("/api/auth/me")
         assert response.status_code == 401
-        assert "Not authenticated" in response.json()["detail"]
+        assert "Could not validate credentials" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_access_protected_with_invalid_token(self, client: AsyncClient, db: Session):
@@ -293,7 +293,7 @@ class TestPasswordChange:
             "/api/auth/change-password",
             json={
                 "current_password": "testpassword123",
-                "new_password": "newpassword456",
+                "new_password": "NewSecurePass456!",  # 12+ chars, upper, lower, digit, special
             },
             headers=auth_headers,
         )
@@ -305,7 +305,7 @@ class TestPasswordChange:
             "/api/auth/login",
             data={
                 "username": test_user.username,
-                "password": "newpassword456",
+                "password": "NewSecurePass456!",
             },
         )
         assert login_response.status_code == 200
@@ -335,24 +335,29 @@ class TestPasswordChange:
             "/api/auth/change-password",
             json={
                 "current_password": "testpassword123",
-                "new_password": "short",  # Less than 8 characters
+                "new_password": "Short1!",  # Less than 12 characters
             },
             headers=auth_headers,
         )
         assert response.status_code == 400
-        assert "8 characters" in response.json()["detail"]
+        assert "12 characters" in response.json()["detail"]
 
 
 class TestLockoutStatus:
     """Tests for lockout status endpoint."""
 
     @pytest.mark.asyncio
-    async def test_check_lockout_status_new_user(self, client: AsyncClient, db: Session):
-        """Test checking lockout status for a user with no failed attempts."""
-        response = await client.get("/api/auth/lockout-status/newuser")
+    async def test_check_lockout_status_own_account(
+        self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
+    ):
+        """Test checking lockout status for own account (requires auth)."""
+        response = await client.get(
+            f"/api/auth/lockout-status/{test_user.username}",
+            headers=auth_headers
+        )
         assert response.status_code == 200
         data = response.json()
-        assert data["username"] == "newuser"
+        assert data["username"] == test_user.username
         assert data["is_locked"] is False
         assert data["recent_failures"] == 0
         assert data["can_attempt_login"] is True
