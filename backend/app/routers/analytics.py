@@ -417,7 +417,7 @@ async def get_overview_stats(
 
 @router.get("/timeline", response_model=TimelineResponse)
 async def get_timeline(
-    period: str = Query("weekly", regex="^(daily|weekly|monthly)$"),
+    period: str = Query("weekly", pattern="^(daily|weekly|monthly)$"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     current_user: User = Depends(get_current_user),
