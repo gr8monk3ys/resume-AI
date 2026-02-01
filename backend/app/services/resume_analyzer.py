@@ -100,8 +100,8 @@ class ATSAnalyzer:
         Returns:
             Dictionary containing ATS score and detailed analysis
         """
-        self.resume_text = resume_text.lower()
-        self.job_description = job_description.lower()
+        self.resume_text = (resume_text or "").lower()
+        self.job_description = (job_description or "").lower()
 
         score_breakdown = {
             "formatting": self._check_formatting(),

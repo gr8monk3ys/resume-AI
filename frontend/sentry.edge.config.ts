@@ -9,6 +9,9 @@
 
 import * as Sentry from '@sentry/nextjs'
 
+// App version for release tracking (works with both npm and bun)
+const APP_VERSION = '2.0.0'
+
 Sentry.init({
   // DSN is required - set via environment variable
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -17,7 +20,7 @@ Sentry.init({
   environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development',
 
   // Release version for tracking deployments
-  release: process.env.SENTRY_RELEASE || process.env.npm_package_version,
+  release: process.env.SENTRY_RELEASE || APP_VERSION,
 
   // Performance Monitoring
   // Lower sample rate for edge functions to reduce costs

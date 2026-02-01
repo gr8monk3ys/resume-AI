@@ -1,11 +1,11 @@
-# Frontend Dockerfile for ResuBoost AI
-FROM node:20-alpine AS base
+# Frontend Dockerfile for ResuBoost AI (Bun)
+FROM oven/bun:1 AS base
+WORKDIR /app
 
 # Install dependencies only when needed
 FROM base AS deps
-WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json bun.lockb* ./
+RUN bun install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -15,7 +15,7 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN npm run build
+RUN bun run build
 
 # Production image
 FROM base AS runner
@@ -37,4 +37,4 @@ EXPOSE 3000
 
 ENV PORT 3000
 
-CMD ["node", "server.js"]
+CMD ["bun", "run", "server.js"]

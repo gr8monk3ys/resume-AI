@@ -30,7 +30,9 @@ class TestJobList:
         """Test listing jobs when none exist."""
         response = await client.get("/api/jobs", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_list_jobs_with_data(
@@ -40,9 +42,9 @@ class TestJobList:
         response = await client.get("/api/jobs", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["company"] == test_job.company
-        assert data[0]["position"] == test_job.position
+        assert len(data["items"]) == 1
+        assert data["items"][0]["company"] == test_job.company
+        assert data["items"][0]["position"] == test_job.position
 
     @pytest.mark.asyncio
     async def test_list_jobs_unauthorized(self, client: AsyncClient, db: Session):
@@ -72,8 +74,8 @@ class TestJobFiltering:
         response = await client.get("/api/jobs?status=Applied", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["status"] == "Applied"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["status"] == "Applied"
 
     @pytest.mark.asyncio
     async def test_filter_by_bookmarked(
@@ -95,8 +97,8 @@ class TestJobFiltering:
         response = await client.get("/api/jobs?status=Bookmarked", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["company"] == "Company A"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["company"] == "Company A"
 
     @pytest.mark.asyncio
     async def test_search_by_company(
@@ -118,8 +120,8 @@ class TestJobFiltering:
         response = await client.get("/api/jobs?search=Google", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["company"] == "Google"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["company"] == "Google"
 
     @pytest.mark.asyncio
     async def test_search_by_position(
@@ -141,8 +143,8 @@ class TestJobFiltering:
         response = await client.get("/api/jobs?search=Software", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert "Software" in data[0]["position"]
+        assert len(data["items"]) == 1
+        assert "Software" in data["items"][0]["position"]
 
     @pytest.mark.asyncio
     async def test_combined_filter_and_search(
@@ -166,9 +168,9 @@ class TestJobFiltering:
         )
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["company"] == "Google"
-        assert data[0]["status"] == "Applied"
+        assert len(data["items"]) == 1
+        assert data["items"][0]["company"] == "Google"
+        assert data["items"][0]["status"] == "Applied"
 
 
 class TestJobCreate:

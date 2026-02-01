@@ -27,7 +27,9 @@ class TestResumeList:
         """Test listing resumes when none exist."""
         response = await client.get("/api/resumes", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_list_resumes_with_data(
@@ -37,9 +39,9 @@ class TestResumeList:
         response = await client.get("/api/resumes", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["version_name"] == test_resume.version_name
-        assert data[0]["content"] == test_resume.content
+        assert len(data["items"]) == 1
+        assert data["items"][0]["version_name"] == test_resume.version_name
+        assert data["items"][0]["content"] == test_resume.content
 
     @pytest.mark.asyncio
     async def test_list_resumes_unauthorized(self, client: AsyncClient, db: Session):
@@ -86,7 +88,7 @@ class TestResumeCreate:
 
         # Verify all resumes are listed
         list_response = await client.get("/api/resumes", headers=auth_headers)
-        assert len(list_response.json()) == 3
+        assert len(list_response.json()["items"]) == 3
 
     @pytest.mark.asyncio
     async def test_create_resume_unauthorized(self, client: AsyncClient, db: Session):
