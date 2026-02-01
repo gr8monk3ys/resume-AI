@@ -100,7 +100,9 @@ def decode_token(
     """
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id: int = payload.get("sub")
+        # 'sub' is stored as string per JWT spec, convert to int for user_id
+        sub = payload.get("sub")
+        user_id: int = int(sub) if sub is not None else None
         username: str = payload.get("username")
         token_type: str = payload.get("type")
         token_version: int = payload.get("token_version", 0)

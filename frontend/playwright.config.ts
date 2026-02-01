@@ -164,7 +164,7 @@ export default defineConfig({
     },
     // Frontend server (Next.js)
     {
-      command: CI ? 'npm run build && npm run start' : 'npm run dev',
+      command: CI ? 'bun run build && bun run start' : 'bun run dev',
       url: BASE_URL,
       reuseExistingServer: !CI,
       timeout: 120000,

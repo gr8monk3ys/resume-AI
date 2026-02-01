@@ -376,7 +376,7 @@ class TestTokenRefreshFlow:
         self, client: AsyncClient, db: Session, test_user: User
     ):
         """Test that refresh endpoint returns new access and refresh tokens."""
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         refresh_token = create_refresh_token(token_data, token_version=test_user.token_version)
 
         response = await client.post(
@@ -394,7 +394,7 @@ class TestTokenRefreshFlow:
         self, client: AsyncClient, db: Session, test_user: User
     ):
         """Test that the refreshed access token can access protected endpoints."""
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         refresh_token = create_refresh_token(token_data, token_version=test_user.token_version)
 
         refresh_response = await client.post(
@@ -428,7 +428,7 @@ class TestTokenRefreshFlow:
         self, client: AsyncClient, db: Session, test_user: User
     ):
         """Test that tampered refresh token returns 401."""
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         refresh_token = create_refresh_token(token_data, token_version=test_user.token_version)
         # Tamper with the token
         tampered_token = refresh_token[:-10] + "xxxxxxxxxx"
@@ -444,7 +444,7 @@ class TestTokenRefreshFlow:
         self, client: AsyncClient, db: Session, test_user: User
     ):
         """Test that access token cannot be used as refresh token."""
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         access_token = create_access_token(token_data, token_version=test_user.token_version)
 
         response = await client.post(
@@ -460,7 +460,7 @@ class TestTokenRefreshFlow:
     ):
         """Test that old refresh tokens are invalidated after password change."""
         # Get initial refresh token
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         old_refresh_token = create_refresh_token(
             token_data, token_version=test_user.token_version
         )

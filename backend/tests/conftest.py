@@ -237,7 +237,7 @@ def test_token(test_user: User) -> str:
 
     Returns the access token string.
     """
-    token_data = {"sub": test_user.id, "username": test_user.username}
+    token_data = {"sub": str(test_user.id), "username": test_user.username}
     return create_access_token(token_data)
 
 
@@ -345,7 +345,7 @@ def admin_user(db: Session) -> User:
 @pytest.fixture
 def admin_token(admin_user: User) -> str:
     """Create a valid JWT token for the admin user."""
-    token_data = {"sub": admin_user.id, "username": admin_user.username}
+    token_data = {"sub": str(admin_user.id), "username": admin_user.username}
     return create_access_token(token_data)
 
 
@@ -420,7 +420,7 @@ def second_user(db: Session) -> User:
 @pytest.fixture
 def second_user_token(second_user: User) -> str:
     """Create a valid JWT token for the second user."""
-    token_data = {"sub": second_user.id, "username": second_user.username}
+    token_data = {"sub": str(second_user.id), "username": second_user.username}
     return create_access_token(token_data)
 
 

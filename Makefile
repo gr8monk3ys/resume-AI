@@ -17,7 +17,7 @@ backend:
 
 # Start Next.js frontend
 frontend:
-	cd frontend && npm run dev
+	cd frontend && bun run dev
 
 # Start both backend and frontend (requires two terminals or use &)
 dev:
@@ -31,12 +31,12 @@ test:
 	@echo "Running backend tests..."
 	cd backend && uv run pytest tests/ -v
 	@echo "Running frontend tests..."
-	cd frontend && npm test 2>/dev/null || echo "No frontend tests configured"
+	cd frontend && bun test 2>/dev/null || echo "No frontend tests configured"
 
 # Run E2E tests
 test-e2e:
 	@echo "Running E2E tests with Playwright..."
-	cd frontend && npm run test:e2e
+	cd frontend && bun run test:e2e
 
 # Run linting
 lint:
@@ -47,7 +47,7 @@ lint:
 	@echo "Running pylint..."
 	uv run pylint backend/ --ignore=__pycache__
 	@echo "Running frontend lint..."
-	cd frontend && npm run lint 2>/dev/null || echo "No frontend lint configured"
+	cd frontend && bun run lint 2>/dev/null || echo "No frontend lint configured"
 
 # Clean cache files
 clean:

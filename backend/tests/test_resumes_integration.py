@@ -86,7 +86,7 @@ class TestResumeCRUDOperations:
 
         # Verify all resumes exist
         list_response = await client.get("/api/resumes", headers=auth_headers)
-        assert len(list_response.json()) == 3
+        assert len(list_response.json()["items"]) == 3
 
     @pytest.mark.asyncio
     async def test_read_resume_success(
@@ -116,7 +116,9 @@ class TestResumeCRUDOperations:
         """Test listing resumes when none exist."""
         response = await client.get("/api/resumes", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_list_resumes_with_data(
@@ -126,8 +128,8 @@ class TestResumeCRUDOperations:
         response = await client.get("/api/resumes", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["id"] == test_resume.id
+        assert len(data["items"]) == 1
+        assert data["items"][0]["id"] == test_resume.id
 
     @pytest.mark.asyncio
     async def test_list_resumes_ordered_by_updated_at(
@@ -146,8 +148,8 @@ class TestResumeCRUDOperations:
         data = response.json()
 
         # Verify ordering - most recently updated first
-        for i in range(len(data) - 1):
-            assert data[i]["updated_at"] >= data[i + 1]["updated_at"]
+        for i in range(len(data["items"]) - 1):
+            assert data["items"][i]["updated_at"] >= data["items"][i + 1]["updated_at"]
 
     @pytest.mark.asyncio
     async def test_update_resume_success(
@@ -580,7 +582,9 @@ class TestResumeUserIsolation:
         # second_user should get empty list
         response = await client.get("/api/resumes", headers=second_user_auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_user_cannot_access_other_users_resume(
@@ -821,7 +825,7 @@ class TestResumeEdgeCases:
 
         # Verify all versions exist
         list_response = await client.get("/api/resumes", headers=auth_headers)
-        assert len(list_response.json()) == versions
+        assert len(list_response.json()["items"]) == versions
 
 
 class TestResumeIntegrationWithJobs:

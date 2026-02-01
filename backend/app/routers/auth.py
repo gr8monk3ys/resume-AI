@@ -296,7 +296,8 @@ async def login(
     db.commit()
 
     # Create tokens with token_version for invalidation support
-    token_data = {"sub": user.id, "username": user.username}
+    # Note: 'sub' must be a string per JWT spec (jose library enforces this)
+    token_data = {"sub": str(user.id), "username": user.username}
     access_token = create_access_token(token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(token_data, token_version=user.token_version)
 
@@ -370,7 +371,8 @@ async def refresh_tokens(
         )
 
     # Create new tokens with current token_version
-    new_token_data = {"sub": user.id, "username": user.username}
+    # Note: 'sub' must be a string per JWT spec (jose library enforces this)
+    new_token_data = {"sub": str(user.id), "username": user.username}
     new_access_token = create_access_token(new_token_data, token_version=user.token_version)
     new_refresh_token = create_refresh_token(new_token_data, token_version=user.token_version)
 

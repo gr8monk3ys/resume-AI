@@ -182,7 +182,7 @@ class TestTokenRefresh:
     async def test_refresh_token_success(self, client: AsyncClient, db: Session, test_user: User):
         """Test successful token refresh."""
         # Create a valid refresh token
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         refresh_token = create_refresh_token(token_data)
 
         response = await client.post(
@@ -209,7 +209,7 @@ class TestTokenRefresh:
     async def test_refresh_token_expired(self, client: AsyncClient, db: Session, test_user: User):
         """Test token refresh with tampered/invalid token."""
         # Create a tampered token
-        token_data = {"sub": test_user.id, "username": test_user.username}
+        token_data = {"sub": str(test_user.id), "username": test_user.username}
         valid_token = create_refresh_token(token_data)
         # Tamper with the token
         tampered_token = valid_token[:-5] + "xxxxx"

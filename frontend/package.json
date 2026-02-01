@@ -8,11 +8,11 @@
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "NODE_OPTIONS='--max-old-space-size=4096' vitest run --reporter=verbose",
+    "test": "vitest run --reporter=verbose",
     "test:watch": "vitest --watch --reporter=dot",
-    "test:ci": "NODE_OPTIONS='--max-old-space-size=4096' vitest run --reporter=verbose --bail=1",
+    "test:ci": "vitest run --reporter=verbose --bail=1",
     "test:single": "vitest run --reporter=verbose",
-    "test:coverage": "NODE_OPTIONS='--max-old-space-size=4096' vitest run --coverage --reporter=verbose",
+    "test:coverage": "vitest run --coverage --reporter=verbose",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -64,6 +64,7 @@
     "vitest": "^2.1.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
   }
 }
