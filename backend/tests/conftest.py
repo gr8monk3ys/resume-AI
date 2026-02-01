@@ -58,6 +58,7 @@ clear_settings_cache()
 from app.database import Base, get_db
 from app.main import app
 from app.middleware.auth import create_access_token, get_password_hash
+from app.middleware import audit as audit_module
 from app.models.career_journal import CareerJournalEntry
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
@@ -127,6 +128,30 @@ def setup_test_environment():
 
     # Cleanup after all tests
     clear_settings_cache()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_audit_logger(tmp_path):
+    """
+    Reset the global audit logger before each test to prevent
+    failed login attempts from previous tests affecting lockout state.
+
+    Uses a temp directory for the audit database so each test gets a fresh state.
+    """
+    # Clear any existing global audit logger
+    audit_module._audit_logger = None
+
+    # Initialize a fresh audit logger with a temp database for this test
+    temp_db = tmp_path / "audit.db"
+    audit_module.init_audit_logger(
+        database_path=str(temp_db),
+        enable_file_logging=False,
+    )
+
+    yield
+
+    # Clean up after test
+    audit_module._audit_logger = None
 
 
 @pytest.fixture(scope="function")
