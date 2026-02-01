@@ -1,0 +1,177 @@
+[project]
+name = "resuboost-backend"
+version = "2.0.0"
+description = "ResuBoost AI Backend - FastAPI REST API with multi-provider LLM support"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "ResuBoost Team" }]
+
+dependencies = [
+    # FastAPI and server
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+
+    # Database - SQLite (dev) + PostgreSQL (prod)
+    "sqlalchemy>=2.0.25",
+    "alembic>=1.13.1",
+    "psycopg2-binary>=2.9.0",  # Sync PostgreSQL driver (migrations, sync endpoints)
+    "asyncpg>=0.29.0",          # Async PostgreSQL driver (high-performance endpoints)
+
+    # Redis (optional - for distributed rate limiting)
+    "redis>=5.0.0",
+
+    # Authentication
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.0.0,<4.1.0",  # Pin to avoid passlib compatibility issue with 4.1.0+
+    "cffi>=1.16.0",
+    "cryptography>=42.0.0",
+
+    # AI/LLM - Multi-provider support
+    "openai>=1.10.0",
+    "langchain>=0.1.0",
+    "langchain-openai>=0.0.5",
+    "langchain-community>=0.0.13",
+
+    # File parsing
+    "PyPDF2>=3.0.1",
+    "python-docx>=1.1.0",
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    "httpx>=0.26.0",
+    "email-validator>=2.1.0",
+    "cachetools>=5.3.0",
+    "tenacity>=8.2.0",
+
+    # Background scheduler
+    "apscheduler>=3.10.4",
+
+    # Monitoring and Error Tracking
+    "sentry-sdk[fastapi,sqlalchemy]>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-env>=1.1.0",
+    "pytest-cov>=4.1.0",
+    "aiosqlite>=0.19.0",
+    "anyio>=4.2.0",
+    "httpx>=0.26.0",
+
+    # Code quality
+    "black>=23.12.0",
+    "isort>=5.13.0",
+    "pylint>=3.0.0",
+    "mypy>=1.8.0",
+    "bandit>=1.7.6",
+
+    # Type stubs
+    "types-passlib>=1.7.0",
+    "types-python-jose>=3.3.0",
+]
+
+# No build-system needed - this is an application, not a library
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+asyncio_mode = "auto"
+timeout = 60
+addopts = "-v --tb=short"
+markers = [
+    "asyncio: mark test as async",
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | data
+  | backups
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = ["venv/*", ".venv/*", "data/*"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["fastapi.*", "sqlalchemy.*", "bcrypt.*", "passlib.*", "jose.*"]
+ignore_missing_imports = true
+
+[tool.pylint.main]
+ignore = ["tests", "alembic", "data", "__pycache__"]
+jobs = 0
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-docstring",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "broad-exception-caught",
+    "duplicate-code",
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.pylint.design]
+max-args = 10
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+fail_under = 70
