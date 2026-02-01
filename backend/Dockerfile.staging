@@ -1,5 +1,5 @@
-# Backend Dockerfile for ResuBoost AI API
-# Multi-stage build with uv for fast, reproducible installs
+# Backend Dockerfile for ResuBoost AI API - Staging/Production
+# Optimized multi-stage build with minimal image size
 
 FROM python:3.11-slim AS base
 
@@ -7,39 +7,50 @@ WORKDIR /app
 
 # Install system dependencies including PostgreSQL client libs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+    libpq5 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast Python package management
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# =============================================================================
+# Build Stage - Install dependencies with build tools
+# =============================================================================
+FROM python:3.11-slim AS builder
 
-# =============================================================================
-# Dependencies Stage
-# =============================================================================
-FROM base AS deps
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install dependencies (production only, no dev deps)
+# Install dependencies (production only)
 RUN uv sync --frozen --no-dev --no-install-project
 
 # =============================================================================
-# Production Stage
+# Production Stage - Minimal runtime image
 # =============================================================================
 FROM base AS production
 
-# Copy installed dependencies from deps stage
-COPY --from=deps /app/.venv /app/.venv
+# Copy installed dependencies from builder
+COPY --from=builder /app/.venv /app/.venv
 
 # Set PATH to use virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
 ENV VIRTUAL_ENV="/app/.venv"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Copy application code
-COPY . .
+COPY app/ ./app/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser \
@@ -49,10 +60,10 @@ RUN useradd -m -u 1000 appuser \
 USER appuser
 
 # Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 EXPOSE 8000
 
-# Run with uvicorn
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run with uvicorn (production settings)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

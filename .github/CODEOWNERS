@@ -1,0 +1,31 @@
+# CODEOWNERS - Define code ownership for ResuBoost AI
+#
+# These owners will be requested for review when someone opens a PR
+# that modifies code they own.
+#
+# Order matters: later rules override earlier ones.
+
+# Default owner for everything
+* @gr8monk3ys
+
+# Backend (Python/FastAPI)
+/backend/ @gr8monk3ys
+
+# Frontend (Next.js/React)
+/frontend/ @gr8monk3ys
+
+# Infrastructure & DevOps
+/.github/ @gr8monk3ys
+/deploy/ @gr8monk3ys
+/docker-compose*.yml @gr8monk3ys
+Dockerfile* @gr8monk3ys
+Makefile @gr8monk3ys
+
+# Configuration files
+*.toml @gr8monk3ys
+*.ini @gr8monk3ys
+*.json @gr8monk3ys
+
+# Documentation
+*.md @gr8monk3ys
+/docs/ @gr8monk3ys

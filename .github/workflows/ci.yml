@@ -6,9 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.11"
-  NODE_VERSION: "20"
 
 jobs:
   # ============================================================================
@@ -18,31 +21,29 @@ jobs:
   backend-lint:
     name: Backend - Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Cache uv dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/uv.lock') }}
           restore-keys: |
             uv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -r requirements.txt
-          uv pip install black isort pylint
+        run: uv sync --frozen --group dev
 
       - name: Check formatting with Black
         run: uv run black --check --diff app/ tests/
@@ -51,98 +52,121 @@ jobs:
         run: uv run isort --check-only --diff app/ tests/
 
       - name: Run Pylint
-        run: uv run pylint app/ --exit-zero --output-format=colorized
+        run: uv run pylint app/ --fail-under=8.0 --output-format=colorized
 
   backend-typecheck:
     name: Backend - Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Cache uv dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/uv.lock') }}
           restore-keys: |
             uv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -r requirements.txt
-          uv pip install mypy types-passlib types-python-jose
+        run: uv sync --frozen --group dev
 
       - name: Run mypy
-        run: uv run mypy app/ --ignore-missing-imports --no-error-summary || true
+        run: uv run mypy app/ --ignore-missing-imports
 
   backend-security:
     name: Backend - Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
-      - name: Install Bandit
-        run: uv tool install bandit
+      - name: Install and run Bandit
+        run: |
+          uv tool install bandit
+          uv tool run bandit -r app/ -ll -ii
 
-      - name: Run Bandit security scan
-        run: uv tool run bandit -r app/ -ll -ii
+      - name: Audit dependencies
+        run: |
+          uv sync --frozen
+          uv pip audit || echo "::warning::Dependency audit found issues"
 
   backend-test:
-    name: Backend - Test (Mock Provider)
+    name: Backend - Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Cache uv dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ hashFiles('backend/requirements.txt') }}
+          key: uv-${{ runner.os }}-${{ hashFiles('backend/uv.lock') }}
           restore-keys: |
             uv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -r requirements.txt
-          uv pip install pytest pytest-asyncio pytest-cov httpx
+        run: uv sync --frozen --group dev
 
-      - name: Run tests with mock LLM provider
+      - name: Run tests with SQLite (fast, isolated)
         env:
           LLM_PROVIDER: mock
           TESTING: "true"
-        run: uv run pytest tests/ -v --cov=app --cov-report=xml
+          DATABASE_URL: "sqlite:///:memory:"
+        run: uv run pytest tests/ -v --cov=app --cov-report=xml --cov-fail-under=70
+
+      - name: Run tests with PostgreSQL (integration)
+        env:
+          LLM_PROVIDER: mock
+          TESTING: "true"
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: uv run pytest tests/ -v -k "not slow" --tb=short
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v4
         if: github.event_name == 'push'
         with:
           files: backend/coverage.xml
@@ -156,11 +180,12 @@ jobs:
   frontend-lint:
     name: Frontend - Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -176,11 +201,12 @@ jobs:
   frontend-typecheck:
     name: Frontend - Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -196,11 +222,12 @@ jobs:
   frontend-test:
     name: Frontend - Test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -216,7 +243,7 @@ jobs:
           CI: true
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v4
         if: github.event_name == 'push'
         with:
           files: frontend/coverage/coverage-final.json
@@ -226,11 +253,12 @@ jobs:
   frontend-build:
     name: Frontend - Build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -252,12 +280,27 @@ jobs:
   integration:
     name: Integration - Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [backend-test, frontend-build]
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: resuboost
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: resuboost_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
@@ -269,13 +312,17 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: backend
-        run: |
-          uv venv
-          uv pip install -r requirements.txt
+        run: uv sync --frozen
 
       - name: Install frontend dependencies
         working-directory: frontend
         run: bun install --frozen-lockfile
+
+      - name: Run database migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://resuboost:testpassword@localhost:5432/resuboost_test
+        run: uv run alembic upgrade head
 
       - name: Start backend server
         working-directory: backend
@@ -284,8 +331,9 @@ jobs:
           sleep 5
         env:
           LLM_PROVIDER: mock
-          TESTING: "true"
+          DATABASE_URL: postgresql://resuboost:testpassword@localhost:5432/resuboost_test
           SECRET_KEY: test-secret-key-for-ci
+          TESTING: "true"
 
       - name: Build and start frontend
         working-directory: frontend
@@ -298,12 +346,35 @@ jobs:
 
       - name: Health check - Backend
         run: |
-          curl --fail --retry 5 --retry-delay 2 http://localhost:8000/health || \
-          curl --fail --retry 5 --retry-delay 2 http://localhost:8000/docs
+          curl --fail --retry 5 --retry-delay 2 http://localhost:8000/health
 
       - name: Health check - Frontend
         run: |
           curl --fail --retry 5 --retry-delay 2 http://localhost:3000
+
+  # ============================================================================
+  # Security Scanning
+  # ============================================================================
+
+  security-scan:
+    name: Security - CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python, javascript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
 
   # ============================================================================
   # Provider-Specific Tests (Main Branch Only)
@@ -312,24 +383,22 @@ jobs:
   backend-test-openai:
     name: Backend - Test (OpenAI)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -r requirements.txt
-          uv pip install pytest pytest-asyncio httpx
+        run: uv sync --frozen --group dev
 
       - name: Run tests with OpenAI
         if: env.OPENAI_API_KEY != ''
@@ -342,24 +411,22 @@ jobs:
   backend-test-anthropic:
     name: Backend - Test (Anthropic)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v4
 
       - name: Set up Python
         run: uv python install ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -r requirements.txt
-          uv pip install pytest pytest-asyncio httpx langchain-anthropic
+        run: uv sync --frozen --group dev
 
       - name: Run tests with Anthropic
         if: env.ANTHROPIC_API_KEY != ''
