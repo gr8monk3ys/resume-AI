@@ -82,9 +82,6 @@ jobs:
         run: uv sync --frozen --group dev
 
       - name: Run mypy
-        # TODO: Fix 269 type errors (mostly SQLAlchemy Column vs Python type mismatches)
-        # Once fixed, remove continue-on-error to enforce type safety
-        continue-on-error: true
         run: uv run mypy app/ --ignore-missing-imports
 
   backend-security:
