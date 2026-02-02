@@ -1,0 +1,65 @@
+# Docker Compose for Database Backup Service
+#
+# This provides automated PostgreSQL backups using pg_dump.
+#
+# Usage:
+#   # Run one-time backup
+#   docker compose -f docker-compose.backup.yml run --rm backup
+#
+#   # List backups
+#   docker compose -f docker-compose.backup.yml run --rm backup --list
+#
+#   # Restore from backup
+#   docker compose -f docker-compose.backup.yml run --rm backup --restore /backups/resuboost_20240101_120000.sql.gz
+#
+#   # Start scheduled backups (runs daily at 2 AM)
+#   docker compose -f docker-compose.backup.yml up -d backup-cron
+#
+
+services:
+  # One-time backup service
+  backup:
+    image: postgres:15-alpine
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - backup-data:/backups
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-resuboost}
+      - POSTGRES_USER=${POSTGRES_USER:-resuboost}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - BACKUP_DIR=/backups
+      - RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    networks:
+      - backend
+
+  # Scheduled backup service using supercronic
+  backup-cron:
+    image: postgres:15-alpine
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ./crontab:/etc/crontabs/root:ro
+      - backup-data:/backups
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-resuboost}
+      - POSTGRES_USER=${POSTGRES_USER:-resuboost}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - BACKUP_DIR=/backups
+      - RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}
+    entrypoint: ["/usr/sbin/crond", "-f", "-d", "8"]
+    restart: unless-stopped
+    networks:
+      - backend
+
+volumes:
+  backup-data:
+    driver: local
+
+networks:
+  backend:
+    external: true
+    name: resume-ai_default
