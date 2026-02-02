@@ -325,7 +325,14 @@ def check_db_health() -> dict:
                     "status": "healthy",
                     "database": "unknown",
                 }
-    except Exception as e:
+    except OperationalError as e:
+        logger.error(f"Database health check failed (operational error): {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Database health check failed: {e}")
         return {
             "status": "unhealthy",
             "error": str(e),
@@ -354,7 +361,14 @@ async def check_async_db_health() -> dict:
                 "database": "postgresql_async",
                 "pool": "nullpool",  # NullPool doesn't maintain connections
             }
-    except Exception as e:
+    except OperationalError as e:
+        logger.error(f"Async database health check failed (operational error): {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+        }
+    except SQLAlchemyError as e:
+        logger.error(f"Async database health check failed: {e}")
         return {
             "status": "unhealthy",
             "error": str(e),

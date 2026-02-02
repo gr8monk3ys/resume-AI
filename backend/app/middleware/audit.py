@@ -18,6 +18,7 @@ import os
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from enum import Enum
+from logging.handlers import RotatingFileHandler
 from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import Request, Response
@@ -186,14 +187,19 @@ class AuditLogger:
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
     def _init_file_logger(self):
-        """Initialize file-based logger."""
+        """Initialize file-based logger with rotation."""
         os.makedirs(os.path.dirname(self.log_file_path), exist_ok=True)
 
         self.file_logger = logging.getLogger("audit")
         self.file_logger.setLevel(logging.INFO)
 
-        # File handler with rotation would be better in production
-        handler = logging.FileHandler(self.log_file_path)
+        # RotatingFileHandler: max 10MB per file, keep 5 backup files (50MB total)
+        handler = RotatingFileHandler(
+            self.log_file_path,
+            maxBytes=10 * 1024 * 1024,  # 10MB
+            backupCount=5,
+            encoding="utf-8",
+        )
         handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
         self.file_logger.addHandler(handler)
 
