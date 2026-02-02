@@ -7,7 +7,7 @@ PostgreSQL includes connection pooling and async support for enterprise scale.
 
 import os
 from contextlib import asynccontextmanager, contextmanager
-from typing import AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator
 
 import logging
 
@@ -15,7 +15,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool, StaticPool
 
 logger = logging.getLogger(__name__)
@@ -125,7 +125,11 @@ if _is_postgres():
 # BASE MODEL
 # =============================================================================
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+
+    pass
 
 
 # =============================================================================
@@ -298,15 +302,22 @@ def check_db_health() -> dict:
             elif _is_postgres():
                 db.execute(text("SELECT 1"))
                 pool = engine.pool
+                # Cast to QueuePool for type checking - we know it's QueuePool for PostgreSQL
+                if isinstance(pool, QueuePool):
+                    return {
+                        "status": "healthy",
+                        "database": "postgresql",
+                        "pool": {
+                            "size": pool.size(),
+                            "checked_in": pool.checkedin(),
+                            "checked_out": pool.checkedout(),
+                            "overflow": pool.overflow(),
+                        },
+                    }
                 return {
                     "status": "healthy",
                     "database": "postgresql",
-                    "pool": {
-                        "size": pool.size(),
-                        "checked_in": pool.checkedin(),
-                        "checked_out": pool.checkedout(),
-                        "overflow": pool.overflow(),
-                    },
+                    "pool": "unknown",
                 }
             else:
                 db.execute(text("SELECT 1"))
@@ -337,16 +348,11 @@ async def check_async_db_health() -> dict:
     try:
         async with get_async_db_context() as db:
             await db.execute(text("SELECT 1"))
-            pool = async_engine.pool
+            # NullPool is used for async - no pool stats available
             return {
                 "status": "healthy",
                 "database": "postgresql_async",
-                "pool": {
-                    "size": pool.size(),
-                    "checked_in": pool.checkedin(),
-                    "checked_out": pool.checkedout(),
-                    "overflow": pool.overflow(),
-                },
+                "pool": "nullpool",  # NullPool doesn't maintain connections
             }
     except Exception as e:
         return {
@@ -436,7 +442,7 @@ def get_database_info() -> dict:
         prefix = parts[0].rsplit(":", 1)[0]
         url = f"{prefix}:***@{parts[1]}"
 
-    info = {
+    info: dict[str, Any] = {
         "type": "sqlite" if _is_sqlite() else "postgresql" if _is_postgres() else "unknown",
         "url": url,
         "async_available": _is_postgres(),

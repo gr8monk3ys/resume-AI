@@ -103,13 +103,12 @@ def decode_token(
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         # 'sub' is stored as string per JWT spec, convert to int for user_id
         sub = payload.get("sub")
-        user_id: int = int(sub) if sub is not None else None
-        username: str = payload.get("username")
-        token_type: str = payload.get("type")
-        token_version: int = payload.get("token_version", 0)
-
-        if user_id is None:
+        if sub is None:
             return None
+        user_id: int = int(sub)
+        username: str = str(payload.get("username", ""))
+        token_type: str = str(payload.get("type", ""))
+        token_version: int = int(payload.get("token_version", 0))
 
         # Validate token type to prevent token confusion attacks
         # This prevents refresh tokens from being used for API authentication

@@ -32,14 +32,17 @@ from sqlalchemy import (
     create_engine,
     event,
 )
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.middleware.security import get_client_ip, get_user_agent
 
 # Create a separate base for audit models
-AuditBase = declarative_base()
+class AuditBase(DeclarativeBase):
+    """Base class for audit SQLAlchemy models."""
+
+    pass
 
 
 class AuditEventType(str, Enum):
@@ -279,9 +282,9 @@ class AuditLogger:
         self,
         user_id: int,
         username: str,
-        ip_address: str = None,
-        user_agent: str = None,
-        request_id: str = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_id: str | None = None,
     ):
         """Log a successful login."""
         self.log_event(
@@ -302,9 +305,9 @@ class AuditLogger:
         self,
         username: str,
         reason: str,
-        ip_address: str = None,
-        user_agent: str = None,
-        request_id: str = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        request_id: str | None = None,
     ):
         """Log a failed login attempt."""
         self.log_event(
@@ -325,7 +328,7 @@ class AuditLogger:
         self,
         user_id: int,
         username: str,
-        request_id: str = None,
+        request_id: str | None = None,
     ):
         """Log a logout event."""
         self.log_event(
@@ -341,8 +344,8 @@ class AuditLogger:
         self,
         user_id: int,
         username: str,
-        ip_address: str = None,
-        request_id: str = None,
+        ip_address: str | None = None,
+        request_id: str | None = None,
     ):
         """Log a password change."""
         self.log_event(
@@ -361,8 +364,8 @@ class AuditLogger:
         username: str,
         resource_type: str,
         resource_id: int,
-        ip_address: str = None,
-        request_id: str = None,
+        ip_address: str | None = None,
+        request_id: str | None = None,
     ):
         """Log a data deletion event."""
         self.log_event(
@@ -380,7 +383,7 @@ class AuditLogger:
         self,
         username: str,
         reason: str,
-        ip_address: str = None,
+        ip_address: str | None = None,
     ):
         """Log an account lockout."""
         self.log_event(
@@ -396,8 +399,8 @@ class AuditLogger:
         self,
         violation_type: str,
         details: Dict[str, Any],
-        ip_address: str = None,
-        request_id: str = None,
+        ip_address: str | None = None,
+        request_id: str | None = None,
     ):
         """Log a security violation."""
         self.log_event(
@@ -413,8 +416,8 @@ class AuditLogger:
     def record_failed_login_attempt(
         self,
         username: str,
-        ip_address: str = None,
-        user_agent: str = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ):
         """Record a failed login attempt."""
         with self.get_session() as session:
