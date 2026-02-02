@@ -15,26 +15,26 @@ class JobAlert(Base):
 
     __tablename__ = "job_alerts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    name = Column(String, nullable=False)
+    id: Column[int] = Column(Integer, primary_key=True, index=True)
+    user_id: Column[int] = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Column[str] = Column(String, nullable=False)
 
     # Alert criteria stored as JSON strings
-    keywords = Column(Text, nullable=True)  # JSON array of keywords
-    companies = Column(Text, nullable=True)  # JSON array of company names
-    locations = Column(Text, nullable=True)  # JSON array of locations
-    job_types = Column(Text, nullable=True)  # JSON array: Full-time, Part-time, Contract, etc.
-    min_salary = Column(Integer, nullable=True)
-    exclude_keywords = Column(Text, nullable=True)  # JSON array of keywords to exclude
+    keywords: Column[str] = Column(Text, nullable=True)  # JSON array of keywords
+    companies: Column[str] = Column(Text, nullable=True)  # JSON array of company names
+    locations: Column[str] = Column(Text, nullable=True)  # JSON array of locations
+    job_types: Column[str] = Column(Text, nullable=True)  # JSON array: Full-time, Part-time, etc.
+    min_salary: Column[int] = Column(Integer, nullable=True)
+    exclude_keywords: Column[str] = Column(Text, nullable=True)  # JSON array of keywords to exclude
 
     # Alert status
-    is_active = Column(Boolean, default=True, index=True)
-    last_checked = Column(DateTime, nullable=True)
-    last_notified = Column(DateTime, nullable=True)
+    is_active: Column[bool] = Column(Boolean, default=True, index=True)
+    last_checked: Column[datetime] = Column(DateTime, nullable=True)
+    last_notified: Column[datetime] = Column(DateTime, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Column[datetime] = Column(DateTime, default=datetime.utcnow)
+    updated_at: Column[datetime] = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     user = relationship("User", backref="job_alerts")

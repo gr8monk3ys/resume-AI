@@ -54,7 +54,7 @@ class CompanyFilter(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     company_name = Column(String(255), nullable=False, index=True)
-    filter_type = Column(
+    filter_type: Column[CompanyFilterType] = Column(
         SQLEnum(CompanyFilterType), nullable=False, default=CompanyFilterType.BLACKLIST
     )
     reason = Column(Text, nullable=True)
@@ -74,10 +74,12 @@ class KeywordFilter(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     keyword = Column(String(255), nullable=False, index=True)
-    filter_type = Column(
+    filter_type: Column[KeywordFilterType] = Column(
         SQLEnum(KeywordFilterType), nullable=False, default=KeywordFilterType.EXCLUDE
     )
-    applies_to = Column(SQLEnum(KeywordAppliesTo), nullable=False, default=KeywordAppliesTo.BOTH)
+    applies_to: Column[KeywordAppliesTo] = Column(
+        SQLEnum(KeywordAppliesTo), nullable=False, default=KeywordAppliesTo.BOTH
+    )
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship
@@ -95,7 +97,9 @@ class ApplicationQuestion(Base):
     )
     question_pattern = Column(String(500), nullable=False, index=True)
     answer = Column(Text, nullable=False)
-    question_type = Column(SQLEnum(QuestionType), nullable=False, default=QuestionType.TEXT)
+    question_type: Column[QuestionType] = Column(
+        SQLEnum(QuestionType), nullable=False, default=QuestionType.TEXT
+    )
     category = Column(String(100), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
