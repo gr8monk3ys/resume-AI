@@ -208,6 +208,6 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
 ]
-# Core features (auth, resumes, jobs) have 85-100% coverage.
-# Threshold accounts for advanced features (job importing, websockets, analytics).
-fail_under = 55
+# Core features (auth, resumes, jobs, audit middleware) have 85-100% coverage.
+# Threshold accounts for advanced features (job importing, websockets, schedulers).
+fail_under = 63

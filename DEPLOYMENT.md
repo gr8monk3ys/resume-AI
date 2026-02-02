@@ -59,7 +59,16 @@ Go to: Settings → Secrets and variables → Actions → Secrets
 
 | Secret | Description |
 |--------|-------------|
-| `RAILWAY_TOKEN` | Your Railway API token |
+| `RAILWAY_TOKEN` | Your Railway API token (for backend) |
+| `VERCEL_TOKEN` | Your Vercel API token (for frontend) |
+| `VERCEL_ORG_ID` | Your Vercel organization/team ID |
+| `VERCEL_PROJECT_ID` | Your Vercel project ID |
+
+### Getting Vercel Credentials
+
+1. **VERCEL_TOKEN**: Go to [Vercel Account Settings](https://vercel.com/account/tokens) → Create Token
+2. **VERCEL_ORG_ID**: Go to [Vercel Settings](https://vercel.com/account) → General → Your ID
+3. **VERCEL_PROJECT_ID**: Go to your project → Settings → General → Project ID
 
 ### Repository Variables
 
@@ -67,11 +76,12 @@ Go to: Settings → Secrets and variables → Actions → Variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `RAILWAY_STAGING_PROJECT_ID` | Staging project ID | `abc123-def456-...` |
-| `RAILWAY_PRODUCTION_PROJECT_ID` | Production project ID | `xyz789-ghi012-...` |
-| `STAGING_URL` | Staging frontend URL | `https://resuboost-staging.up.railway.app` |
-| `STAGING_API_URL` | Staging backend URL | `https://resuboost-staging-api.up.railway.app` |
-| `PRODUCTION_URL` | Production frontend URL | `https://resuboost.ai` |
+| `RAILWAY_STAGING_PROJECT_ID` | Railway staging project ID (backend) | `abc123-def456-...` |
+| `RAILWAY_PRODUCTION_PROJECT_ID` | Railway production project ID (backend) | `xyz789-ghi012-...` |
+| `STAGING_URL` | Staging frontend URL (Vercel) | `https://resuboost-staging.vercel.app` |
+| `STAGING_API_URL` | Staging backend URL (Railway) | `https://resuboost-staging-api.up.railway.app` |
+| `PRODUCTION_URL` | Production frontend URL (Vercel) | `https://resuboost.ai` |
+| `PRODUCTION_API_URL` | Production backend URL (Railway) | `https://api.resuboost.ai` |
 
 ### Environment Protection Rules (Recommended)
 
