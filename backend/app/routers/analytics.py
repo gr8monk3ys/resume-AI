@@ -26,6 +26,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
@@ -181,17 +182,6 @@ class ExportRequest(BaseModel):
 # --------------------------------------------------------------------------
 # Helper Functions
 # --------------------------------------------------------------------------
-
-
-def get_user_profile(user: User, db: Session) -> Profile:
-    """Get or create user profile."""
-    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-    if not profile:
-        profile = Profile(user_id=user.id, name=user.full_name or user.username)
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
-    return profile
 
 
 def calculate_response_rate(jobs: List[JobApplication]) -> float:

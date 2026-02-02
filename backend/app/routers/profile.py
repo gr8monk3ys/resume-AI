@@ -3,6 +3,7 @@ Profile router.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db, safe_commit
@@ -74,17 +75,20 @@ async def get_profile_stats(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     resume_count = db.query(Resume).filter(Resume.profile_id == profile.id).count()
-    job_count = db.query(JobApplication).filter(JobApplication.profile_id == profile.id).count()
     cover_letter_count = db.query(CoverLetter).filter(CoverLetter.profile_id == profile.id).count()
     journal_count = (
         db.query(CareerJournalEntry).filter(CareerJournalEntry.profile_id == profile.id).count()
     )
 
-    # Job status breakdown
-    jobs = db.query(JobApplication).filter(JobApplication.profile_id == profile.id).all()
-    status_counts = {}
-    for job in jobs:
-        status_counts[job.status] = status_counts.get(job.status, 0) + 1
+    # Use SQL GROUP BY for job status breakdown instead of loading all jobs into memory
+    status_counts_query = (
+        db.query(JobApplication.status, func.count(JobApplication.id))
+        .filter(JobApplication.profile_id == profile.id)
+        .group_by(JobApplication.status)
+        .all()
+    )
+    status_counts = dict(status_counts_query)
+    job_count = sum(status_counts.values())
 
     return {
         "resume_count": resume_count,

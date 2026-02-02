@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db, safe_commit
+from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
 from app.models.career_journal import CareerJournalEntry
 from app.models.profile import Profile
@@ -22,17 +23,6 @@ from app.schemas.career_journal import (
 )
 
 router = APIRouter(prefix="/api/career-journal", tags=["Career Journal"])
-
-
-def get_user_profile(user: User, db: Session) -> Profile:
-    """Get or create user profile."""
-    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-    if not profile:
-        profile = Profile(user_id=user.id, name=user.full_name or user.username)
-        db.add(profile)
-        safe_commit(db, "create profile")
-        db.refresh(profile)
-    return profile
 
 
 def serialize_tags(tags: Optional[List[str]]) -> Optional[str]:

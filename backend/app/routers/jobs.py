@@ -9,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db, safe_commit
+from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
@@ -17,17 +18,6 @@ from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
 from app.schemas.pagination import PaginatedResponse, PaginationParams
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
-
-
-def get_user_profile(user: User, db: Session) -> Profile:
-    """Get or create user profile."""
-    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-    if not profile:
-        profile = Profile(user_id=user.id, name=user.full_name or user.username)
-        db.add(profile)
-        safe_commit(db, "create profile")
-        db.refresh(profile)
-    return profile
 
 
 @router.get("", response_model=PaginatedResponse[JobResponse])

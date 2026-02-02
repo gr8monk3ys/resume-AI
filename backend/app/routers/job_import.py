@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
@@ -35,17 +36,6 @@ from app.services.job_importer import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/jobs/import", tags=["Job Import"])
-
-
-def get_user_profile(user: User, db: Session) -> Profile:
-    """Get or create user profile."""
-    profile = db.query(Profile).filter(Profile.user_id == user.id).first()
-    if not profile:
-        profile = Profile(user_id=user.id, name=user.full_name or user.username)
-        db.add(profile)
-        db.commit()
-        db.refresh(profile)
-    return profile
 
 
 def _source_to_application_source(source: JobSource) -> Optional[str]:
