@@ -317,6 +317,7 @@ def create_retry_decorator(
     jitter = jitter if jitter is not None else settings.llm_retry_jitter
 
     # Choose wait strategy based on jitter setting
+    wait_strategy: wait_exponential | wait_exponential_jitter
     if jitter:
         wait_strategy = wait_exponential_jitter(
             initial=initial_delay,
@@ -724,7 +725,7 @@ class MockProvider(BaseLLMProvider):
         self.last_prompt = prompt
 
         # Handle failure mode for testing retries
-        if self.fail_until > 0 and self.fail_count < self.fail_until:
+        if self.fail_until > 0 and self.fail_count < self.fail_until and self.fail_with is not None:
             self.fail_count += 1
             logger.info("Mock provider simulating failure %d/%d", self.fail_count, self.fail_until)
             raise self.fail_with
@@ -825,8 +826,8 @@ class MockProvider(BaseLLMProvider):
         return self._model
 
 
-# Provider registry
-_PROVIDERS = {
+# Provider registry - typed as dict to concrete implementations
+_PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     "openai": OpenAIProvider,
     "anthropic": AnthropicProvider,
     "google": GoogleProvider,

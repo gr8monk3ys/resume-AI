@@ -7,7 +7,10 @@ Optionally integrates with LLM service for enhanced suggestions.
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from app.services.llm_service import LLMService
 
 
 @dataclass
@@ -21,7 +24,7 @@ class ATSResult:
     missing_keywords: List[str]
     matched_keywords: List[str]
     suggestions: List[str]
-    experience_match: Dict[str, any]
+    experience_match: Dict[str, Any]
     keyword_breakdown: Dict[str, List[str]]
 
 
@@ -764,7 +767,7 @@ class ATSAnalyzer:
             use_llm: Whether to use LLM for enhanced suggestions (default False)
         """
         self.use_llm = use_llm
-        self._llm_service = None
+        self._llm_service: Optional["LLMService"] = None
 
     def _get_llm_service(self):
         """Lazy load LLM service if needed."""
@@ -796,7 +799,7 @@ class ATSAnalyzer:
         text_lower = text.lower()
         words_in_text = set(re.findall(r"\b[\w.#+/-]+\b", text_lower))
 
-        result = {
+        result: Dict[str, Any] = {
             "technical_skills": [],
             "soft_skills": [],
             "tools": [],
@@ -855,7 +858,7 @@ class ATSAnalyzer:
         pattern = rf"\b{escaped}\b"
         return bool(re.search(pattern, text, re.IGNORECASE))
 
-    def _extract_experience_requirements(self, text: str) -> List[Dict[str, any]]:
+    def _extract_experience_requirements(self, text: str) -> List[Dict[str, Any]]:
         """Extract experience requirements from text."""
         results = []
         text_lower = text.lower()
@@ -1024,12 +1027,12 @@ class ATSAnalyzer:
         jd_keywords: Dict[str, List[str]],
     ) -> Tuple[int, List[str], List[str]]:
         """Calculate keyword match score and find matched/missing keywords."""
-        matched = []
-        missing = []
+        matched: List[str] = []
+        missing: List[str] = []
 
         # Combine all keywords for comparison
-        jd_all = set()
-        resume_all = set()
+        jd_all: set[str] = set()
+        resume_all: set[str] = set()
 
         for key in ["technical_skills", "soft_skills", "certifications"]:
             jd_all.update(k.lower() for k in jd_keywords.get(key, []))
@@ -1216,7 +1219,7 @@ class ATSAnalyzer:
 
     def extract_experience_details(
         self, resume: str, job_description: str
-    ) -> Tuple[List[Dict[str, any]], Dict[str, any]]:
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Extract experience requirements from job description and resume.
 
@@ -1231,7 +1234,7 @@ class ATSAnalyzer:
         resume_experience = self._extract_years_from_resume(resume)
         return jd_requirements, resume_experience
 
-    def calculate_experience_match(self, resume: str, job_description: str) -> Dict[str, any]:
+    def calculate_experience_match(self, resume: str, job_description: str) -> Dict[str, Any]:
         """
         Calculate how well resume experience matches job requirements.
 
@@ -1309,9 +1312,9 @@ class ATSAnalyzer:
 
         return result
 
-    def _extract_years_from_resume(self, resume: str) -> Dict[str, any]:
+    def _extract_years_from_resume(self, resume: str) -> Dict[str, Any]:
         """Extract years of experience mentioned in resume."""
-        result = {
+        result: Dict[str, Any] = {
             "total_years": None,
             "by_skill": {},
             "positions": [],
@@ -1361,7 +1364,7 @@ class ATSAnalyzer:
         keyword_score: int,
         formatting_score: int,
         missing_keywords: List[str],
-        experience_match: Dict[str, any],
+        experience_match: Dict[str, Any],
     ) -> List[str]:
         """Generate actionable improvement suggestions."""
         suggestions = []

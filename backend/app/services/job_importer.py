@@ -16,7 +16,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -264,6 +264,13 @@ class JobImporter:
                     recoverable=False,
                 )
 
+        # Should never reach here - all paths either return or raise
+        raise JobImportError(
+            "Failed to fetch URL after all retries",
+            "FETCH_ERROR",
+            recoverable=True,
+        )
+
     def _parse_salary(self, salary_text: str) -> tuple[Optional[int], Optional[int], str]:
         """
         Parse salary information from text.
@@ -342,7 +349,7 @@ class JobImporter:
 
         return JobType.UNKNOWN
 
-    def _extract_json_ld(self, html: str) -> Optional[dict]:
+    def _extract_json_ld(self, html: str) -> dict[str, Any] | None:
         """
         Extract JSON-LD structured data from HTML.
 
@@ -365,10 +372,10 @@ class JobImporter:
                 # Handle array format
                 if isinstance(data, list):
                     for item in data:
-                        if item.get("@type") == "JobPosting":
-                            return item
-                elif data.get("@type") == "JobPosting":
-                    return data
+                        if isinstance(item, dict) and item.get("@type") == "JobPosting":
+                            return cast(dict[str, Any], item)
+                elif isinstance(data, dict) and data.get("@type") == "JobPosting":
+                    return cast(dict[str, Any], data)
 
             except json.JSONDecodeError:
                 continue
@@ -1168,12 +1175,14 @@ class JobImporter:
             return JobPreviewResponse(
                 success=False,
                 source_detected=self._detect_source(url),
+                confidence=0.0,
                 errors=[e.message],
             )
         except Exception as e:
             logger.error(f"Preview failed for {url}: {e}")
             return JobPreviewResponse(
                 success=False,
+                confidence=0.0,
                 errors=[str(e)],
             )
 

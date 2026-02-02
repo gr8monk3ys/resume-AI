@@ -491,6 +491,8 @@ class JobScheduler:
                 success=False,
                 job_id=job_id,
                 message="Job not found",
+                jobs_found=0,
+                new_jobs=0,
                 errors=["Job not found"],
             )
 
@@ -501,6 +503,8 @@ class JobScheduler:
                 success=False,
                 job_id=job_id,
                 message="Not authorized",
+                jobs_found=0,
+                new_jobs=0,
                 errors=["Not authorized to trigger this job"],
             )
 
@@ -537,6 +541,8 @@ class JobScheduler:
                 success=False,
                 job_id=job_id,
                 message="Job execution failed",
+                jobs_found=0,
+                new_jobs=0,
                 errors=[str(e)],
             )
 

@@ -235,6 +235,7 @@ class JobScraper:
             companies=criteria.companies,
             exclude_companies=criteria.exclude_companies,
             sponsorship=criteria.sponsorship_required,
+            min_posted_date=None,
         )
 
     def _filter_jobs_by_criteria(
