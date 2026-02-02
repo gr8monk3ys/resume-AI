@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
@@ -25,7 +25,7 @@ def get_user_profile(user: User, db: Session) -> Profile:
     if not profile:
         profile = Profile(user_id=user.id, name=user.full_name or user.username)
         db.add(profile)
-        db.commit()
+        safe_commit(db, "create profile")
         db.refresh(profile)
     return profile
 
@@ -154,7 +154,7 @@ async def create_job(
         resume_id=job_data.resume_id,
     )
     db.add(job)
-    db.commit()
+    safe_commit(db, "create job application")
     db.refresh(job)
 
     return job
@@ -207,7 +207,7 @@ async def update_job(
         else:
             setattr(job, field, value)
 
-    db.commit()
+    safe_commit(db, "update job application")
     db.refresh(job)
 
     return job
@@ -230,7 +230,7 @@ async def delete_job(
         raise HTTPException(status_code=404, detail="Job application not found")
 
     db.delete(job)
-    db.commit()
+    safe_commit(db, "delete job application")
 
 
 @router.patch("/{job_id}/status", response_model=JobResponse)
@@ -253,7 +253,7 @@ async def update_job_status(
         raise HTTPException(status_code=404, detail="Job application not found")
 
     job.status = new_status.value
-    db.commit()
+    safe_commit(db, "update job status")
     db.refresh(job)
 
     return job

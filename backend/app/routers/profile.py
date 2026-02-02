@@ -5,7 +5,7 @@ Profile router.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.auth import get_current_user
 from app.models.profile import Profile
 from app.models.user import User
@@ -29,7 +29,7 @@ async def get_profile(
             email=current_user.email,
         )
         db.add(profile)
-        db.commit()
+        safe_commit(db, "create profile")
         db.refresh(profile)
 
     return profile
@@ -52,7 +52,7 @@ async def update_profile(
     for field, value in update_data.items():
         setattr(profile, field, value)
 
-    db.commit()
+    safe_commit(db, "update profile")
     db.refresh(profile)
 
     return profile

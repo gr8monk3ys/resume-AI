@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.auth import get_current_user
 from app.models.career_journal import CareerJournalEntry
 from app.models.profile import Profile
@@ -30,7 +30,7 @@ def get_user_profile(user: User, db: Session) -> Profile:
     if not profile:
         profile = Profile(user_id=user.id, name=user.full_name or user.username)
         db.add(profile)
-        db.commit()
+        safe_commit(db, "create profile")
         db.refresh(profile)
     return profile
 
@@ -93,7 +93,7 @@ async def create_entry(
         tags=serialize_tags(entry_data.tags),
     )
     db.add(entry)
-    db.commit()
+    safe_commit(db, "create journal entry")
     db.refresh(entry)
 
     return entry_to_response(entry)
@@ -152,7 +152,7 @@ async def update_entry(
         else:
             setattr(entry, field, value)
 
-    db.commit()
+    safe_commit(db, "update journal entry")
     db.refresh(entry)
 
     return entry_to_response(entry)
@@ -180,7 +180,7 @@ async def delete_entry(
         raise HTTPException(status_code=404, detail="Career journal entry not found")
 
     db.delete(entry)
-    db.commit()
+    safe_commit(db, "delete journal entry")
 
 
 @router.post("/{entry_id}/enhance", response_model=EnhanceAchievementResponse)

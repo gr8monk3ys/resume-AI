@@ -45,12 +45,12 @@ class JobScraperCache:
         criteria_str = ""
         if criteria:
             criteria_str = str(criteria.model_dump(exclude_none=True))
-        return hashlib.md5(f"{source}:{criteria_str}".encode()).hexdigest()
+        return hashlib.md5(f"{source}:{criteria_str}".encode(), usedforsecurity=False).hexdigest()
 
     def _generate_job_hash(self, job: JobData) -> str:
         """Generate a unique hash for a job to detect duplicates."""
         unique_str = f"{job.company}:{job.title}:{job.location or ''}"
-        return hashlib.md5(unique_str.lower().encode()).hexdigest()
+        return hashlib.md5(unique_str.lower().encode(), usedforsecurity=False).hexdigest()
 
     def get(self, source: str, criteria: Optional[ScrapeCriteria]) -> Optional[list[JobData]]:
         """

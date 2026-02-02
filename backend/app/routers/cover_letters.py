@@ -7,7 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.auth import get_current_user
 from app.models.cover_letter import CoverLetter
 from app.models.profile import Profile
@@ -23,7 +23,7 @@ def get_user_profile(user: User, db: Session) -> Profile:
     if not profile:
         profile = Profile(user_id=user.id, name=user.full_name or user.username)
         db.add(profile)
-        db.commit()
+        safe_commit(db, "create profile")
         db.refresh(profile)
     return profile
 
@@ -58,7 +58,7 @@ async def create_cover_letter(
         content=data.content,
     )
     db.add(cover_letter)
-    db.commit()
+    safe_commit(db, "create cover letter")
     db.refresh(cover_letter)
 
     return cover_letter
@@ -90,7 +90,7 @@ async def generate_cover_letter(
         content=generated_content,
     )
     db.add(cover_letter)
-    db.commit()
+    safe_commit(db, "generate cover letter")
     db.refresh(cover_letter)
 
     return cover_letter
@@ -136,4 +136,4 @@ async def delete_cover_letter(
         raise HTTPException(status_code=404, detail="Cover letter not found")
 
     db.delete(cover_letter)
-    db.commit()
+    safe_commit(db, "delete cover letter")

@@ -58,7 +58,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.audit import AuditEventType, get_audit_logger
 from app.middleware.auth import (
     create_access_token,
@@ -163,7 +163,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
-    # Create user
+    # Create user and profile in a single transaction
     user = User(
         username=user_data.username,
         email=user_data.email,
@@ -171,8 +171,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         full_name=user_data.full_name,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.flush()  # Get user.id without committing
 
     # Create profile for user
     profile = Profile(
@@ -181,7 +180,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         email=user_data.email,
     )
     db.add(profile)
-    db.commit()
+    safe_commit(db, "user registration")
+    db.refresh(user)
 
     return user
 
@@ -295,7 +295,7 @@ async def login(
 
     # Update last login
     user.last_login = datetime.now(timezone.utc)
-    db.commit()
+    safe_commit(db, "update last login")
 
     # Create tokens with token_version for invalidation support
     # Note: 'sub' must be a string per JWT spec (jose library enforces this)
@@ -530,7 +530,7 @@ async def change_password(
     # This forces all sessions to re-authenticate after a password change
     current_user.password_hash = get_password_hash(password_data.new_password)
     current_user.token_version = (current_user.token_version or 0) + 1
-    db.commit()
+    safe_commit(db, "password change")
 
     # Log successful password change
     audit_logger.log_password_change(

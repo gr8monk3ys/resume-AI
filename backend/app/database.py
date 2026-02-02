@@ -9,10 +9,16 @@ import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import AsyncGenerator, Generator
 
+import logging
+
+from fastapi import HTTPException, status
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool, StaticPool
+
+logger = logging.getLogger(__name__)
 
 from app.config import get_settings
 
@@ -141,6 +147,69 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def safe_commit(db: Session, operation: str = "operation") -> None:
+    """
+    Safely commit a database transaction with proper error handling.
+
+    This function wraps db.commit() with exception handling for common
+    database errors, automatically rolling back on failure and raising
+    appropriate HTTP exceptions.
+
+    Args:
+        db: The database session to commit
+        operation: Description of the operation for error messages
+
+    Raises:
+        HTTPException: With appropriate status code and message on failure
+
+    Usage:
+        from app.database import get_db, safe_commit
+
+        @router.post("/items")
+        def create_item(item: ItemCreate, db: Session = Depends(get_db)):
+            db_item = Item(**item.dict())
+            db.add(db_item)
+            safe_commit(db, "create item")
+            return db_item
+    """
+    try:
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        logger.warning(f"Integrity error during {operation}: {e}")
+        # Check for common constraint violations
+        error_msg = str(e.orig).lower() if e.orig else str(e).lower()
+        if "unique" in error_msg or "duplicate" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A record with this data already exists",
+            )
+        elif "foreign key" in error_msg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Referenced record does not exist",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Database constraint violation during {operation}",
+            )
+    except OperationalError as e:
+        db.rollback()
+        logger.error(f"Database operational error during {operation}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database temporarily unavailable. Please try again.",
+        )
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error during {operation}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error during {operation}",
+        )
 
 
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:

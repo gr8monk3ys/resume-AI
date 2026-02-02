@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.auth import get_current_user
 from app.models.profile import Profile
 from app.models.resume import Resume
@@ -50,7 +50,7 @@ def get_user_profile(user: User, db: Session) -> Profile:
     if not profile:
         profile = Profile(user_id=user.id, name=user.full_name or user.username)
         db.add(profile)
-        db.commit()
+        safe_commit(db, "create profile")
         db.refresh(profile)
     return profile
 
@@ -109,7 +109,7 @@ async def create_resume(
         content=resume_data.content,
     )
     db.add(resume)
-    db.commit()
+    safe_commit(db, "create resume")
     db.refresh(resume)
 
     return resume
@@ -153,7 +153,7 @@ async def update_resume(
     for field, value in update_data.items():
         setattr(resume, field, value)
 
-    db.commit()
+    safe_commit(db, "update resume")
     db.refresh(resume)
 
     return resume
@@ -174,7 +174,7 @@ async def delete_resume(
         raise HTTPException(status_code=404, detail="Resume not found")
 
     db.delete(resume)
-    db.commit()
+    safe_commit(db, "delete resume")
 
 
 @router.post("/analyze", response_model=ATSAnalysisResponse)
