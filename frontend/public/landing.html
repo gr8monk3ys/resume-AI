@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Search-First Job Search Workspace | ResuBoost AI</title>
+    <meta
+      name="description"
+      content="Keep your target roles, application pipeline, resume tuning, and interview prep in one search-first workspace."
+    />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f2e8;
+        --bg-soft: #fcfbf8;
+        --surface: rgba(255, 255, 255, 0.82);
+        --surface-strong: rgba(255, 255, 255, 0.94);
+        --surface-ink: #fff8ef;
+        --border: rgba(15, 23, 42, 0.08);
+        --text: #101828;
+        --muted: #5f6c7b;
+        --accent: #ff6b2c;
+        --accent-strong: #8b360f;
+        --accent-soft: #ffedd5;
+        --signal: #0f766e;
+        --signal-soft: #d9fbf5;
+        --navy: #10243f;
+        --navy-dark: #0b1728;
+        --shadow: 0 30px 60px -34px rgba(15, 23, 42, 0.28);
+        --max-width: 78rem;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--bg);
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(255, 107, 44, 0.18), transparent 30%),
+          radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
+          linear-gradient(180deg, #f6f2e8 0%, #fbfaf6 34%, #f1ede4 100%);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .shell {
+        width: min(100% - 2rem, var(--max-width));
+        margin: 0 auto;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: 1rem;
+        top: -3rem;
+        z-index: 20;
+        border-radius: 999px;
+        background: white;
+        padding: 0.8rem 1rem;
+        box-shadow: var(--shadow);
+      }
+
+      .skip-link:focus {
+        top: 1rem;
+      }
+
+      .surface {
+        border: 1px solid var(--border);
+        border-radius: 1.75rem;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+      }
+
+      .surface-strong {
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        border-radius: 1.75rem;
+        background: var(--surface-strong);
+        box-shadow: var(--shadow);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .brand-mark {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        overflow: hidden;
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: var(--navy);
+        box-shadow: 0 20px 40px -20px rgba(16, 36, 63, 0.55);
+      }
+
+      .brand-mark::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 28% 28%, rgba(255, 255, 255, 0.26), transparent 42%),
+          linear-gradient(140deg, #15345a 0%, #08111f 100%);
+      }
+
+      .brand-core {
+        position: relative;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .brand-core::after {
+        content: "";
+        position: absolute;
+        right: -0.3rem;
+        top: 50%;
+        width: 0.6rem;
+        height: 0.6rem;
+        border-radius: 999px;
+        transform: translateY(-50%);
+        background: #ff7a1a;
+      }
+
+      .brand-copy strong {
+        display: block;
+        font-size: 1.08rem;
+        letter-spacing: -0.04em;
+      }
+
+      .brand-copy span {
+        display: block;
+        margin-top: 0.15rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #5c6474;
+      }
+
+      .nav {
+        padding-top: 1.5rem;
+      }
+
+      .nav-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+      }
+
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3.25rem;
+        border-radius: 999px;
+        padding: 0 1.25rem;
+        font-size: 1rem;
+        font-weight: 700;
+        transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .button-dark {
+        background: var(--navy);
+        color: #fff;
+      }
+
+      .button-dark:hover {
+        background: var(--navy-dark);
+      }
+
+      .button-light {
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.8);
+        color: #334155;
+      }
+
+      .button-inline {
+        min-height: 0;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+      }
+
+      .hero {
+        padding: 2rem 0 0;
+      }
+
+      .hero-panel {
+        position: relative;
+        overflow: hidden;
+        padding: 1.5rem;
+      }
+
+      .hero-panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(15, 118, 110, 0.16), transparent 52%);
+        pointer-events: none;
+      }
+
+      .hero-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.72);
+        padding: 0.55rem 0.9rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #526071;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent), #ffba66);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        letter-spacing: -0.05em;
+      }
+
+      h1 {
+        margin-top: 1.25rem;
+        max-width: 16ch;
+        font-size: clamp(3rem, 7vw, 5.2rem);
+        line-height: 0.96;
+      }
+
+      .hero-copy {
+        max-width: 42rem;
+        margin-top: 1.25rem;
+        font-size: clamp(1rem, 2.4vw, 1.16rem);
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+
+      .stats {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+
+      .stat-card {
+        border-radius: 1.35rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.65);
+        padding: 1rem;
+      }
+
+      .stat-card strong {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #526071;
+      }
+
+      .stat-card span {
+        display: block;
+        margin-top: 0.45rem;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #334155;
+      }
+
+      .preview {
+        overflow: hidden;
+        padding: 1.25rem;
+      }
+
+      .preview-top {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .preview-top p {
+        margin: 0;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #526071;
+      }
+
+      .preview-top h2 {
+        margin-top: 0.65rem;
+        font-size: 2rem;
+        line-height: 1;
+      }
+
+      .status-pill {
+        border-radius: 999px;
+        background: var(--signal-soft);
+        padding: 0.55rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--signal);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-top: 1.25rem;
+      }
+
+      .chip {
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: white;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.92rem;
+        font-weight: 600;
+        color: #334155;
+      }
+
+      .preview-list {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+      }
+
+      .preview-item {
+        border-radius: 1.35rem;
+        border: 1px solid var(--border);
+        background: var(--surface-ink);
+        padding: 1rem;
+      }
+
+      .preview-item-top {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .preview-item-top p {
+        margin: 0;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #526071;
+      }
+
+      .preview-item-top h3 {
+        margin-top: 0.35rem;
+        font-size: 1.08rem;
+      }
+
+      .match-pill {
+        border-radius: 999px;
+        background: white;
+        padding: 0.55rem 0.75rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+
+      .preview-item span {
+        display: block;
+        margin-top: 0.65rem;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .section {
+        padding: 1.75rem 0 0;
+      }
+
+      .section[data-deferred] {
+        content-visibility: auto;
+      }
+
+      .section-heading {
+        max-width: 46rem;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .section-heading h2 {
+        font-size: clamp(2.1rem, 4.6vw, 3.8rem);
+        line-height: 1.04;
+      }
+
+      .section-heading p {
+        margin-top: 1rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .cards {
+        display: grid;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .card {
+        padding: 1.4rem;
+      }
+
+      .card-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 1rem;
+        background: var(--accent-soft);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+
+      .card h3 {
+        margin-top: 1.1rem;
+        font-size: 1.7rem;
+        line-height: 1.05;
+      }
+
+      .card p {
+        margin-top: 0.8rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .workflow-grid {
+        display: grid;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .workflow-intro {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 1.5rem;
+      }
+
+      .workflow-intro p {
+        margin: 1rem 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .workflow-note {
+        margin-top: 1.5rem;
+        border-radius: 1.35rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--navy);
+        padding: 1.15rem;
+        color: white;
+      }
+
+      .workflow-note strong {
+        display: block;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .workflow-note span {
+        display: block;
+        margin-top: 0.75rem;
+        line-height: 1.6;
+      }
+
+      .workflow-item {
+        padding: 1.4rem;
+      }
+
+      .workflow-item p {
+        margin-top: 0.8rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .workflow-item ul {
+        margin: 1rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .workflow-item li {
+        position: relative;
+        margin-top: 0.7rem;
+        padding-left: 1.6rem;
+        color: #334155;
+        line-height: 1.6;
+      }
+
+      .workflow-item li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.45rem;
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 999px;
+        background: var(--signal);
+      }
+
+      .cta {
+        padding: 1.75rem 0 3rem;
+      }
+
+      .cta-panel {
+        overflow: hidden;
+        padding: 1.6rem;
+        background: var(--navy);
+        color: white;
+      }
+
+      .cta-grid {
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      .cta-copy p {
+        margin-top: 1rem;
+        max-width: 42rem;
+        line-height: 1.7;
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .cta-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .cta .eyebrow {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      .cta .eyebrow::before {
+        background: #ffba66;
+      }
+
+      .button-white {
+        background: white;
+        color: var(--navy);
+      }
+
+      .button-white:hover {
+        background: #fff4e9;
+      }
+
+      .button-ghost {
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+      }
+
+      @media (min-width: 760px) {
+        .hero-panel {
+          padding: 2rem;
+        }
+
+        .stats {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .cards {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .cta-panel {
+          padding: 2rem;
+        }
+      }
+
+      @media (min-width: 1040px) {
+        .hero-grid {
+          grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+          align-items: start;
+        }
+
+        .workflow-grid {
+          grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+        }
+
+        .workflow-items {
+          display: grid;
+          gap: 1rem;
+        }
+
+        .cta-grid {
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+        }
+
+        .cta-actions {
+          align-items: stretch;
+          min-width: 15rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .surface:hover,
+        .surface-strong:hover,
+        .button:hover {
+          transform: translateY(-1px);
+        }
+      }
+
+      @media (max-width: 560px) {
+        .nav-inner {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .nav-actions {
+          justify-content: stretch;
+        }
+
+        .nav-actions a {
+          flex: 1 1 auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
+    <header class="nav shell">
+      <div class="surface-strong nav-inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <span class="brand-core"></span>
+          </span>
+          <span class="brand-copy">
+            <strong>ResuBoost AI</strong>
+            <span>Job Search System</span>
+          </span>
+        </a>
+
+        <nav class="nav-actions" aria-label="Marketing navigation">
+          <a class="button button-light button-inline" href="/login">Sign in</a>
+          <a class="button button-dark button-inline" href="/register">Start free</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero shell">
+        <div class="surface hero-panel">
+          <div class="hero-grid">
+            <div>
+              <span class="eyebrow">Search-first workflow</span>
+              <h1>ResuBoost AI keeps your search brief, pipeline, and prep in one operating surface.</h1>
+              <p class="hero-copy">
+                Stop rebuilding context every time you open a new tab. Set your target roles, track real application movement, tune materials fast, and walk into interviews with the right history still attached.
+              </p>
+              <div class="hero-actions">
+                <a class="button button-dark" href="/register">Build your search system</a>
+                <a class="button button-light" href="/login">Sign in</a>
+              </div>
+
+              <div class="stats">
+                <div class="stat-card">
+                  <strong>Role briefs</strong>
+                  <span>Target roles, locations, and exclusions stay visible.</span>
+                </div>
+                <div class="stat-card">
+                  <strong>Resume tuning</strong>
+                  <span>ATS scoring, keyword gaps, and version control stay together.</span>
+                </div>
+                <div class="stat-card">
+                  <strong>Follow-through</strong>
+                  <span>Application memory and interview context stay in the same loop.</span>
+                </div>
+              </div>
+            </div>
+
+            <aside class="surface-strong preview" aria-label="Search brief preview">
+              <div class="preview-top">
+                <div>
+                  <p>Search Brief Preview</p>
+                  <h2>Frontend roles with clean signals</h2>
+                </div>
+                <span class="status-pill">Active</span>
+              </div>
+
+              <div class="chips" aria-label="Target brief">
+                <span class="chip">Senior Frontend</span>
+                <span class="chip">Product-minded teams</span>
+                <span class="chip">Remote or NYC</span>
+                <span class="chip">Avoid recruiting agencies</span>
+              </div>
+
+              <div class="preview-list">
+                <article class="preview-item">
+                  <div class="preview-item-top">
+                    <div>
+                      <p>Northstar</p>
+                      <h3>Staff Frontend Engineer</h3>
+                    </div>
+                    <span class="match-pill">92 match</span>
+                  </div>
+                  <span>Strong design-system fit, ATS keywords aligned.</span>
+                </article>
+
+                <article class="preview-item">
+                  <div class="preview-item-top">
+                    <div>
+                      <p>Common Atlas</p>
+                      <h3>Senior Product Engineer</h3>
+                    </div>
+                    <span class="match-pill">86 match</span>
+                  </div>
+                  <span>Hybrid search and analytics workflow, follow up in 3 days.</span>
+                </article>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="section shell" data-deferred>
+        <div class="section-heading">
+          <span class="eyebrow">What changes</span>
+          <h2>The search feels smaller because the context stays put.</h2>
+          <p>
+            The point is not adding more AI widgets. It is keeping your target, materials, applications, and interview prep close enough that each step improves the next one.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="surface-strong card">
+            <span class="card-mark">Focus</span>
+            <h3>Search briefs that stay focused</h3>
+            <p>Define roles, seniority, locations, and company rules once so the rest of the search starts from signal instead of noise.</p>
+          </article>
+
+          <article class="surface-strong card">
+            <span class="card-mark">Track</span>
+            <h3>A pipeline that remembers the details</h3>
+            <p>Track where each application stands, what changed last, and which companies need follow-up before momentum slips.</p>
+          </article>
+
+          <article class="surface-strong card">
+            <span class="card-mark">Tune</span>
+            <h3>Resume versions tied to the opportunity</h3>
+            <p>Keep tailored resumes, ATS feedback, and document drafts close to the jobs they are meant to win.</p>
+          </article>
+
+          <article class="surface-strong card">
+            <span class="card-mark">Prep</span>
+            <h3>Interview prep from the same context</h3>
+            <p>Prepare answers, notes, and follow-ups without losing the trail of the application that led there.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section shell" data-deferred>
+        <div class="workflow-grid">
+          <div class="surface-strong workflow-intro">
+            <div>
+              <span class="eyebrow">How it feels</span>
+              <h2 style="margin-top: 1.25rem; font-size: clamp(2rem, 4vw, 3.3rem); line-height: 1.04;">Built for the messy middle of a real search.</h2>
+              <p>Most job hunts stall when the details spread across notes, tabs, and versions. ResuBoost AI pulls that back into one rhythm.</p>
+            </div>
+            <div class="workflow-note">
+              <strong>Search system</strong>
+              <span>Keep signal visible even when the week gets noisy. Run your search from a short target list, not a pile of browser tabs and half-finished docs.</span>
+            </div>
+          </div>
+
+          <div class="workflow-items">
+            <article class="surface-strong workflow-item">
+              <h3 style="font-size: 1.7rem;">Search with intent</h3>
+              <p>Capture the job families you actually want, set company rules, and keep the week aligned around a short target list.</p>
+              <ul>
+                <li>Role priorities stay visible</li>
+                <li>Filters reduce wasted tabs</li>
+                <li>Focus shifts are easy to update</li>
+              </ul>
+            </article>
+
+            <article class="surface-strong workflow-item">
+              <h3 style="font-size: 1.7rem;">Run the application loop cleanly</h3>
+              <p>Move from bookmarked leads to applied, interview, and offer without scattering notes across docs and browser tabs.</p>
+              <ul>
+                <li>Recent movement is obvious</li>
+                <li>Follow-ups stop slipping</li>
+                <li>Pipeline health is visible at a glance</li>
+              </ul>
+            </article>
+
+            <article class="surface-strong workflow-item">
+              <h3 style="font-size: 1.7rem;">Keep materials ready</h3>
+              <p>Tune resumes, generate documents, and prepare interviews from the same source material so every step compounds.</p>
+              <ul>
+                <li>Resume versions stay organized</li>
+                <li>Documents stay on-message</li>
+                <li>Interview prep pulls from real job context</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta shell">
+        <div class="surface-strong cta-panel">
+          <div class="cta-grid">
+            <div class="cta-copy">
+              <span class="eyebrow">Ready when the search gets real</span>
+              <h2 style="margin-top: 1.25rem; font-size: clamp(2.2rem, 4.6vw, 4rem); line-height: 1.02;">Build a tighter job search loop.</h2>
+              <p>Start with the role targets you actually care about, keep the pipeline clean, and make every resume and interview round less repetitive.</p>
+            </div>
+
+            <div class="cta-actions">
+              <a class="button button-white" href="/register">Create your workspace</a>
+              <a class="button button-ghost" href="/login">Sign in</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
