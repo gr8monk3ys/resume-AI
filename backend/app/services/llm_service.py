@@ -733,7 +733,21 @@ class MockProvider(BaseLLMProvider):
         prompt_lower = prompt.lower()
 
         # Return reasonable mock responses based on prompt content
-        if "cover letter" in prompt_lower:
+        # Career coach check must come first because the career coach prompt
+        # can contain words like "resume", "tailor", "interview", etc.
+        if "career coach" in prompt_lower or "coaching mode" in prompt_lower:
+            return (
+                "That's a great question! Based on what you've shared, here's my advice: "
+                "Focus on highlighting your transferable skills and quantifiable achievements. "
+                "Many candidates underestimate the power of networking - I'd recommend reaching out "
+                "to 3-5 contacts in your target industry this week. "
+                "Your next step should be to update your LinkedIn headline to reflect your target role, "
+                "and prepare a 30-second elevator pitch. You've got this!\n\n"
+                "FOLLOWUP: How do I quantify my achievements on my resume?\n"
+                "FOLLOWUP: What networking strategies work best for my industry?\n"
+                "FOLLOWUP: Can you help me craft an elevator pitch?"
+            )
+        elif "cover letter" in prompt_lower:
             return (
                 "Dear Hiring Manager,\n\n"
                 "I am writing to express my interest in this position. "
@@ -765,18 +779,6 @@ class MockProvider(BaseLLMProvider):
                 "and proactively identified and resolved blockers.\n\n"
                 "Result: We successfully launched on time, which led to a 20% increase in user adoption "
                 "and positive feedback from stakeholders."
-            )
-        elif "career coach" in prompt_lower or "coaching mode" in prompt_lower:
-            return (
-                "That's a great question! Based on what you've shared, here's my advice: "
-                "Focus on highlighting your transferable skills and quantifiable achievements. "
-                "Many candidates underestimate the power of networking - I'd recommend reaching out "
-                "to 3-5 contacts in your target industry this week. "
-                "Your next step should be to update your LinkedIn headline to reflect your target role, "
-                "and prepare a 30-second elevator pitch. You've got this!\n\n"
-                "FOLLOWUP: How do I quantify my achievements on my resume?\n"
-                "FOLLOWUP: What networking strategies work best for my industry?\n"
-                "FOLLOWUP: Can you help me craft an elevator pitch?"
             )
         elif "keyword" in prompt_lower:
             return (

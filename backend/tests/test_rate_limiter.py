@@ -93,8 +93,8 @@ class TestTokenBucketAlgorithm:
             allowed, _ = bucket.consume(1)
             assert allowed is True
 
-        # Should be empty now
-        assert bucket.tokens == 0
+        # Should be effectively empty now (may have tiny refill from elapsed time)
+        assert bucket.tokens < 0.01
 
     def test_consume_exceeds_available_tokens(self):
         """Test that consuming more than available returns False."""

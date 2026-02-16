@@ -701,7 +701,11 @@ class TestCORSConfiguration:
         configure_cors(app)
 
         # Middleware should be added without error
-        assert len(app.middleware_stack) is not None
+        # Verify by checking the user_middleware list was populated
+        assert any(
+            "CORSMiddleware" in str(m)
+            for m in app.user_middleware
+        )
 
     def test_configure_cors_with_custom_origins(self):
         """Test CORS configuration with custom origins."""
