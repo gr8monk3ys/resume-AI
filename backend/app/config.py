@@ -143,6 +143,11 @@ class Settings(BaseSettings):
     scheduler_min_interval_minutes: int = 5
     scheduler_max_interval_minutes: int = 1440  # 24 hours
 
+    # Job Discovery / Aggregation
+    enable_job_discovery: bool = True
+    adzuna_app_id: Optional[str] = None
+    adzuna_api_key: Optional[str] = None
+
     # Sentry Error Monitoring
     # Leave SENTRY_DSN empty to disable Sentry (optional integration)
     sentry_dsn: Optional[str] = None

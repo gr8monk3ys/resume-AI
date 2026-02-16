@@ -20,6 +20,13 @@ from app.schemas.job import (
     JobStatus,
     JobUpdate,
 )
+from app.schemas.job_discovery import (
+    DiscoveredJobResponse,
+    JobSearchRequest,
+    JobSearchResponse,
+    JobSourcesResponse,
+    JobSourceStatus,
+)
 from app.schemas.job_import import (
     BulkImportResponse,
     BulkJobImportRequest,
@@ -108,6 +115,12 @@ __all__ = [
     "ImportResult",
     "ImportError",
     "JobPreviewResponse",
+    # Job Discovery
+    "JobSearchRequest",
+    "JobSearchResponse",
+    "DiscoveredJobResponse",
+    "JobSourcesResponse",
+    "JobSourceStatus",
     # Pagination
     "PaginatedResponse",
     "PaginationParams",

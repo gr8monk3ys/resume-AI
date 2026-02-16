@@ -49,6 +49,7 @@ from app.routers import (
     career_journal,
     cover_letters,
     job_alerts,
+    job_discovery,
     job_filters,
     job_import,
     jobs,
@@ -350,6 +351,7 @@ app.include_router(jobs.router)
 app.include_router(job_alerts.router)
 app.include_router(job_filters.router)
 app.include_router(job_import.router)
+app.include_router(job_discovery.router)
 app.include_router(cover_letters.router)
 app.include_router(career_journal.router)
 app.include_router(ai.router)
