@@ -1,7 +1,7 @@
 """add_salary_period_column
 
 Revision ID: c7d3e9f4a1b8
-Revises: a93ef862abc0
+Revises: b4e7f1a2c3d5
 Create Date: 2026-02-16 12:00:00.000000
 
 Adds the salary_period column to the job_applications table. This column
@@ -12,10 +12,8 @@ for existing rows.
 New column:
 - salary_period (String): "yearly", "monthly", or "hourly"
 
-NOTE: This migration branches off the same head (a93ef862abc0) as the
-b4e7f1a2c3d5 migration that adds visa_sponsorship, salary_min/max/currency,
-and remote_type. An Alembic merge head migration will be created separately
-to reconcile both branches.
+This migration follows b4e7f1a2c3d5 which adds visa_sponsorship,
+salary_min/max/currency, and remote_type.
 """
 from typing import Sequence, Union
 
@@ -25,7 +23,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'c7d3e9f4a1b8'
-down_revision: Union[str, Sequence[str], None] = 'a93ef862abc0'
+down_revision: Union[str, Sequence[str], None] = 'b4e7f1a2c3d5'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
