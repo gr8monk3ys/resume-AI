@@ -34,6 +34,23 @@ class ApplicationSource(str, Enum):
     OTHER = "Other"
 
 
+class VisaSponsorship(str, Enum):
+    """Visa sponsorship availability for a job posting."""
+
+    YES = "Yes"
+    NO = "No"
+    UNKNOWN = "Unknown"
+
+
+class RemoteType(str, Enum):
+    """Remote work arrangement type."""
+
+    REMOTE = "Remote"
+    HYBRID = "Hybrid"
+    ON_SITE = "On-site"
+    FLEXIBLE = "Flexible"
+
+
 class JobCreate(BaseModel):
     """Schema for creating a job application."""
 
@@ -65,6 +82,17 @@ class JobCreate(BaseModel):
     # Resume version used
     resume_id: Optional[int] = None
 
+    # Visa sponsorship tracking
+    visa_sponsorship: Optional[VisaSponsorship] = None
+
+    # Salary tracking
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    salary_currency: Optional[str] = "USD"
+
+    # Remote work type
+    remote_type: Optional[RemoteType] = None
+
     @field_validator("recruiter_email")
     @classmethod
     def validate_email(cls, v: Optional[str]) -> Optional[str]:
@@ -73,6 +101,14 @@ class JobCreate(BaseModel):
             # Basic email validation
             if "@" not in v or "." not in v:
                 raise ValueError("Invalid email format")
+        return v
+
+    @field_validator("salary_min", "salary_max")
+    @classmethod
+    def validate_salary(cls, v: Optional[int]) -> Optional[int]:
+        """Validate salary values are non-negative."""
+        if v is not None and v < 0:
+            raise ValueError("Salary must be non-negative")
         return v
 
 
@@ -107,6 +143,17 @@ class JobUpdate(BaseModel):
     # Resume version used
     resume_id: Optional[int] = None
 
+    # Visa sponsorship tracking
+    visa_sponsorship: Optional[VisaSponsorship] = None
+
+    # Salary tracking
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    salary_currency: Optional[str] = None
+
+    # Remote work type
+    remote_type: Optional[RemoteType] = None
+
     @field_validator("recruiter_email")
     @classmethod
     def validate_email(cls, v: Optional[str]) -> Optional[str]:
@@ -114,6 +161,14 @@ class JobUpdate(BaseModel):
         if v is not None and v != "":
             if "@" not in v or "." not in v:
                 raise ValueError("Invalid email format")
+        return v
+
+    @field_validator("salary_min", "salary_max")
+    @classmethod
+    def validate_salary(cls, v: Optional[int]) -> Optional[int]:
+        """Validate salary values are non-negative."""
+        if v is not None and v < 0:
+            raise ValueError("Salary must be non-negative")
         return v
 
 
@@ -151,6 +206,17 @@ class JobResponse(BaseModel):
 
     # Resume version used
     resume_id: Optional[int] = None
+
+    # Visa sponsorship tracking
+    visa_sponsorship: Optional[str] = None
+
+    # Salary tracking
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    salary_currency: Optional[str] = None
+
+    # Remote work type
+    remote_type: Optional[str] = None
 
     class Config:
         from_attributes = True

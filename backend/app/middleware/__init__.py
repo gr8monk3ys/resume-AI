@@ -2,14 +2,26 @@
 Security and rate limiting middleware for FastAPI.
 
 This package provides:
+- CSRF protection (double-submit cookie pattern)
 - Rate limiting with token bucket algorithm
 - Security headers (XSS, HSTS, CSP)
 - Request ID tracing
 - Input sanitization
 - Audit logging for security events
 - Brute force protection for authentication
+- Prometheus-compatible metrics collection
 """
 
+from app.middleware.csrf import (
+    CSRF_COOKIE_NAME,
+    CSRF_HEADER_NAME,
+    CSRFMiddleware,
+)
+from app.middleware.metrics import (
+    MetricsCollector,
+    MetricsMiddleware,
+    get_metrics,
+)
 from app.middleware.audit import (
     AuditEventType,
     AuditLogger,
@@ -51,6 +63,10 @@ from app.middleware.security import (
 )
 
 __all__ = [
+    # CSRF
+    "CSRF_COOKIE_NAME",
+    "CSRF_HEADER_NAME",
+    "CSRFMiddleware",
     # Auth
     "create_access_token",
     "create_refresh_token",
@@ -86,4 +102,8 @@ __all__ = [
     "AuditMiddleware",
     "get_audit_logger",
     "init_audit_logger",
+    # Metrics
+    "MetricsCollector",
+    "MetricsMiddleware",
+    "get_metrics",
 ]

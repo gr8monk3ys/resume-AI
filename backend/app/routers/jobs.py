@@ -14,7 +14,14 @@ from app.middleware.auth import get_current_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.job import JobCreate, JobResponse, JobStatus, JobUpdate
+from app.schemas.job import (
+    JobCreate,
+    JobResponse,
+    JobStatus,
+    JobUpdate,
+    RemoteType,
+    VisaSponsorship,
+)
 from app.schemas.pagination import PaginatedResponse, PaginationParams
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
@@ -24,6 +31,10 @@ router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 async def list_jobs(
     status_filter: Optional[JobStatus] = Query(None, alias="status"),
     search: Optional[str] = None,
+    visa_sponsorship: Optional[VisaSponsorship] = Query(None, description="Filter by visa sponsorship status"),
+    remote_type: Optional[RemoteType] = Query(None, description="Filter by remote work arrangement"),
+    salary_min: Optional[int] = Query(None, ge=0, description="Minimum salary floor (inclusive)"),
+    salary_max: Optional[int] = Query(None, ge=0, description="Maximum salary ceiling (inclusive)"),
     pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -34,6 +45,10 @@ async def list_jobs(
     Args:
         status_filter: Filter by job status (optional)
         search: Search term for company/position (optional)
+        visa_sponsorship: Filter by visa sponsorship availability (optional)
+        remote_type: Filter by remote work type (optional)
+        salary_min: Include jobs where salary_max >= this value (optional)
+        salary_max: Include jobs where salary_min <= this value (optional)
         pagination: Pagination parameters (page, limit)
 
     Returns:
@@ -53,6 +68,24 @@ async def list_jobs(
             (JobApplication.company.ilike(search_term))
             | (JobApplication.position.ilike(search_term))
         )
+
+    # Visa sponsorship filter
+    if visa_sponsorship:
+        query = query.filter(JobApplication.visa_sponsorship == visa_sponsorship.value)
+
+    # Remote work type filter
+    if remote_type:
+        query = query.filter(JobApplication.remote_type == remote_type.value)
+
+    # Salary range filter -- uses overlap logic so that jobs whose salary
+    # range intersects the requested range are returned.
+    if salary_min is not None:
+        # Job's max salary must be at or above the requested minimum
+        query = query.filter(JobApplication.salary_max >= salary_min)
+
+    if salary_max is not None:
+        # Job's min salary must be at or below the requested maximum
+        query = query.filter(JobApplication.salary_min <= salary_max)
 
     # Get total count efficiently using SQL COUNT
     total = query.count()
@@ -142,6 +175,18 @@ async def create_job(
         rejection_reason=job_data.rejection_reason,
         # Resume version
         resume_id=job_data.resume_id,
+        # Visa sponsorship tracking
+        visa_sponsorship=(
+            job_data.visa_sponsorship.value if job_data.visa_sponsorship else None
+        ),
+        # Salary tracking
+        salary_min=job_data.salary_min,
+        salary_max=job_data.salary_max,
+        salary_currency=job_data.salary_currency,
+        # Remote work type
+        remote_type=(
+            job_data.remote_type.value if job_data.remote_type else None
+        ),
     )
     db.add(job)
     safe_commit(db, "create job application")
@@ -189,10 +234,10 @@ async def update_job(
         raise HTTPException(status_code=404, detail="Job application not found")
 
     update_data = job_data.model_dump(exclude_unset=True)
+    # Fields stored as plain strings but received as enums
+    enum_fields = {"status", "application_source", "visa_sponsorship", "remote_type"}
     for field, value in update_data.items():
-        if field == "status" and value:
-            setattr(job, field, value.value)
-        elif field == "application_source" and value:
+        if field in enum_fields and value is not None:
             setattr(job, field, value.value)
         else:
             setattr(job, field, value)

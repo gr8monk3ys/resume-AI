@@ -126,6 +126,7 @@ class Settings(BaseSettings):
     enable_rate_limiting: bool = True
     enable_security_headers: bool = True
     enable_input_sanitization: bool = True
+    enable_csrf_protection: bool = True
     enable_audit_logging: bool = True
     enable_file_audit_logging: bool = False
     audit_database_path: str = "data/audit.db"

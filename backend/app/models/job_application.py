@@ -61,6 +61,18 @@ class JobApplication(Base):
     # Resume version used for this application
     resume_id: Column[int] = Column(Integer, ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
 
+    # Visa sponsorship tracking
+    visa_sponsorship: Column[str] = Column(String, nullable=True)  # Yes, No, Unknown
+
+    # Salary tracking
+    salary_min: Column[int] = Column(Integer, nullable=True)
+    salary_max: Column[int] = Column(Integer, nullable=True)
+    salary_currency: Column[str] = Column(String, nullable=True, default="USD")
+    salary_period: Column[str] = Column(String, nullable=True, default="yearly")  # yearly, monthly, hourly
+
+    # Remote work type
+    remote_type: Column[str] = Column(String, nullable=True)  # Remote, Hybrid, On-site, Flexible
+
     # Relationships
     profile = relationship("Profile", back_populates="job_applications")
     cover_letters = relationship("CoverLetter", back_populates="job_application")

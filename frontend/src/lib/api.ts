@@ -29,6 +29,26 @@ import type {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 /**
+ * Read the CSRF token from the csrf_token cookie.
+ *
+ * The CSRF middleware sets a non-HttpOnly cookie so that JavaScript can
+ * read the value and include it as the X-CSRF-Token header on
+ * state-changing requests (POST, PUT, PATCH, DELETE).
+ *
+ * @returns The CSRF token string, or null if not available (e.g. SSR)
+ */
+function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+/**
+ * HTTP methods that require CSRF token validation
+ */
+const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
+/**
  * Default fetch options for cookie-based authentication
  *
  * credentials: 'include' ensures HTTP-only cookies are sent with requests
@@ -353,9 +373,18 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string>),
+  }
+
+  // Include CSRF token on state-changing requests
+  const method = (options.method ?? 'GET').toUpperCase()
+  if (CSRF_METHODS.has(method)) {
+    const csrfToken = getCsrfToken()
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken
+    }
   }
 
   const { maxRetries, initialDelay, maxDelay, onRetry, ...fetchOptions } = {
@@ -491,14 +520,23 @@ function queueableRequest<T>(
 ): Promise<T> {
   // Check if we're offline
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     }
 
     // Add Authorization header if token provided (backward compatibility)
     if (token) {
-      ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    // Include CSRF token for state-changing requests
+    const queueMethod = (options.method ?? 'GET').toUpperCase()
+    if (CSRF_METHODS.has(queueMethod)) {
+      const csrfToken = getCsrfToken()
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken
+      }
     }
 
     return requestQueue.enqueue<T>(endpoint, {
@@ -743,9 +781,15 @@ export const resumesApi = {
     formData.append('file', file)
 
     try {
-      const headers: HeadersInit = token
+      const headers: Record<string, string> = token
         ? { Authorization: `Bearer ${token}` }
         : {}
+
+      // Include CSRF token for file upload (state-changing POST)
+      const csrfToken = getCsrfToken()
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken
+      }
 
       const response = await fetchWithRetry(`${API_BASE_URL}/api/resumes/upload`, {
         method: 'POST',

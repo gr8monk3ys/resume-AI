@@ -124,3 +124,28 @@ class JobMatchScoreResponse(BaseModel):
     matched_keywords: List[str]
     suggestions: List[str]
     found_skills: dict
+
+
+class ChatMessage(BaseModel):
+    """A single message in a career coaching conversation."""
+
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class CareerCoachRequest(BaseModel):
+    """Schema for career coaching chat request."""
+
+    message: str
+    conversation_history: Optional[List[ChatMessage]] = None
+    resume_content: Optional[str] = None
+    job_description: Optional[str] = None
+    coaching_mode: Optional[str] = "general"  # general, interview_prep, salary_negotiation, career_transition, resume_review
+
+
+class CareerCoachResponse(BaseModel):
+    """Schema for career coaching chat response."""
+
+    response: str
+    suggested_followups: List[str]
+    coaching_mode: str

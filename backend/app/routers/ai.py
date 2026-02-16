@@ -13,6 +13,8 @@ from app.models.user import User
 from app.schemas.ai import (
     AnswerQuestionRequest,
     AnswerQuestionResponse,
+    CareerCoachRequest,
+    CareerCoachResponse,
     GrammarCorrectionRequest,
     GrammarCorrectionResponse,
     InterviewPrepRequest,
@@ -146,6 +148,64 @@ async def interview_prep(
         return response
     except Exception as e:
         raise _handle_ai_error(e, "Failed to generate interview answer", current_user.id)
+
+
+@router.post("/career-coach", response_model=CareerCoachResponse)
+async def career_coach(
+    request: CareerCoachRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    AI Career Coach - conversational career guidance.
+
+    Provides personalized career advice including:
+    - Job search strategy
+    - Interview preparation
+    - Career transitions
+    - Salary negotiation
+    - Networking tips
+    - Professional development
+    """
+    from app.services.llm_service import get_llm_service
+
+    try:
+        llm_service = get_llm_service()
+
+        history = None
+        if request.conversation_history:
+            history = [{"role": m.role, "content": m.content} for m in request.conversation_history]
+
+        reply = await asyncio.to_thread(
+            llm_service.career_coach_respond,
+            message=request.message,
+            conversation_history=history,
+            resume=request.resume_content or "",
+            context=request.context or "general",
+        )
+
+        # Suggest related tools based on context
+        tool_suggestions = {
+            "job_search": ["resume_tailor", "job_match_score"],
+            "interview_prep": ["interview_prep", "question_answerer"],
+            "career_change": ["resume_tailor", "keyword_suggestions"],
+            "salary_negotiation": ["job_match_score"],
+            "networking": ["networking_email"],
+        }
+
+        related = tool_suggestions.get(request.context or "general", [])
+
+        suggested_actions = [
+            "Upload your resume for personalized advice",
+            "Try our Interview Prep tool for practice questions",
+        ]
+
+        return CareerCoachResponse(
+            reply=reply,
+            suggested_actions=suggested_actions,
+            related_tools=related if related else None,
+        )
+    except Exception as e:
+        raise _handle_ai_error(e, "Career coach failed", current_user.id)
 
 
 @router.post("/grammar-check", response_model=GrammarCorrectionResponse)

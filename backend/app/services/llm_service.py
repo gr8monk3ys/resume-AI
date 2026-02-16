@@ -766,6 +766,15 @@ class MockProvider(BaseLLMProvider):
                 "Result: We successfully launched on time, which led to a 20% increase in user adoption "
                 "and positive feedback from stakeholders."
             )
+        elif "career coach" in prompt_lower or "coaching context" in prompt_lower:
+            return (
+                "That's a great question! Based on what you've shared, here's my advice: "
+                "Focus on highlighting your transferable skills and quantifiable achievements. "
+                "Many candidates underestimate the power of networking - I'd recommend reaching out "
+                "to 3-5 contacts in your target industry this week. "
+                "Your next step should be to update your LinkedIn headline to reflect your target role, "
+                "and prepare a 30-second elevator pitch. You've got this!"
+            )
         elif "keyword" in prompt_lower:
             return (
                 "1. Add 'Python' to your skills section - this is a key requirement in the job description\n"
@@ -1311,6 +1320,79 @@ Keep it conversational but professional (about 200-300 words).
 
 SAMPLE ANSWER:"""
         return self._invoke_cached("generate_interview_answer", prompt)
+
+    # -------------------------------------------------------------------------
+    # Career Coaching
+    # -------------------------------------------------------------------------
+
+    def career_coach_respond(
+        self,
+        message: str,
+        conversation_history: list[dict] | None = None,
+        resume: str = "",
+        context: str = "general",
+    ) -> str:
+        """
+        Generate a career coaching response.
+
+        Acts as a knowledgeable career advisor that can help with:
+        - Job search strategy
+        - Resume and cover letter advice
+        - Interview preparation
+        - Career transitions
+        - Salary negotiation
+        - Professional development
+        - Networking strategies
+
+        Args:
+            message: The user's current message.
+            conversation_history: Previous messages in the conversation.
+            resume: Optional resume content for personalized advice.
+            context: The coaching context.
+
+        Returns:
+            A helpful career coaching response.
+        """
+        history_text = ""
+        if conversation_history:
+            for msg in conversation_history[-10:]:  # Limit to last 10 messages
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                history_text += f"\n{role.upper()}: {content}"
+
+        resume_section = f"\n\nCANDIDATE'S RESUME:\n{resume}" if resume else ""
+
+        context_instructions = {
+            "job_search": "Focus on job search strategies, application tips, and market insights.",
+            "interview_prep": "Focus on interview techniques, common questions, and confidence building.",
+            "career_change": "Focus on transferable skills, pivot strategies, and skill gap analysis.",
+            "salary_negotiation": "Focus on negotiation tactics, market rates, and value articulation.",
+            "networking": "Focus on building professional connections, outreach, and personal branding.",
+            "general": "Provide general career guidance based on the user's question.",
+        }
+
+        context_instruction = context_instructions.get(context, context_instructions["general"])
+
+        prompt = f"""You are an expert career coach and job search advisor with years of experience \
+helping professionals advance their careers. You are warm, encouraging, and practical.
+
+COACHING CONTEXT: {context}
+INSTRUCTION: {context_instruction}
+{resume_section}
+
+CONVERSATION HISTORY:{history_text}
+
+USER'S MESSAGE: {message}
+
+Provide a helpful, actionable response. Be specific with advice and include:
+1. Direct answer to the user's question
+2. 1-2 actionable next steps they can take
+3. Encouragement and motivation
+
+Keep your response conversational and under 300 words. Do not use bullet points excessively.
+
+CAREER COACH RESPONSE:"""
+        return self._invoke_cached("career_coach_respond", prompt)
 
 
 # Singleton instance

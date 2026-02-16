@@ -25,6 +25,7 @@ from sentry_sdk.integrations.starlette import StarletteIntegration
 from app.config import get_settings
 from app.database import init_db
 from app.middleware.audit import AuditMiddleware, init_audit_logger
+from app.middleware.metrics import MetricsMiddleware, get_metrics
 from app.middleware.rate_limiter import (
     DEFAULT_RATE_LIMITS,
     RateLimitConfig,
@@ -33,6 +34,7 @@ from app.middleware.rate_limiter import (
     RateLimitType,
     create_rate_limit_storage,
 )
+from app.middleware.csrf import CSRFMiddleware
 from app.middleware.security import (
     InputSanitizationMiddleware,
     RequestIDMiddleware,
@@ -253,6 +255,16 @@ if settings.enable_security_headers:
         hsts_max_age=settings.hsts_max_age,
     )
 
+# CSRF protection middleware (double-submit cookie pattern)
+# Defense-in-depth on top of SameSite=Lax cookies and CORS
+if settings.enable_csrf_protection:
+    app.add_middleware(
+        CSRFMiddleware,
+        cookie_secure=settings.cookie_secure,
+        cookie_samesite=settings.cookie_samesite,
+        cookie_domain=settings.cookie_domain,
+    )
+
 # Input sanitization middleware
 if settings.enable_input_sanitization:
     app.add_middleware(
@@ -324,6 +336,10 @@ if sentry_enabled:
         include_ip_address=False,  # Privacy: don't include IP by default
     )
 
+# Prometheus-compatible metrics middleware
+# Added last so it is the outermost middleware and captures full request lifecycle
+app.add_middleware(MetricsMiddleware)
+
 
 # Include routers
 app.include_router(auth.router)
@@ -356,6 +372,23 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "sentry_enabled": sentry_enabled}
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    """Prometheus-compatible metrics endpoint.
+
+    Returns all collected metrics in Prometheus text exposition format
+    (version 0.0.4). This endpoint is excluded from metrics collection
+    itself to avoid recursive instrumentation.
+    """
+    from fastapi.responses import PlainTextResponse
+
+    metrics = get_metrics()
+    return PlainTextResponse(
+        content=metrics.format_prometheus(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 # Debug endpoints - only available when DEBUG=True
