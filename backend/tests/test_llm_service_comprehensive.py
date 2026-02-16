@@ -644,27 +644,26 @@ class TestLLMServiceAllMethods:
         result = service.career_coach_respond(
             message="Help me with my career",
             resume="John Doe\nSoftware Engineer\n5 years experience",
-            context="job_search",
+            coaching_mode="job_search",
         )
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_career_coach_all_contexts(self, service):
-        """Test career coaching with all available contexts."""
-        contexts = [
+    def test_career_coach_all_coaching_modes(self, service):
+        """Test career coaching with all available coaching modes."""
+        modes = [
             "general",
-            "job_search",
             "interview_prep",
-            "career_change",
             "salary_negotiation",
-            "networking",
+            "career_transition",
+            "resume_review",
         ]
-        for ctx in contexts:
+        for mode in modes:
             result = service.career_coach_respond(
                 message="Help me",
-                context=ctx,
+                coaching_mode=mode,
             )
-            assert len(result) > 0, f"Empty result for context={ctx}"
+            assert len(result) > 0, f"Empty result for coaching_mode={mode}"
 
 
 # =============================================================================

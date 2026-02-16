@@ -66,7 +66,7 @@ class TestCareerCoachService:
         """Test career coaching with job search context."""
         result = service.career_coach_respond(
             message="How do I find Python developer jobs?",
-            context="job_search",
+            coaching_mode="job_search",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -75,7 +75,7 @@ class TestCareerCoachService:
         """Test career coaching with interview prep context."""
         result = service.career_coach_respond(
             message="How do I prepare for a technical interview?",
-            context="interview_prep",
+            coaching_mode="interview_prep",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -84,7 +84,7 @@ class TestCareerCoachService:
         """Test career coaching with career change context."""
         result = service.career_coach_respond(
             message="I want to switch from marketing to software engineering",
-            context="career_change",
+            coaching_mode="career_change",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -93,7 +93,7 @@ class TestCareerCoachService:
         """Test career coaching with salary negotiation context."""
         result = service.career_coach_respond(
             message="How do I negotiate a higher salary?",
-            context="salary_negotiation",
+            coaching_mode="salary_negotiation",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -102,7 +102,7 @@ class TestCareerCoachService:
         """Test career coaching with networking context."""
         result = service.career_coach_respond(
             message="How do I network effectively?",
-            context="networking",
+            coaching_mode="networking",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -123,7 +123,7 @@ class TestCareerCoachService:
         result = service.career_coach_respond(
             message="What roles should I target?",
             resume=resume,
-            context="job_search",
+            coaching_mode="job_search",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -144,7 +144,7 @@ class TestCareerCoachService:
         result = service.career_coach_respond(
             message="What programming language should I learn first?",
             conversation_history=history,
-            context="career_change",
+            coaching_mode="career_change",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -185,7 +185,7 @@ class TestCareerCoachService:
         """Test that unknown context falls back to general instructions."""
         result = service.career_coach_respond(
             message="Help me with my career",
-            context="unknown_context",
+            coaching_mode="unknown_context",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -368,7 +368,7 @@ class TestCareerCoachResponseFormat:
         """Test that response includes actionable suggestions."""
         result = service.career_coach_respond(
             message="How can I get more job interviews?",
-            context="job_search",
+            coaching_mode="job_search",
         )
         # The mock response should contain actionable content
         assert isinstance(result, str)
@@ -426,7 +426,7 @@ class TestCareerCoachCaching:
         """Test that different contexts produce separate cache entries."""
         service = LLMService(provider_name="mock", enable_cache=True)
 
-        service.career_coach_respond(message="Help me", context="job_search")
-        service.career_coach_respond(message="Help me", context="interview_prep")
+        service.career_coach_respond(message="Help me", coaching_mode="job_search")
+        service.career_coach_respond(message="Help me", coaching_mode="interview_prep")
 
         assert service.provider.call_count == 2
