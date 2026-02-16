@@ -71,6 +71,8 @@ export type JobStatus =
   | 'Offer'
   | 'Rejected';
 
+export type SalaryPeriod = 'yearly' | 'monthly' | 'hourly';
+
 export interface JobApplication {
   id: number;
   profile_id: number;
@@ -85,6 +87,10 @@ export interface JobApplication {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string | null;
+  salary_period: SalaryPeriod | null;
 }
 
 export interface JobStats {

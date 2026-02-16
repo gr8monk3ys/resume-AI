@@ -20,6 +20,7 @@ from app.schemas.job import (
     JobStatus,
     JobUpdate,
     RemoteType,
+    SalaryPeriod,
     VisaSponsorship,
 )
 from app.schemas.pagination import PaginatedResponse, PaginationParams
@@ -183,6 +184,9 @@ async def create_job(
         salary_min=job_data.salary_min,
         salary_max=job_data.salary_max,
         salary_currency=job_data.salary_currency,
+        salary_period=(
+            job_data.salary_period.value if job_data.salary_period else None
+        ),
         # Remote work type
         remote_type=(
             job_data.remote_type.value if job_data.remote_type else None
@@ -235,7 +239,7 @@ async def update_job(
 
     update_data = job_data.model_dump(exclude_unset=True)
     # Fields stored as plain strings but received as enums
-    enum_fields = {"status", "application_source", "visa_sponsorship", "remote_type"}
+    enum_fields = {"status", "application_source", "visa_sponsorship", "remote_type", "salary_period"}
     for field, value in update_data.items():
         if field in enum_fields and value is not None:
             setattr(job, field, value.value)

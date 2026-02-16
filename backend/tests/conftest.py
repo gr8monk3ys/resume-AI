@@ -26,6 +26,7 @@ os.environ["ENABLE_RATE_LIMITING"] = "false"
 os.environ["ENABLE_AUDIT_LOGGING"] = "false"
 os.environ["ENABLE_SECURITY_HEADERS"] = "false"
 os.environ["ENABLE_INPUT_SANITIZATION"] = "false"
+os.environ["ENABLE_CSRF_PROTECTION"] = "false"
 os.environ["ENABLE_SCHEDULER"] = "false"
 os.environ["DEBUG"] = "false"
 

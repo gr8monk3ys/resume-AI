@@ -2,6 +2,7 @@ import { AuthProvider } from '@/components/AuthProvider'
 import { Navbar } from '@/components/Navbar'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { RootErrorBoundary } from '@/components/RootErrorBoundary'
+import { ToastProvider } from '@/components/ui/Toast'
 import { WebVitalsLoader } from '@/components/WebVitalsLoader'
 
 import type { Metadata } from 'next'
@@ -30,11 +31,13 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <RootErrorBoundary>
           <AuthProvider>
-            <OfflineIndicator position="top" />
-            <div className="min-h-screen flex flex-col">
-              <Navbar />
-              <main className="flex-1">{children}</main>
-            </div>
+            <ToastProvider>
+              <OfflineIndicator position="top" />
+              <div className="min-h-screen flex flex-col">
+                <Navbar />
+                <main className="flex-1">{children}</main>
+              </div>
+            </ToastProvider>
           </AuthProvider>
         </RootErrorBoundary>
 

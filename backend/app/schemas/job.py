@@ -42,6 +42,14 @@ class VisaSponsorship(str, Enum):
     UNKNOWN = "Unknown"
 
 
+class SalaryPeriod(str, Enum):
+    """Salary period for compensation tracking."""
+
+    YEARLY = "yearly"
+    MONTHLY = "monthly"
+    HOURLY = "hourly"
+
+
 class RemoteType(str, Enum):
     """Remote work arrangement type."""
 
@@ -89,6 +97,7 @@ class JobCreate(BaseModel):
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
     salary_currency: Optional[str] = "USD"
+    salary_period: Optional[SalaryPeriod] = SalaryPeriod.YEARLY
 
     # Remote work type
     remote_type: Optional[RemoteType] = None
@@ -150,6 +159,7 @@ class JobUpdate(BaseModel):
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
     salary_currency: Optional[str] = None
+    salary_period: Optional[SalaryPeriod] = None
 
     # Remote work type
     remote_type: Optional[RemoteType] = None
@@ -214,6 +224,7 @@ class JobResponse(BaseModel):
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
     salary_currency: Optional[str] = None
+    salary_period: Optional[str] = None
 
     # Remote work type
     remote_type: Optional[str] = None

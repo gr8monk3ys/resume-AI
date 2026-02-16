@@ -338,7 +338,8 @@ if sentry_enabled:
 
 # Prometheus-compatible metrics middleware
 # Added last so it is the outermost middleware and captures full request lifecycle
-app.add_middleware(MetricsMiddleware)
+if settings.enable_metrics:
+    app.add_middleware(MetricsMiddleware)
 
 
 # Include routers
@@ -374,21 +375,24 @@ async def health_check():
     return {"status": "healthy", "sentry_enabled": sentry_enabled}
 
 
-@app.get("/metrics")
-async def prometheus_metrics():
-    """Prometheus-compatible metrics endpoint.
+# Prometheus-compatible metrics endpoint (only when metrics are enabled)
+if settings.enable_metrics:
 
-    Returns all collected metrics in Prometheus text exposition format
-    (version 0.0.4). This endpoint is excluded from metrics collection
-    itself to avoid recursive instrumentation.
-    """
-    from fastapi.responses import PlainTextResponse
+    @app.get("/metrics")
+    async def prometheus_metrics():
+        """Prometheus-compatible metrics endpoint.
 
-    metrics = get_metrics()
-    return PlainTextResponse(
-        content=metrics.format_prometheus(),
-        media_type="text/plain; version=0.0.4; charset=utf-8",
-    )
+        Returns all collected metrics in Prometheus text exposition format
+        (version 0.0.4). This endpoint is excluded from metrics collection
+        itself to avoid recursive instrumentation.
+        """
+        from fastapi.responses import PlainTextResponse
+
+        metrics = get_metrics()
+        return PlainTextResponse(
+            content=metrics.format_prometheus(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
 
 # Debug endpoints - only available when DEBUG=True

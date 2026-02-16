@@ -766,14 +766,17 @@ class MockProvider(BaseLLMProvider):
                 "Result: We successfully launched on time, which led to a 20% increase in user adoption "
                 "and positive feedback from stakeholders."
             )
-        elif "career coach" in prompt_lower or "coaching context" in prompt_lower:
+        elif "career coach" in prompt_lower or "coaching mode" in prompt_lower:
             return (
                 "That's a great question! Based on what you've shared, here's my advice: "
                 "Focus on highlighting your transferable skills and quantifiable achievements. "
                 "Many candidates underestimate the power of networking - I'd recommend reaching out "
                 "to 3-5 contacts in your target industry this week. "
                 "Your next step should be to update your LinkedIn headline to reflect your target role, "
-                "and prepare a 30-second elevator pitch. You've got this!"
+                "and prepare a 30-second elevator pitch. You've got this!\n\n"
+                "FOLLOWUP: How do I quantify my achievements on my resume?\n"
+                "FOLLOWUP: What networking strategies work best for my industry?\n"
+                "FOLLOWUP: Can you help me craft an elevator pitch?"
             )
         elif "keyword" in prompt_lower:
             return (
@@ -1330,7 +1333,8 @@ SAMPLE ANSWER:"""
         message: str,
         conversation_history: list[dict] | None = None,
         resume: str = "",
-        context: str = "general",
+        job_description: str = "",
+        coaching_mode: str = "general",
     ) -> str:
         """
         Generate a career coaching response.
@@ -1348,7 +1352,9 @@ SAMPLE ANSWER:"""
             message: The user's current message.
             conversation_history: Previous messages in the conversation.
             resume: Optional resume content for personalized advice.
-            context: The coaching context.
+            job_description: Optional job description for targeted advice.
+            coaching_mode: The coaching mode (general, interview_prep,
+                          salary_negotiation, career_transition, resume_review).
 
         Returns:
             A helpful career coaching response.
@@ -1361,24 +1367,52 @@ SAMPLE ANSWER:"""
                 history_text += f"\n{role.upper()}: {content}"
 
         resume_section = f"\n\nCANDIDATE'S RESUME:\n{resume}" if resume else ""
+        job_section = f"\n\nTARGET JOB DESCRIPTION:\n{job_description}" if job_description else ""
 
-        context_instructions = {
-            "job_search": "Focus on job search strategies, application tips, and market insights.",
-            "interview_prep": "Focus on interview techniques, common questions, and confidence building.",
-            "career_change": "Focus on transferable skills, pivot strategies, and skill gap analysis.",
-            "salary_negotiation": "Focus on negotiation tactics, market rates, and value articulation.",
-            "networking": "Focus on building professional connections, outreach, and personal branding.",
-            "general": "Provide general career guidance based on the user's question.",
+        mode_system_prompts = {
+            "interview_prep": (
+                "You are an expert interview coach. Focus on interview techniques, "
+                "common questions for the target role, body language tips, STAR method "
+                "responses, and confidence building. Help the candidate rehearse answers "
+                "and anticipate tough questions. If a job description is provided, tailor "
+                "your advice to that specific role."
+            ),
+            "salary_negotiation": (
+                "You are an expert salary negotiation coach. Focus on negotiation tactics, "
+                "researching market rates, articulating your value proposition, handling "
+                "counter-offers, and negotiating beyond base salary (benefits, equity, PTO, "
+                "remote work). Provide specific scripts and phrases the candidate can use."
+            ),
+            "career_transition": (
+                "You are an expert career transition advisor. Focus on identifying transferable "
+                "skills, bridging skill gaps, crafting a compelling pivot narrative, networking "
+                "into a new industry, and managing the psychological aspects of career change. "
+                "Help the candidate see how their existing experience applies to their target field."
+            ),
+            "resume_review": (
+                "You are an expert resume reviewer and ATS optimization specialist. Focus on "
+                "resume structure, bullet point impact, keyword optimization, quantifying "
+                "achievements, formatting best practices, and tailoring content to specific "
+                "roles. Provide concrete rewrite suggestions when possible."
+            ),
+            "general": (
+                "You are an expert career coach and job search advisor with years of experience "
+                "helping professionals advance their careers. Provide well-rounded guidance on "
+                "job search strategy, professional development, networking, personal branding, "
+                "and any other career-related topics."
+            ),
         }
 
-        context_instruction = context_instructions.get(context, context_instructions["general"])
+        system_prompt = mode_system_prompts.get(
+            coaching_mode, mode_system_prompts["general"]
+        )
 
-        prompt = f"""You are an expert career coach and job search advisor with years of experience \
-helping professionals advance their careers. You are warm, encouraging, and practical.
+        prompt = f"""{system_prompt}
 
-COACHING CONTEXT: {context}
-INSTRUCTION: {context_instruction}
-{resume_section}
+You are warm, encouraging, and practical. Give specific, actionable advice.
+
+COACHING MODE: {coaching_mode}
+{resume_section}{job_section}
 
 CONVERSATION HISTORY:{history_text}
 
@@ -1389,7 +1423,10 @@ Provide a helpful, actionable response. Be specific with advice and include:
 2. 1-2 actionable next steps they can take
 3. Encouragement and motivation
 
-Keep your response conversational and under 300 words. Do not use bullet points excessively.
+At the end of your response, suggest 2-3 follow-up questions the user might want to ask next.
+Format these on separate lines prefixed with "FOLLOWUP:" (e.g., "FOLLOWUP: How do I quantify my achievements?").
+
+Keep your main response conversational and under 300 words. Do not use bullet points excessively.
 
 CAREER COACH RESPONSE:"""
         return self._invoke_cached("career_coach_respond", prompt)

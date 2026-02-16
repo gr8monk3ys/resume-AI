@@ -1,3 +1,12 @@
+import { toast } from '@/components/ui/Toast'
+import {
+  getErrorMessage,
+  isAuthError,
+  isRateLimitError,
+  isServerError,
+  isNetworkError as isNetworkErr,
+} from '@/lib/errorMessages'
+
 import {
   fetchWithRetry,
   NetworkError,
@@ -88,6 +97,60 @@ export class ApiError extends Error {
     this.isOffline = options?.isOffline ?? false
     this.isRetryExhausted = options?.isRetryExhausted ?? false
   }
+}
+
+/**
+ * Global error handler that shows toast notifications for common API errors.
+ *
+ * This function inspects the error and displays an appropriate toast message.
+ * For 401 errors it also redirects to the login page. The function does NOT
+ * suppress the error -- callers should still handle or re-throw as needed.
+ *
+ * @param error - The error to handle
+ * @param options - Optional configuration
+ * @param options.silent - If true, suppress the toast notification
+ */
+export function handleApiError(
+  error: unknown,
+  options?: { silent?: boolean }
+): void {
+  if (options?.silent) {
+    return
+  }
+
+  const message = getErrorMessage(error)
+
+  if (isAuthError(error)) {
+    toast.error(message)
+    // Redirect to login on 401 (session expired)
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      // Don't redirect if already on login or register pages
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        sessionStorage.setItem('redirectAfterLogin', currentPath)
+        window.location.href = '/login'
+      }
+    }
+    return
+  }
+
+  if (isRateLimitError(error)) {
+    toast.warning(message)
+    return
+  }
+
+  if (isServerError(error)) {
+    toast.error(message)
+    return
+  }
+
+  if (isNetworkErr(error)) {
+    toast.warning(message)
+    return
+  }
+
+  // All other errors
+  toast.error(message)
 }
 
 /**
@@ -428,31 +491,35 @@ async function apiRequest<T>(
     return JSON.parse(text) as T
   } catch (error) {
     if (error instanceof ApiError) {
+      handleApiError(error)
       throw error
     }
 
+    let apiError: ApiError
+
     if (error instanceof NetworkError) {
-      throw new ApiError(
+      apiError = new ApiError(
         'Unable to connect to server. Please check your internet connection.',
         0,
         undefined,
         { isOffline: true }
       )
-    }
-
-    if (error instanceof RetryExhaustedError) {
-      throw new ApiError(
+    } else if (error instanceof RetryExhaustedError) {
+      apiError = new ApiError(
         'Server is temporarily unavailable. Please try again later.',
         503,
         { attempts: error.attempts },
         { isRetryExhausted: true }
       )
+    } else {
+      apiError = new ApiError(
+        error instanceof Error ? error.message : 'Network error',
+        0
+      )
     }
 
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
-      0
-    )
+    handleApiError(apiError)
+    throw apiError
   }
 }
 

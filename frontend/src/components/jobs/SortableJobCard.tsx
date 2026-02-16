@@ -10,6 +10,7 @@ import {
   GripVertical,
   Ban,
   Star,
+  DollarSign,
 } from 'lucide-react'
 import { memo, useMemo } from 'react'
 
@@ -50,6 +51,47 @@ export const SortableJobCard = memo(function SortableJobCard({
   // Memoize expensive match score calculation
   const matchScore = useMemo(() => calculateMatchScore(job), [job])
   const statusColors = getStatusColor(job.status)
+
+  // Format salary range for compact display
+  const salaryDisplay = useMemo(() => {
+    if (!job.salary_min && !job.salary_max) return null
+
+    const currency = job.salary_currency || 'USD'
+    const period = job.salary_period || 'yearly'
+
+    const formatAmount = (amount: number): string => {
+      if (amount >= 1000) {
+        const k = amount / 1000
+        return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`
+      }
+      return amount.toLocaleString()
+    }
+
+    const periodLabel: Record<string, string> = {
+      yearly: '/yr',
+      monthly: '/mo',
+      hourly: '/hr',
+    }
+
+    const symbol: Record<string, string> = {
+      USD: '$',
+      EUR: '\u20AC',
+      GBP: '\u00A3',
+      CAD: 'C$',
+      AUD: 'A$',
+    }
+
+    const sym = symbol[currency] || currency + ' '
+    const suffix = periodLabel[period] || ''
+
+    if (job.salary_min && job.salary_max) {
+      return `${sym}${formatAmount(job.salary_min)}\u2013${sym}${formatAmount(job.salary_max)}${suffix}`
+    }
+    if (job.salary_min) {
+      return `${sym}${formatAmount(job.salary_min)}+${suffix}`
+    }
+    return `Up to ${sym}${formatAmount(job.salary_max!)}${suffix}`
+  }, [job.salary_min, job.salary_max, job.salary_currency, job.salary_period])
 
   // Find matching company filter
   const matchedCompanyFilter = useMemo(() => {
@@ -143,6 +185,13 @@ export const SortableJobCard = memo(function SortableJobCard({
             <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {job.location}
+            </p>
+          )}
+
+          {salaryDisplay && (
+            <p className="text-xs text-green-600 font-medium mt-1 flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />
+              {salaryDisplay}
             </p>
           )}
 

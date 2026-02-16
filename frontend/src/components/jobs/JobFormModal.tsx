@@ -5,7 +5,7 @@ import { useState } from 'react'
 
 import { JOB_STATUSES } from '@/lib/jobs'
 
-import type { JobApplication, JobStatus } from '@/types'
+import type { JobApplication, JobStatus, SalaryPeriod } from '@/types'
 
 export interface JobFormModalProps {
   job?: JobApplication | null
@@ -32,6 +32,10 @@ export function JobFormModal({
     location: job?.location || '',
     job_url: job?.job_url || '',
     notes: job?.notes || '',
+    salary_min: job?.salary_min ?? ('' as number | ''),
+    salary_max: job?.salary_max ?? ('' as number | ''),
+    salary_currency: job?.salary_currency || 'USD',
+    salary_period: (job?.salary_period || 'yearly') as SalaryPeriod,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -39,7 +43,16 @@ export function JobFormModal({
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      onSave(formData)
+      const salaryMin = formData.salary_min === '' ? null : Number(formData.salary_min)
+      const salaryMax = formData.salary_max === '' ? null : Number(formData.salary_max)
+      const hasSalary = salaryMin !== null || salaryMax !== null
+      onSave({
+        ...formData,
+        salary_min: salaryMin,
+        salary_max: salaryMax,
+        salary_currency: hasSalary ? formData.salary_currency : null,
+        salary_period: hasSalary ? formData.salary_period : null,
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -180,6 +193,76 @@ export function JobFormModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="https://..."
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Salary Range
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <input
+                  id="salary_min"
+                  type="number"
+                  min="0"
+                  value={formData.salary_min}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      salary_min: e.target.value === '' ? '' : Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Min"
+                />
+              </div>
+              <div>
+                <input
+                  id="salary_max"
+                  type="number"
+                  min="0"
+                  value={formData.salary_max}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      salary_max: e.target.value === '' ? '' : Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Max"
+                />
+              </div>
+              <div>
+                <select
+                  id="salary_currency"
+                  value={formData.salary_currency}
+                  onChange={(e) =>
+                    setFormData({ ...formData, salary_currency: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                  <option value="CAD">CAD</option>
+                  <option value="AUD">AUD</option>
+                </select>
+              </div>
+              <div>
+                <select
+                  id="salary_period"
+                  value={formData.salary_period}
+                  onChange={(e) =>
+                    setFormData({ ...formData, salary_period: e.target.value as SalaryPeriod })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="yearly">Yearly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="hourly">Hourly</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div>

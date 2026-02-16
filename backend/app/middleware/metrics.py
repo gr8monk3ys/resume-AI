@@ -6,11 +6,11 @@ requiring the prometheus_client library. All metric collection
 is thread-safe via threading.Lock.
 
 Tracked metrics:
-- http_requests_total (counter) - by method, path, status_code
-- http_request_duration_seconds (histogram) - by method, path
-- http_requests_in_progress (gauge) - current concurrent requests
+- http_requests_total (counter) - by method, endpoint, status_code
+- http_request_duration_seconds (histogram) - by method, endpoint
+- http_requests_in_progress (gauge) - by method
 - llm_requests_total (counter) - by provider, operation, status
-- llm_request_duration_seconds (histogram) - by provider
+- llm_request_duration_seconds (histogram) - by provider, operation
 - active_users_total (gauge) - users active in last 15 min
 - rate_limit_hits_total (counter) - by limit_type
 """
@@ -96,6 +96,51 @@ class MetricsCollector:
             self._gauges[name][key] -= value
 
     # ------------------------------------------------------------------
+    # Convenience helpers for domain-specific metrics
+    # ------------------------------------------------------------------
+
+    def record_llm_request(
+        self,
+        provider: str,
+        operation: str,
+        status: str,
+        duration: float,
+    ) -> None:
+        """Record an LLM provider request with count and duration.
+
+        Args:
+            provider: LLM provider name (e.g. openai, anthropic, google, ollama).
+            operation: Operation type (e.g. tailor_resume, generate_cover_letter).
+            status: Outcome status (e.g. success, error, timeout).
+            duration: Request duration in seconds.
+        """
+        self.inc_counter(
+            "llm_requests_total",
+            {"provider": provider, "operation": operation, "status": status},
+        )
+        self.observe_histogram(
+            "llm_request_duration_seconds",
+            {"provider": provider, "operation": operation},
+            duration,
+        )
+
+    def set_active_users(self, count: int) -> None:
+        """Set the active users gauge.
+
+        Args:
+            count: Number of users active in the observation window.
+        """
+        self.set_gauge("active_users_total", {}, float(count))
+
+    def record_rate_limit_hit(self, limit_type: str) -> None:
+        """Increment the rate limit hit counter.
+
+        Args:
+            limit_type: The type of rate limit triggered (e.g. general, auth, ai).
+        """
+        self.inc_counter("rate_limit_hits_total", {"limit_type": limit_type})
+
+    # ------------------------------------------------------------------
     # Prometheus text exposition
     # ------------------------------------------------------------------
 
@@ -147,7 +192,10 @@ class MetricsCollector:
                 lines.append(f"# TYPE {name} gauge")
                 for labels, value in sorted(label_values.items()):
                     label_str = self._format_labels(labels)
-                    lines.append(f"{name}{{{label_str}}} {value}")
+                    if label_str:
+                        lines.append(f"{name}{{{label_str}}} {value}")
+                    else:
+                        lines.append(f"{name} {value}")
                 lines.append("")
 
             # -- Histograms (sum, count, and bucket quantiles) --
@@ -217,6 +265,11 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
     Tracks request count, duration, and in-progress gauge for every request
     except a configurable set of excluded paths (e.g. /metrics itself).
+
+    Label conventions match the specification:
+    - http_requests_total: method, endpoint, status_code
+    - http_request_duration_seconds: method, endpoint
+    - http_requests_in_progress: method
     """
 
     EXCLUDED_PATHS = {"/metrics", "/health", "/docs", "/openapi.json", "/redoc"}
@@ -230,13 +283,10 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Collapse numeric path segments to avoid high-cardinality labels
-        normalized_path = self._normalize_path(path)
+        normalized_endpoint = self._normalize_path(path)
 
         metrics = get_metrics()
-        metrics.inc_gauge(
-            "http_requests_in_progress",
-            {"method": method, "path": normalized_path},
-        )
+        metrics.inc_gauge("http_requests_in_progress", {"method": method})
 
         start_time = time.time()
         try:
@@ -246,11 +296,15 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
             metrics.inc_counter(
                 "http_requests_total",
-                {"method": method, "path": normalized_path, "status": status_code},
+                {
+                    "method": method,
+                    "endpoint": normalized_endpoint,
+                    "status_code": status_code,
+                },
             )
             metrics.observe_histogram(
                 "http_request_duration_seconds",
-                {"method": method, "path": normalized_path},
+                {"method": method, "endpoint": normalized_endpoint},
                 duration,
             )
             return response
@@ -258,19 +312,20 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             duration = time.time() - start_time
             metrics.inc_counter(
                 "http_requests_total",
-                {"method": method, "path": normalized_path, "status": "500"},
+                {
+                    "method": method,
+                    "endpoint": normalized_endpoint,
+                    "status_code": "500",
+                },
             )
             metrics.observe_histogram(
                 "http_request_duration_seconds",
-                {"method": method, "path": normalized_path},
+                {"method": method, "endpoint": normalized_endpoint},
                 duration,
             )
             raise
         finally:
-            metrics.dec_gauge(
-                "http_requests_in_progress",
-                {"method": method, "path": normalized_path},
-            )
+            metrics.dec_gauge("http_requests_in_progress", {"method": method})
 
     @staticmethod
     def _normalize_path(path: str) -> str:

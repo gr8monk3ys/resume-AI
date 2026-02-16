@@ -367,6 +367,7 @@ def configure_cors(
             "Authorization",
             "X-Request-ID",
             "X-Requested-With",
+            "X-CSRF-Token",
         ]
 
     # Default exposed headers

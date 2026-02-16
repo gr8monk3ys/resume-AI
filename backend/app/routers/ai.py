@@ -158,52 +158,104 @@ async def career_coach(
     """
     AI Career Coach - conversational career guidance.
 
-    Provides personalized career advice including:
-    - Job search strategy
-    - Interview preparation
-    - Career transitions
-    - Salary negotiation
-    - Networking tips
-    - Professional development
+    Provides personalized career advice based on coaching mode:
+    - **general**: Well-rounded career guidance and job search strategy
+    - **interview_prep**: Interview techniques, common questions, STAR method coaching
+    - **salary_negotiation**: Negotiation tactics, market rate research, value articulation
+    - **career_transition**: Transferable skills, pivot narratives, skill gap analysis
+    - **resume_review**: Resume structure, ATS optimization, bullet point impact
+
+    Supports multi-turn conversations via conversation_history. Optionally accepts
+    resume content and job description for personalized, targeted advice.
     """
     from app.services.llm_service import get_llm_service
+
+    valid_modes = {
+        "general",
+        "interview_prep",
+        "salary_negotiation",
+        "career_transition",
+        "resume_review",
+    }
+    coaching_mode = request.coaching_mode or "general"
+    if coaching_mode not in valid_modes:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid coaching_mode '{coaching_mode}'. Must be one of: {', '.join(sorted(valid_modes))}",
+        )
 
     try:
         llm_service = get_llm_service()
 
         history = None
         if request.conversation_history:
-            history = [{"role": m.role, "content": m.content} for m in request.conversation_history]
+            history = [
+                {"role": m.role, "content": m.content}
+                for m in request.conversation_history
+            ]
 
-        reply = await asyncio.to_thread(
+        raw_response = await asyncio.to_thread(
             llm_service.career_coach_respond,
             message=request.message,
             conversation_history=history,
             resume=request.resume_content or "",
-            context=request.context or "general",
+            job_description=request.job_description or "",
+            coaching_mode=coaching_mode,
         )
 
-        # Suggest related tools based on context
-        tool_suggestions = {
-            "job_search": ["resume_tailor", "job_match_score"],
-            "interview_prep": ["interview_prep", "question_answerer"],
-            "career_change": ["resume_tailor", "keyword_suggestions"],
-            "salary_negotiation": ["job_match_score"],
-            "networking": ["networking_email"],
-        }
+        # Parse follow-up suggestions from the LLM response.
+        # The prompt asks the LLM to emit lines prefixed with "FOLLOWUP:".
+        response_lines = []
+        followups = []
+        for line in raw_response.split("\n"):
+            stripped = line.strip()
+            if stripped.upper().startswith("FOLLOWUP:"):
+                followup_text = stripped[len("FOLLOWUP:"):].strip()
+                if followup_text:
+                    followups.append(followup_text)
+            else:
+                response_lines.append(line)
 
-        related = tool_suggestions.get(request.context or "general", [])
+        coach_response = "\n".join(response_lines).strip()
 
-        suggested_actions = [
-            "Upload your resume for personalized advice",
-            "Try our Interview Prep tool for practice questions",
-        ]
+        # Provide sensible defaults when the LLM does not emit follow-ups
+        if not followups:
+            default_followups = {
+                "general": [
+                    "What skills should I focus on developing next?",
+                    "How can I make my application stand out?",
+                    "What networking strategies do you recommend?",
+                ],
+                "interview_prep": [
+                    "What are common behavioral questions for this role?",
+                    "How should I answer 'Tell me about yourself'?",
+                    "What questions should I ask the interviewer?",
+                ],
+                "salary_negotiation": [
+                    "How do I research the market rate for my role?",
+                    "What if they ask for my current salary?",
+                    "How do I negotiate beyond base salary?",
+                ],
+                "career_transition": [
+                    "How do I identify my transferable skills?",
+                    "Should I go back to school or get certified?",
+                    "How do I network into a new industry?",
+                ],
+                "resume_review": [
+                    "How do I quantify my achievements?",
+                    "What keywords should I include for ATS?",
+                    "How long should my resume be?",
+                ],
+            }
+            followups = default_followups.get(coaching_mode, default_followups["general"])
 
         return CareerCoachResponse(
-            reply=reply,
-            suggested_actions=suggested_actions,
-            related_tools=related if related else None,
+            response=coach_response,
+            suggested_followups=followups,
+            coaching_mode=coaching_mode,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise _handle_ai_error(e, "Career coach failed", current_user.id)
 
