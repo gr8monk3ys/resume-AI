@@ -3,9 +3,10 @@ Tests for the AI career coach endpoint and service method.
 
 Tests:
 - Career coach endpoint (/api/ai/career-coach)
-- Different coaching contexts/modes
+- Different coaching modes (general, interview_prep, salary_negotiation,
+  career_transition, resume_review)
 - Conversation history handling
-- Resume context for personalized advice
+- Resume and job description context for personalized advice
 - Error handling
 - Response format validation
 - LLM service career_coach_respond method integration
@@ -53,8 +54,8 @@ class TestCareerCoachService:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_career_coaching_with_general_context(self, service):
-        """Test career coaching with general context."""
+    def test_career_coaching_with_general_mode(self, service):
+        """Test career coaching with general coaching mode."""
         result = service.career_coach_respond(
             message="What should I focus on in my career?",
             coaching_mode="general",
@@ -62,17 +63,8 @@ class TestCareerCoachService:
         assert isinstance(result, str)
         assert len(result) > 50
 
-    def test_career_coaching_with_job_search_context(self, service):
-        """Test career coaching with job search context."""
-        result = service.career_coach_respond(
-            message="How do I find Python developer jobs?",
-            coaching_mode="job_search",
-        )
-        assert isinstance(result, str)
-        assert len(result) > 0
-
-    def test_career_coaching_with_interview_prep_context(self, service):
-        """Test career coaching with interview prep context."""
+    def test_career_coaching_with_interview_prep_mode(self, service):
+        """Test career coaching with interview prep mode."""
         result = service.career_coach_respond(
             message="How do I prepare for a technical interview?",
             coaching_mode="interview_prep",
@@ -80,17 +72,17 @@ class TestCareerCoachService:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_career_coaching_with_career_change_context(self, service):
-        """Test career coaching with career change context."""
+    def test_career_coaching_with_career_transition_mode(self, service):
+        """Test career coaching with career transition mode."""
         result = service.career_coach_respond(
             message="I want to switch from marketing to software engineering",
-            coaching_mode="career_change",
+            coaching_mode="career_transition",
         )
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_career_coaching_with_salary_negotiation_context(self, service):
-        """Test career coaching with salary negotiation context."""
+    def test_career_coaching_with_salary_negotiation_mode(self, service):
+        """Test career coaching with salary negotiation mode."""
         result = service.career_coach_respond(
             message="How do I negotiate a higher salary?",
             coaching_mode="salary_negotiation",
@@ -98,11 +90,11 @@ class TestCareerCoachService:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_career_coaching_with_networking_context(self, service):
-        """Test career coaching with networking context."""
+    def test_career_coaching_with_resume_review_mode(self, service):
+        """Test career coaching with resume review mode."""
         result = service.career_coach_respond(
-            message="How do I network effectively?",
-            coaching_mode="networking",
+            message="Can you review my resume structure?",
+            coaching_mode="resume_review",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -123,7 +115,18 @@ class TestCareerCoachService:
         result = service.career_coach_respond(
             message="What roles should I target?",
             resume=resume,
-            coaching_mode="job_search",
+            coaching_mode="general",
+        )
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_career_coaching_with_job_description(self, service):
+        """Test career coaching with job description for targeted advice."""
+        result = service.career_coach_respond(
+            message="Am I a good fit for this role?",
+            resume="John Doe, 5 years Python, AWS certified",
+            job_description="Senior Python Developer, 3+ years, AWS required",
+            coaching_mode="interview_prep",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -144,7 +147,7 @@ class TestCareerCoachService:
         result = service.career_coach_respond(
             message="What programming language should I learn first?",
             conversation_history=history,
-            coaching_mode="career_change",
+            coaching_mode="career_transition",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -181,11 +184,11 @@ class TestCareerCoachService:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    def test_career_coaching_unknown_context_uses_general(self, service):
-        """Test that unknown context falls back to general instructions."""
+    def test_career_coaching_unknown_mode_uses_general(self, service):
+        """Test that unknown coaching mode falls back to general instructions."""
         result = service.career_coach_respond(
             message="Help me with my career",
-            coaching_mode="unknown_context",
+            coaching_mode="unknown_mode",
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -198,6 +201,14 @@ class TestCareerCoachService:
         )
         assert isinstance(result, str)
         assert len(result) > 0
+
+    def test_career_coaching_followup_lines_in_mock(self, service):
+        """Test that mock response includes FOLLOWUP lines for parsing."""
+        result = service.career_coach_respond(
+            message="What should I do next?",
+            coaching_mode="general",
+        )
+        assert "FOLLOWUP:" in result
 
 
 # =============================================================================
@@ -233,29 +244,52 @@ class TestCareerCoachEndpoint:
         )
         assert response.status_code == 200
         data = response.json()
-        # The response should contain either 'reply' or 'response' field
-        assert "reply" in data or "response" in data
+        assert "response" in data
+        assert "suggested_followups" in data
+        assert "coaching_mode" in data
+        assert data["coaching_mode"] == "general"
+        assert isinstance(data["suggested_followups"], list)
+        assert len(data["suggested_followups"]) > 0
 
     @pytest.mark.asyncio
-    async def test_career_coach_with_context(
+    async def test_career_coach_with_coaching_mode(
         self,
         client: AsyncClient,
         db: Session,
         test_user: User,
         auth_headers: dict,
     ):
-        """Test career coach with a specific context."""
+        """Test career coach with a specific coaching mode."""
         response = await client.post(
             "/api/ai/career-coach",
             json={
                 "message": "How do I prepare for interviews?",
-                "context": "interview_prep",
+                "coaching_mode": "interview_prep",
             },
             headers=auth_headers,
         )
-        # May return 200 or 422 depending on schema field name (context vs coaching_mode)
-        # Both are acceptable since the router and schema are being reconciled
-        assert response.status_code in (200, 422)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coaching_mode"] == "interview_prep"
+
+    @pytest.mark.asyncio
+    async def test_career_coach_invalid_coaching_mode(
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Test that invalid coaching mode returns 422."""
+        response = await client.post(
+            "/api/ai/career-coach",
+            json={
+                "message": "Help me",
+                "coaching_mode": "invalid_mode",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_career_coach_with_resume(
@@ -275,6 +309,29 @@ class TestCareerCoachEndpoint:
             headers=auth_headers,
         )
         assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_career_coach_with_job_description(
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Test career coach with job description for targeted advice."""
+        response = await client.post(
+            "/api/ai/career-coach",
+            json={
+                "message": "Am I qualified for this role?",
+                "resume_content": "John Doe, Python developer, 5 years",
+                "job_description": "Senior Python Developer, AWS required",
+                "coaching_mode": "interview_prep",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coaching_mode"] == "interview_prep"
 
     @pytest.mark.asyncio
     async def test_career_coach_with_conversation_history(
@@ -331,6 +388,58 @@ class TestCareerCoachEndpoint:
         )
         assert response.status_code == 422
 
+    @pytest.mark.asyncio
+    async def test_career_coach_response_has_followups(
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Test that career coach response always includes suggested followups."""
+        response = await client.post(
+            "/api/ai/career-coach",
+            json={
+                "message": "Help me with my career",
+                "coaching_mode": "salary_negotiation",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "suggested_followups" in data
+        assert isinstance(data["suggested_followups"], list)
+        assert len(data["suggested_followups"]) >= 2
+
+    @pytest.mark.asyncio
+    async def test_career_coach_all_modes(
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        auth_headers: dict,
+    ):
+        """Test that all valid coaching modes are accepted."""
+        modes = [
+            "general",
+            "interview_prep",
+            "salary_negotiation",
+            "career_transition",
+            "resume_review",
+        ]
+        for mode in modes:
+            response = await client.post(
+                "/api/ai/career-coach",
+                json={
+                    "message": f"Help me with {mode}",
+                    "coaching_mode": mode,
+                },
+                headers=auth_headers,
+            )
+            assert response.status_code == 200, f"Mode {mode} returned {response.status_code}"
+            data = response.json()
+            assert data["coaching_mode"] == mode
+
 
 # =============================================================================
 # Response Format Tests
@@ -368,7 +477,7 @@ class TestCareerCoachResponseFormat:
         """Test that response includes actionable suggestions."""
         result = service.career_coach_respond(
             message="How can I get more job interviews?",
-            coaching_mode="job_search",
+            coaching_mode="general",
         )
         # The mock response should contain actionable content
         assert isinstance(result, str)
@@ -422,11 +531,13 @@ class TestCareerCoachCaching:
 
         assert service.provider.call_count == 2
 
-    def test_different_contexts_bypass_cache(self):
-        """Test that different contexts produce separate cache entries."""
+    def test_different_modes_bypass_cache(self):
+        """Test that different coaching modes produce separate cache entries."""
         service = LLMService(provider_name="mock", enable_cache=True)
 
-        service.career_coach_respond(message="Help me", coaching_mode="job_search")
-        service.career_coach_respond(message="Help me", coaching_mode="interview_prep")
+        service.career_coach_respond(message="Help me", coaching_mode="general")
+        service.career_coach_respond(
+            message="Help me", coaching_mode="interview_prep"
+        )
 
         assert service.provider.call_count == 2
