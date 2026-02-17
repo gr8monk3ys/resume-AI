@@ -39,6 +39,7 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
 DEFAULT_EXEMPT_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
+    "/api/auth/webhook",
     "/health",
     "/docs",
     "/openapi.json",

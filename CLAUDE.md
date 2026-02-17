@@ -8,6 +8,15 @@ ResuBoost AI is a job search toolkit with multi-provider LLM support, designed a
 
 **Supported LLM Providers:** OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
 
+### Production Infrastructure
+- **Database:** Neon PostgreSQL (with SQLite fallback for development)
+- **Cache/Rate Limiting:** Redis (Upstash/Railway)
+- **Authentication:** Clerk (replaces custom JWT)
+- **Error Monitoring:** Sentry (backend + frontend)
+- **Logging:** Structured JSON logging
+- **Frontend Deployment:** Vercel
+- **Backend Deployment:** Railway
+
 ## Commands
 
 ```bash
@@ -40,8 +49,9 @@ npm run typecheck   # TypeScript type checking
 - **Backend:** FastAPI REST API (Python 3.10+)
 - **Frontend:** Next.js 15 with React 19 and Tailwind CSS 4
 - **Database:** SQLite with SQLAlchemy ORM (PostgreSQL ready)
-- **Authentication:** JWT tokens (access + refresh)
+- **Authentication:** Clerk (external auth provider with webhook sync)
 - **AI Integration:** Multi-provider LLM via LangChain
+- **Caching:** Redis via cache_service.py (LLM responses, profiles, job stats)
 
 ### Request Flow
 1. Frontend makes API request to `/api/*` endpoints
@@ -155,47 +165,33 @@ result = await service.tailor_resume(resume_content, job_description)
 
 ## Environment Variables
 
-**LLM Provider Configuration** (choose one):
+See `.env.example` for a comprehensive example with all settings.
+
+**Required for Production:**
 ```bash
-# Provider selection (default: openai)
-LLM_PROVIDER=openai  # Options: openai, anthropic, google, ollama, mock
+# Database - Neon PostgreSQL
+DATABASE_URL=postgresql://user:password@ep-xxx.region.aws.neon.tech/resuboost?sslmode=require
 
-# OpenAI
-OPENAI_API_KEY=your_key_here
-OPENAI_MODEL=gpt-4o-mini
+# Redis - Upstash or Railway
+REDIS_URL=redis://default:password@xxx.upstash.io:6379
 
-# Anthropic (Claude)
-ANTHROPIC_API_KEY=your_key_here
-ANTHROPIC_MODEL=claude-3-haiku-20240307
+# Authentication - Clerk
+CLERK_SECRET_KEY=sk_live_xxxxx
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_xxxxx
+CLERK_WEBHOOK_SECRET=whsec_xxxxx
 
-# Google (Gemini)
-GOOGLE_API_KEY=your_key_here
-GOOGLE_MODEL=gemini-1.5-flash
+# Error Monitoring - Sentry
+SENTRY_DSN=https://xxxxx@o123.ingest.sentry.io/123
+NEXT_PUBLIC_SENTRY_DSN=https://xxxxx@o123.ingest.sentry.io/123
 
-# Ollama (local)
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+# LLM Provider
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-xxxxx
+
+# Security
+SECRET_KEY=generate-a-secure-random-key
+CORS_ORIGINS=["https://your-app.vercel.app"]
 ```
-
-**Security Settings:**
-```bash
-SECRET_KEY=your-secret-key-change-in-production
-DATABASE_URL=sqlite:///./data/resume_ai.db
-CORS_ORIGINS=["http://localhost:3000"]
-DEBUG=false
-```
-
-**Rate Limiting:**
-```bash
-RATE_LIMIT_REQUESTS=100
-RATE_LIMIT_WINDOW=60
-AUTH_RATE_LIMIT_REQUESTS=5
-AUTH_LOCKOUT_THRESHOLD=10
-```
-
-## Demo Account
-
-Username: `demo` | Password: `demo123`
 
 ## Testing
 

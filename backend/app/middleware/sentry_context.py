@@ -14,7 +14,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from app.config import get_settings
-from app.middleware.auth import decode_token, get_token_from_request
+from app.middleware.auth import get_token_from_request, verify_clerk_token
 
 logger = logging.getLogger(__name__)
 
@@ -93,19 +93,24 @@ class SentryUserContextMiddleware(BaseHTTPMiddleware):
             if not token:
                 return None
 
-            # Decode token without hitting the database
-            token_data = decode_token(token, expected_type="access", validate_type=True)
-            if not token_data or not token_data.user_id:
+            # Decode the Clerk JWT without hitting the database.
+            # verify_clerk_token raises HTTPException on failure, so we
+            # catch broadly to avoid breaking the request pipeline.
+            payload = verify_clerk_token(token)
+            clerk_user_id = payload.get("sub")
+            if not clerk_user_id:
                 return None
 
-            # Build user context
+            # Build user context using Clerk's user ID
             user_context = {
-                "id": str(token_data.user_id),
+                "id": clerk_user_id,
             }
 
-            # Optionally include username
-            if self.include_username and token_data.username:
-                user_context["username"] = token_data.username
+            # Optionally include username from JWT claims
+            if self.include_username:
+                username = payload.get("username") or payload.get("name")
+                if username:
+                    user_context["username"] = username
 
             # Optionally include IP address (consider privacy implications)
             if self.include_ip_address:

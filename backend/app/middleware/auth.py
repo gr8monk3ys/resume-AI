@@ -1,173 +1,143 @@
 """
-JWT Authentication middleware and utilities.
+Clerk JWT authentication middleware.
 
+Verifies Clerk-issued JWTs using JWKS (JSON Web Key Set) for signature validation.
 Supports both:
-1. HTTP-only cookie-based authentication (preferred for browser clients)
-2. Bearer token authentication (for API clients)
+1. __session cookie (Clerk's default cookie name for browser clients)
+2. Authorization: Bearer <token> header (for API clients)
 
-Cookie-based auth provides XSS protection by preventing JavaScript access to tokens.
+User records are auto-provisioned on first authentication if they do not yet
+exist in the local database (just-in-time provisioning).
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
+import httpx
+import jwt as pyjwt
+from cachetools import TTLCache
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt import PyJWKClient, PyJWKClientError
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import TokenData
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Bearer token scheme - optional so we can fall back to cookies
+bearer_scheme = HTTPBearer(auto_error=False)
 
-# OAuth2 scheme - used for Authorization header fallback
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+# Cache for Clerk JWKS keys (1-hour TTL)
+_jwks_cache: TTLCache = TTLCache(maxsize=4, ttl=3600)
 
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+# Cache key constant
+_JWKS_CACHE_KEY = "clerk_jwks_client"
 
 
-def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
-
-
-def create_access_token(
-    data: dict, expires_delta: Optional[timedelta] = None, token_version: int = 0
-) -> str:
+def _get_clerk_issuer() -> str:
     """
-    Create a JWT access token.
+    Derive the Clerk issuer URL from the publishable key or secret key.
 
-    Args:
-        data: Token payload data (must include 'sub' for user_id)
-        expires_delta: Optional custom expiration time
-        token_version: User's current token version for invalidation support
+    Clerk publishable keys follow the format: pk_test_<base64-encoded-instance>.
+    The issuer is https://<instance-slug>.clerk.accounts.dev for dev
+    or https://<custom-domain> for production.
 
-    Returns:
-        Encoded JWT access token string
+    Falls back to constructing from CLERK_SECRET_KEY if publishable key is not set.
     """
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-    )
-    to_encode.update({"exp": expire, "type": "access", "token_version": token_version})
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    publishable_key = getattr(settings, "clerk_publishable_key", None) or ""
+
+    if publishable_key.startswith("pk_"):
+        # Extract the instance identifier from the publishable key.
+        # Clerk publishable keys embed the frontend API domain in base64 after the prefix.
+        import base64
+
+        try:
+            # Strip prefix like "pk_test_" or "pk_live_"
+            parts = publishable_key.split("_", 2)
+            if len(parts) == 3:
+                encoded = parts[2]
+                # Add padding if necessary
+                padding = 4 - len(encoded) % 4
+                if padding != 4:
+                    encoded += "=" * padding
+                decoded = base64.b64decode(encoded).decode("utf-8").rstrip("$")
+                return f"https://{decoded}"
+        except Exception:
+            logger.warning("Failed to decode Clerk publishable key, using fallback issuer.")
+
+    # Fallback: if CLERK_INSTANCE_ID or similar is set, use it
+    clerk_instance = getattr(settings, "clerk_instance_id", None)
+    if clerk_instance:
+        return f"https://{clerk_instance}.clerk.accounts.dev"
+
+    # Last resort: do not enforce issuer validation
+    return ""
 
 
-def create_refresh_token(data: dict, token_version: int = 0) -> str:
+def _get_jwks_url() -> str:
     """
-    Create a JWT refresh token.
+    Build the Clerk JWKS endpoint URL.
 
-    Args:
-        data: Token payload data (must include 'sub' for user_id)
-        token_version: User's current token version for invalidation support
-
-    Returns:
-        Encoded JWT refresh token string
+    Uses the issuer URL derived from the publishable key, or falls back to
+    the Clerk Frontend API URL pattern.
     """
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
-    to_encode.update({"exp": expire, "type": "refresh", "token_version": token_version})
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    issuer = _get_clerk_issuer()
+    if issuer:
+        return f"{issuer}/.well-known/jwks.json"
+
+    # Fallback if we cannot determine the issuer
+    # Clerk's JWKS can also be fetched from the Backend API
+    return ""
 
 
-def decode_token(
-    token: str, expected_type: str = "access", validate_type: bool = True
-) -> Optional[TokenData]:
+def _get_jwks_client() -> Optional[PyJWKClient]:
     """
-    Decode and validate a JWT token.
+    Get or create a cached PyJWKClient for Clerk's JWKS endpoint.
 
-    Args:
-        token: The JWT token string to decode
-        expected_type: Expected token type ("access" or "refresh")
-        validate_type: Whether to validate the token type claim
-
-    Returns:
-        TokenData if valid, None if invalid
-
-    Security:
-        - Validates token signature and expiration
-        - Validates token type to prevent refresh tokens from being used as access tokens
-        - Extracts token_version for invalidation checking
+    The client is cached for 1 hour to avoid repeated HTTP requests.
+    Returns None if the JWKS URL cannot be determined.
     """
+    cached = _jwks_cache.get(_JWKS_CACHE_KEY)
+    if cached is not None:
+        return cached
+
+    jwks_url = _get_jwks_url()
+    if not jwks_url:
+        return None
+
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        # 'sub' is stored as string per JWT spec, convert to int for user_id
-        sub = payload.get("sub")
-        if sub is None:
-            return None
-        user_id: int = int(sub)
-        username: str = str(payload.get("username", ""))
-        token_type: str = str(payload.get("type", ""))
-        token_version: int = int(payload.get("token_version", 0))
-
-        # Validate token type to prevent token confusion attacks
-        # This prevents refresh tokens from being used for API authentication
-        if validate_type and token_type != expected_type:
-            return None
-
-        return TokenData(
-            user_id=user_id,
-            username=username,
-            token_type=token_type,
-            token_version=token_version,
-        )
-    except JWTError:
+        client = PyJWKClient(jwks_url, cache_keys=True, lifespan=3600)
+        _jwks_cache[_JWKS_CACHE_KEY] = client
+        return client
+    except Exception as e:
+        logger.error("Failed to create JWKS client for Clerk: %s", e)
         return None
 
 
-def get_token_from_request(request: Request, bearer_token: Optional[str] = None) -> Optional[str]:
+def verify_clerk_token(token: str) -> Dict[str, Any]:
     """
-    Extract access token from request.
+    Verify and decode a Clerk-issued JWT.
 
-    Priority order (for security, prefer cookies for browser requests):
-    1. HTTP-only cookie (preferred - prevents XSS token theft)
-    2. Authorization Bearer header (fallback for API clients)
+    Attempts verification in the following order:
+    1. JWKS-based RS256 verification (preferred, fetches public keys from Clerk)
+    2. Fallback to CLERK_SECRET_KEY HS256 verification if JWKS is unavailable
 
     Args:
-        request: The FastAPI request object
-        bearer_token: Token from OAuth2PasswordBearer dependency (Authorization header)
+        token: The raw JWT string from the request.
 
     Returns:
-        The access token string or None if not found
-    """
-    # First, try to get token from HTTP-only cookie (most secure for browsers)
-    cookie_token = request.cookies.get("access_token")
-    if cookie_token:
-        return cookie_token
+        The decoded JWT payload dictionary containing at minimum:
+        - sub: The Clerk user ID (e.g., "user_2abc123")
+        - iat, exp: Issued-at and expiration timestamps
 
-    # Fall back to Authorization header for API clients
-    if bearer_token:
-        return bearer_token
-
-    return None
-
-
-async def get_current_user(
-    request: Request,
-    bearer_token: Optional[str] = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
-) -> User:
-    """
-    Get the current authenticated user from JWT token.
-
-    Supports both cookie-based and header-based authentication:
-    1. HTTP-only cookie (preferred for browser clients - XSS protection)
-    2. Authorization Bearer header (for API clients)
-
-    Security validations:
-        - Token signature and expiration
-        - Token type must be "access" (rejects refresh tokens)
-        - Token version must match user's current token_version (for invalidation)
+    Raises:
+        HTTPException 401: If the token is invalid, expired, or verification fails.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -175,33 +145,197 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # Get token from cookie or header
-    token = get_token_from_request(request, bearer_token)
+    # Attempt 1: JWKS-based verification (RS256)
+    jwks_client = _get_jwks_client()
+    if jwks_client is not None:
+        try:
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            issuer = _get_clerk_issuer()
+
+            decode_options = {}
+            decode_kwargs: Dict[str, Any] = {
+                "jwt": token,
+                "key": signing_key.key,
+                "algorithms": ["RS256"],
+                "options": decode_options,
+            }
+
+            # Only validate issuer if we know it
+            if issuer:
+                decode_kwargs["issuer"] = issuer
+
+            payload = pyjwt.decode(**decode_kwargs)
+
+            if not payload.get("sub"):
+                raise credentials_exception
+
+            return payload
+
+        except pyjwt.ExpiredSignatureError:
+            logger.debug("Clerk JWT has expired (JWKS verification).")
+            raise credentials_exception
+        except pyjwt.InvalidTokenError as e:
+            logger.debug("Clerk JWT invalid (JWKS verification): %s", e)
+            # Fall through to secret key verification
+        except PyJWKClientError as e:
+            logger.warning("JWKS client error, falling back to secret key: %s", e)
+            # Fall through to secret key verification
+
+    # Attempt 2: Fallback to CLERK_SECRET_KEY (HS256)
+    clerk_secret = getattr(settings, "clerk_secret_key", None) or ""
+    if not clerk_secret:
+        logger.error(
+            "No JWKS available and CLERK_SECRET_KEY is not configured. "
+            "Cannot verify Clerk tokens."
+        )
+        raise credentials_exception
+
+    try:
+        # Clerk secret keys start with "sk_" -- use the PEM key if available,
+        # otherwise use the raw secret for HS256 verification.
+        payload = pyjwt.decode(
+            token,
+            clerk_secret,
+            algorithms=["HS256"],
+            options={"verify_aud": False},
+        )
+
+        if not payload.get("sub"):
+            raise credentials_exception
+
+        return payload
+
+    except pyjwt.ExpiredSignatureError:
+        logger.debug("Clerk JWT has expired (secret key verification).")
+        raise credentials_exception
+    except pyjwt.InvalidTokenError as e:
+        logger.debug("Clerk JWT invalid (secret key verification): %s", e)
+        raise credentials_exception
+
+
+def get_token_from_request(
+    request: Request,
+    bearer: Optional[HTTPAuthorizationCredentials] = None,
+) -> Optional[str]:
+    """
+    Extract the Clerk session token from the request.
+
+    Priority order:
+    1. __session cookie (Clerk's default browser cookie)
+    2. Authorization: Bearer header (for API clients)
+
+    Args:
+        request: The FastAPI request object.
+        bearer: Credentials extracted by HTTPBearer dependency (if present).
+
+    Returns:
+        The JWT token string, or None if not found.
+    """
+    # Clerk sets session tokens in a cookie named __session
+    cookie_token = request.cookies.get("__session")
+    if cookie_token:
+        return cookie_token
+
+    # Fallback to Authorization header
+    if bearer and bearer.credentials:
+        return bearer.credentials
+
+    # Also check raw Authorization header in case HTTPBearer didn't parse it
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:].strip()
+
+    return None
+
+
+async def get_current_user(
+    request: Request,
+    bearer: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Get the current authenticated user from a Clerk JWT.
+
+    Extracts the token from the __session cookie or Authorization header,
+    verifies it against Clerk's JWKS, then looks up or auto-creates the
+    corresponding local User record.
+
+    Just-in-time provisioning:
+        If a valid Clerk token is presented but no local User record exists,
+        a basic user record is created automatically. The Clerk webhook
+        (user.created) will fill in additional details asynchronously.
+
+    Raises:
+        HTTPException 401: If no valid token is present.
+        HTTPException 403: If the user account is deactivated.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    token = get_token_from_request(request, bearer)
     if not token:
         raise credentials_exception
 
-    # Decode token with type validation (must be access token, not refresh)
-    token_data = decode_token(token, expected_type="access", validate_type=True)
-    if token_data is None:
+    # Verify the Clerk-issued JWT
+    payload = verify_clerk_token(token)
+    clerk_user_id = payload.get("sub")
+    if not clerk_user_id:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == token_data.user_id).first()
+    # Look up the user by clerk_id
+    user = db.query(User).filter(User.clerk_id == clerk_user_id).first()
+
     if user is None:
-        raise credentials_exception
+        # Just-in-time provisioning: create a basic user record.
+        # The webhook handler will update with full profile data later.
+        email = payload.get("email", f"{clerk_user_id}@clerk.placeholder")
+        username = payload.get("username") or clerk_user_id
+
+        # Check if username or email already exists (from a different auth method)
+        existing_by_email = db.query(User).filter(User.email == email).first()
+        if existing_by_email:
+            # Link existing user to Clerk
+            existing_by_email.clerk_id = clerk_user_id
+            db.commit()
+            db.refresh(existing_by_email)
+            user = existing_by_email
+        else:
+            # Ensure username uniqueness
+            base_username = username
+            counter = 1
+            while db.query(User).filter(User.username == username).first():
+                username = f"{base_username}_{counter}"
+                counter += 1
+
+            user = User(
+                clerk_id=clerk_user_id,
+                username=username,
+                email=email,
+                full_name=payload.get("name"),
+                is_active=True,
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+            logger.info(
+                "Auto-provisioned local user record for Clerk user %s (local id=%d)",
+                clerk_user_id,
+                user.id,
+            )
 
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User account is deactivated"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is deactivated",
         )
 
-    # Validate token version to ensure token hasn't been invalidated
-    # This catches tokens issued before a password change
-    if token_data.token_version != user.token_version:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been invalidated. Please log in again.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Update last login timestamp
+    user.last_login = datetime.now(timezone.utc)
+    db.commit()
 
     return user
 

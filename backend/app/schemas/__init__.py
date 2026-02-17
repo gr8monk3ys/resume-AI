@@ -72,20 +72,18 @@ from app.schemas.scheduler import (
     TriggerJobResponse,
 )
 from app.schemas.user import (
-    Token,
-    TokenData,
-    UserCreate,
-    UserLogin,
+    ClerkWebhookEvent,
+    ClerkWebhookUserData,
+    UserFromClerk,
     UserResponse,
 )
 
 __all__ = [
-    # User
-    "UserCreate",
+    # User (Clerk-based)
+    "ClerkWebhookEvent",
+    "ClerkWebhookUserData",
+    "UserFromClerk",
     "UserResponse",
-    "UserLogin",
-    "Token",
-    "TokenData",
     # Profile
     "ProfileCreate",
     "ProfileUpdate",

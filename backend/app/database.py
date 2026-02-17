@@ -1,8 +1,14 @@
 """
 Database configuration and session management.
 
-Supports both SQLite (development) and PostgreSQL (production).
+Supports both SQLite (development) and PostgreSQL/Neon (production).
 PostgreSQL includes connection pooling and async support for enterprise scale.
+
+Neon PostgreSQL Notes:
+- Use ?sslmode=require in the connection string
+- Keep pool_size low (Neon's pooler has its own connection limits)
+- Set pool_recycle to 300s (Neon closes idle connections after ~5 minutes)
+- pool_pre_ping=True is essential to detect stale connections
 """
 
 import os

@@ -15,7 +15,6 @@ import {
 } from './fetchWithRetry'
 
 import type {
-  AuthTokens,
   User,
   Resume,
   ATSAnalysis,
@@ -49,7 +48,22 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 function getCsrfToken(): string | null {
   if (typeof document === 'undefined') return null
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : null
+  return match?.[1] ? decodeURIComponent(match[1]) : null
+}
+
+/**
+ * Read the Clerk session token from the __session cookie.
+ *
+ * Clerk stores the JWT session token in a cookie named `__session`
+ * which is accessible from JavaScript. This allows non-React code
+ * (such as this API module) to obtain the token without hooks.
+ *
+ * @returns The Clerk session JWT, or null if not available
+ */
+function getClerkSessionToken(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;\s*)__session=([^;]*)/)
+  return match?.[1] ? decodeURIComponent(match[1]) : null
 }
 
 /**
@@ -60,8 +74,8 @@ const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 /**
  * Default fetch options for cookie-based authentication
  *
- * credentials: 'include' ensures HTTP-only cookies are sent with requests
- * This is essential for the cookie-based authentication to work across origins
+ * credentials: 'include' ensures cookies are sent with requests
+ * This is essential for cross-origin cookie delivery
  */
 const DEFAULT_FETCH_OPTIONS: RequestInit = {
   credentials: 'include',
@@ -421,24 +435,32 @@ const defaultRetryOptions: FetchRetryOptions = {
 }
 
 /**
- * Make an API request with proper error handling and retry logic
+ * Make an API request with proper error handling and retry logic.
  *
- * All requests include credentials: 'include' to send HTTP-only cookies
- * for cookie-based authentication.
+ * Authentication tokens are obtained from Clerk's __session cookie
+ * automatically. An explicit token parameter can override this.
  *
  * @param endpoint - API endpoint (without base URL)
  * @param options - Fetch options including retry configuration
+ * @param token - Optional explicit Bearer token (overrides cookie lookup)
  * @returns Response data
  */
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit & FetchRetryOptions = {}
+  options: RequestInit & FetchRetryOptions = {},
+  token?: string
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
+  }
+
+  // Resolve the Bearer token: explicit parameter > Clerk __session cookie
+  const bearerToken = token ?? getClerkSessionToken()
+  if (bearerToken) {
+    headers['Authorization'] = `Bearer ${bearerToken}`
   }
 
   // Include CSRF token on state-changing requests
@@ -524,14 +546,13 @@ async function apiRequest<T>(
 }
 
 /**
- * Make an authenticated API request with retry logic
+ * Make an authenticated API request with retry logic.
  *
- * With HTTP-only cookie authentication, the token parameter is optional
- * and kept for backward compatibility. Cookies are automatically sent
- * with credentials: 'include'.
+ * Token is resolved automatically from Clerk's session cookie.
+ * An explicit token can be passed for backward compatibility.
  *
  * @param endpoint - API endpoint
- * @param token - Access token (optional, deprecated - use cookies instead)
+ * @param token - Access token (optional - Clerk session cookie is used by default)
  * @param options - Fetch options
  * @returns Response data
  */
@@ -540,44 +561,15 @@ async function authenticatedRequest<T>(
   token?: string,
   options: RequestInit & FetchRetryOptions = {}
 ): Promise<T> {
-  // If token is provided (for backward compatibility), include it in header
-  // The server will prefer cookies but fall back to Authorization header
-  const headers: HeadersInit = token
-    ? {
-        ...options.headers,
-        Authorization: `Bearer ${token}`,
-      }
-    : options.headers ?? {}
-
-  return apiRequest<T>(endpoint, {
-    ...options,
-    headers,
-  })
+  return apiRequest<T>(endpoint, options, token)
 }
 
 /**
- * Make an authenticated API request using cookie-based auth only
- *
- * This is the preferred method for browser-based requests.
- * Cookies are automatically sent with credentials: 'include'.
+ * Make an authenticated request that can be queued when offline.
+ * Use for non-critical requests that can be retried later.
  *
  * @param endpoint - API endpoint
- * @param options - Fetch options
- * @returns Response data
- */
-async function cookieAuthRequest<T>(
-  endpoint: string,
-  options: RequestInit & FetchRetryOptions = {}
-): Promise<T> {
-  return apiRequest<T>(endpoint, options)
-}
-
-/**
- * Make an authenticated request that can be queued when offline
- * Use for non-critical requests that can be retried later
- *
- * @param endpoint - API endpoint
- * @param token - Access token (optional, deprecated - use cookies instead)
+ * @param token - Access token (optional)
  * @param options - Fetch options
  */
 function queueableRequest<T>(
@@ -592,9 +584,10 @@ function queueableRequest<T>(
       ...(options.headers as Record<string, string>),
     }
 
-    // Add Authorization header if token provided (backward compatibility)
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+    // Add Authorization header from explicit token or Clerk session cookie
+    const bearerToken = token ?? getClerkSessionToken()
+    if (bearerToken) {
+      headers['Authorization'] = `Bearer ${bearerToken}`
     }
 
     // Include CSRF token for state-changing requests
@@ -620,129 +613,60 @@ function queueableRequest<T>(
 /**
  * Authentication API
  *
- * Uses HTTP-only cookies for secure token storage.
- * Cookies are automatically set by the server on login/refresh
- * and sent with all requests via credentials: 'include'.
+ * With Clerk, login and register are handled by Clerk's UI components.
+ * These stubs exist so that existing code that references authApi
+ * continues to compile. Calling login/register will throw an error
+ * directing callers to use the Clerk UI instead.
  */
 export const authApi = {
   /**
-   * Login with username and password
-   *
-   * On success, the server sets HTTP-only cookies containing the tokens.
-   * The response body also contains tokens for backward compatibility.
+   * Login is now handled by Clerk's SignIn component.
+   * This method throws to signal that callers should use the Clerk UI.
    */
-  login: async (username: string, password: string): Promise<AuthTokens> => {
-    const formData = new URLSearchParams()
-    formData.append('username', username)
-    formData.append('password', password)
-
-    try {
-      const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData,
-        credentials: 'include', // Essential for receiving cookies
-        ...defaultRetryOptions,
-      })
-
-      if (!response.ok) {
-        let errorMessage = 'Login failed'
-        try {
-          const errorData = (await response.json()) as ApiErrorResponse
-          errorMessage = errorData.detail ?? errorMessage
-        } catch (parseError) {
-          // Log parsing failure but use default error message
-          console.debug('Failed to parse login error response:', parseError)
-        }
-        throw new ApiError(errorMessage, response.status)
-      }
-
-      return response.json() as Promise<AuthTokens>
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
-      if (error instanceof NetworkError) {
-        throw new ApiError(
-          'Unable to connect to server. Please check your internet connection.',
-          0,
-          undefined,
-          { isOffline: true }
-        )
-      }
-      throw new ApiError('Login failed', 0)
-    }
+  login: async (): Promise<never> => {
+    throw new Error(
+      'Use Clerk UI for authentication. Direct login is no longer supported.'
+    )
   },
 
   /**
-   * Register a new user
+   * Registration is now handled by Clerk's SignUp component.
+   * This method throws to signal that callers should use the Clerk UI.
    */
-  register: async (data: {
-    username: string
-    email: string
-    password: string
-    full_name?: string
-  }): Promise<User> => {
-    return apiRequest<User>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+  register: async (): Promise<never> => {
+    throw new Error(
+      'Use Clerk UI for authentication. Direct registration is no longer supported.'
+    )
   },
 
   /**
-   * Refresh access token using HTTP-only cookie
-   *
-   * The refresh token is read from the HTTP-only cookie automatically.
-   * A refreshToken parameter is accepted for backward compatibility.
-   */
-  refresh: async (refreshToken?: string): Promise<AuthTokens> => {
-    return apiRequest<AuthTokens>('/api/auth/refresh', {
-      method: 'POST',
-      // Include refresh_token in body for backward compatibility with API clients
-      body: refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : '{}',
-    })
-  },
-
-  /**
-   * Logout and clear authentication cookies
-   *
-   * This endpoint clears the HTTP-only cookies on the server side.
+   * Logout is handled by Clerk's signOut method.
+   * This is a no-op for backward compatibility.
    */
   logout: async (): Promise<void> => {
-    try {
-      await apiRequest<{ message: string }>('/api/auth/logout', {
-        method: 'POST',
-      })
-    } catch (error) {
-      // Logout should succeed even if request fails (e.g., already logged out)
-      console.warn('Logout request failed:', error)
-    }
+    // No-op: Clerk manages session cleanup
   },
 
   /**
-   * Get current user info using cookie-based auth
+   * Get current user info by calling the backend /api/auth/me endpoint
+   * with the Clerk session token.
    *
-   * @param token - Optional access token (deprecated, use cookies instead)
+   * @param token - Optional explicit Bearer token
    */
   me: async (token?: string): Promise<User> => {
     return authenticatedRequest<User>('/api/auth/me', token)
   },
 
   /**
-   * Check if user is authenticated by attempting to get user info
-   *
-   * This is useful for checking auth status on page load when
-   * using HTTP-only cookies (since JS cannot read them).
+   * Check if user is authenticated by calling /api/auth/me.
+   * Returns the User object on success, null on failure.
    */
   checkAuth: async (): Promise<User | null> => {
     try {
-      return await cookieAuthRequest<User>('/api/auth/me')
+      return await apiRequest<User>('/api/auth/me')
     } catch (error) {
-      // Not authenticated or error - return null (expected behavior for auth check)
+      // Not authenticated or error - return null (expected for auth check)
       if (error instanceof ApiError && error.status !== 401) {
-        // Log unexpected errors (not 401 which is expected for unauthenticated)
         console.debug('Auth check failed with unexpected error:', error)
       }
       return null
@@ -750,9 +674,13 @@ export const authApi = {
   },
 
   /**
-   * Change password
+   * Change password.
    *
-   * @param token - Optional access token (deprecated, use cookies instead)
+   * With Clerk, password changes should be handled through Clerk's
+   * user profile UI. This method is kept for backward compatibility
+   * but will redirect to the Clerk user profile page.
+   *
+   * @param token - Optional explicit Bearer token
    */
   changePassword: async (
     currentPassword: string,
@@ -848,9 +776,13 @@ export const resumesApi = {
     formData.append('file', file)
 
     try {
-      const headers: Record<string, string> = token
-        ? { Authorization: `Bearer ${token}` }
-        : {}
+      const headers: Record<string, string> = {}
+
+      // Resolve Bearer token from explicit param or Clerk session cookie
+      const bearerToken = token ?? getClerkSessionToken()
+      if (bearerToken) {
+        headers['Authorization'] = `Bearer ${bearerToken}`
+      }
 
       // Include CSRF token for file upload (state-changing POST)
       const csrfToken = getCsrfToken()
@@ -1219,9 +1151,13 @@ export const accountApi = {
 
   exportData: async (token?: string): Promise<Blob> => {
     try {
-      const headers: HeadersInit = token
-        ? { Authorization: `Bearer ${token}` }
-        : {}
+      const headers: Record<string, string> = {}
+
+      // Resolve Bearer token from explicit param or Clerk session cookie
+      const bearerToken = token ?? getClerkSessionToken()
+      if (bearerToken) {
+        headers['Authorization'] = `Bearer ${bearerToken}`
+      }
 
       const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/export-data`, {
         method: 'GET',

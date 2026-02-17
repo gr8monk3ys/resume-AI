@@ -13,19 +13,18 @@ dependencies = [
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.6",
 
-    # Database - SQLite (dev) + PostgreSQL (prod)
+    # Database - SQLite (dev) + Neon PostgreSQL (prod)
     "sqlalchemy>=2.0.25",
     "alembic>=1.13.1",
     "psycopg2-binary>=2.9.0",  # Sync PostgreSQL driver (migrations, sync endpoints)
     "asyncpg>=0.29.0",          # Async PostgreSQL driver (high-performance endpoints)
 
-    # Redis (optional - for distributed rate limiting)
+    # Redis - Upstash/Railway (caching + distributed rate limiting)
     "redis>=5.0.0",
 
-    # Authentication
-    "python-jose[cryptography]>=3.3.0",
-    "passlib[bcrypt]>=1.7.4",
-    "bcrypt>=4.0.0,<5.1.0",  # Pin to avoid passlib compatibility issue with 4.1.0+
+    # Authentication - Clerk
+    "PyJWT[crypto]>=2.8.0",     # Verify Clerk JWTs
+    "svix>=1.8.0",              # Clerk webhook signature verification
     "cffi>=1.16.0",
     "cryptography>=42.0.0",
 
@@ -75,8 +74,7 @@ dev = [
     "bandit>=1.7.6",
 
     # Type stubs
-    "types-passlib>=1.7.0",
-    "types-python-jose>=3.3.0",
+    "types-PyJWT>=2.8.0",
 ]
 
 # No build-system needed - this is an application, not a library

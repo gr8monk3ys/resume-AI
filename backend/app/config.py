@@ -25,50 +25,56 @@ class Settings(BaseSettings):
     app_version: str = "2.0.0"
     debug: bool = False
 
-    # Database - supports both SQLite (dev) and PostgreSQL (prod)
-    # SQLite: sqlite:///./data/resume_ai.db
-    # PostgreSQL: postgresql://user:password@localhost:5432/resuboost
-    # PostgreSQL Async: postgresql+asyncpg://user:password@localhost:5432/resuboost
+    # =========================================================================
+    # Database - Neon PostgreSQL (production) or SQLite (development)
+    # =========================================================================
+    # Neon: postgresql://user:password@ep-xxx.region.aws.neon.tech/resuboost?sslmode=require
+    # SQLite: sqlite:///./data/resume_ai.db (development only)
     database_url: str = "sqlite:///./data/resume_ai.db"
 
-    # PostgreSQL Connection Pool Settings (ignored for SQLite)
+    # PostgreSQL/Neon Connection Pool Settings (ignored for SQLite)
+    # Neon uses a connection pooler; keep pool_size low to stay within limits
     db_pool_size: int = 5  # Number of connections to keep open
     db_max_overflow: int = 10  # Max additional connections beyond pool_size
     db_pool_timeout: int = 30  # Seconds to wait for a connection from pool
-    db_pool_recycle: int = 1800  # Recycle connections after 30 minutes
-    db_pool_pre_ping: bool = True  # Verify connections before use
+    db_pool_recycle: int = 300  # Recycle every 5 min (Neon closes idle connections)
+    db_pool_pre_ping: bool = True  # Verify connections before use (important for Neon)
     db_echo: bool = False  # Log SQL statements (useful for debugging)
 
-    # JWT Authentication - No default, must be explicitly set or auto-generated
+    # =========================================================================
+    # Authentication - Clerk
+    # =========================================================================
+    # Get keys from https://dashboard.clerk.com
+    clerk_secret_key: Optional[str] = None  # sk_live_xxx or sk_test_xxx
+    clerk_publishable_key: Optional[str] = None  # pk_live_xxx or pk_test_xxx
+    clerk_webhook_secret: Optional[str] = None  # whsec_xxx (for webhook verification)
+    clerk_instance_id: Optional[str] = None  # e.g., "clever-falcon-42" (optional fallback)
+
+    # Legacy JWT settings (kept for backward compatibility during migration)
     secret_key: str = _DEFAULT_SECRET_KEY
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
     # Cookie Security Settings
-    # HttpOnly cookies prevent JavaScript access (XSS protection)
     cookie_httponly: bool = True
-    # Secure cookies only sent over HTTPS
-    # Defaults to True (secure by default), set to False only for local development
-    # This is computed after initialization based on DEBUG setting if not explicitly set
     cookie_secure: Optional[bool] = None
-    # SameSite prevents CSRF attacks: "lax" allows top-level navigation, "strict" is more restrictive
     cookie_samesite: str = "lax"
-    # Cookie domain (leave empty for current domain)
     cookie_domain: Optional[str] = None
-    # Cookie path
     cookie_path: str = "/"
 
+    # =========================================================================
     # LLM Provider Configuration
+    # =========================================================================
     llm_provider: str = "openai"  # openai, anthropic, google, ollama, mock
     llm_request_timeout: int = 60
 
     # LLM Retry Configuration
-    llm_max_retries: int = 3  # Maximum number of retry attempts
-    llm_retry_delay: float = 1.0  # Initial delay in seconds before first retry
-    llm_retry_max_delay: float = 30.0  # Maximum delay between retries
-    llm_retry_exponential_base: float = 2.0  # Base for exponential backoff
-    llm_retry_jitter: bool = True  # Add random jitter to prevent thundering herd
+    llm_max_retries: int = 3
+    llm_retry_delay: float = 1.0
+    llm_retry_max_delay: float = 30.0
+    llm_retry_exponential_base: float = 2.0
+    llm_retry_jitter: bool = True
 
     # OpenAI
     openai_api_key: Optional[str] = None
@@ -86,13 +92,18 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
 
-    # Redis URL for distributed rate limiting (optional)
-    # If not set, in-memory rate limiting is used (single instance only)
-    # Example: redis://localhost:6379/0 or redis://:password@host:6379/0
+    # =========================================================================
+    # Redis - Upstash or Railway Redis (for caching + rate limiting)
+    # =========================================================================
+    # If not set, in-memory rate limiting and no caching
+    # Upstash: rediss://default:xxx@xxx.upstash.io:6379
+    # Railway: redis://default:xxx@xxx.railway.app:6379
     redis_url: Optional[str] = None
     redis_key_prefix: str = "resuboost:rate_limit"
     redis_connection_timeout: int = 5  # seconds
     redis_socket_timeout: int = 5  # seconds
+    redis_cache_prefix: str = "resuboost:cache"  # Prefix for cache keys
+    redis_cache_default_ttl: int = 300  # Default cache TTL in seconds (5 minutes)
 
     # Rate limiting - General API
     rate_limit_requests: int = 100
@@ -148,22 +159,29 @@ class Settings(BaseSettings):
     adzuna_app_id: Optional[str] = None
     adzuna_api_key: Optional[str] = None
 
+    # =========================================================================
     # Sentry Error Monitoring
-    # Leave SENTRY_DSN empty to disable Sentry (optional integration)
+    # =========================================================================
     sentry_dsn: Optional[str] = None
     sentry_environment: str = "development"  # development, staging, production
-    sentry_traces_sample_rate: float = 0.1  # 10% of requests traced for performance
-    sentry_profiles_sample_rate: float = 0.1  # 10% of traced requests profiled
-    sentry_send_default_pii: bool = False  # Don't send PII by default
-    sentry_attach_stacktrace: bool = True  # Attach stack traces to messages
-    sentry_max_breadcrumbs: int = 100  # Maximum breadcrumbs to capture
-    sentry_debug: bool = False  # Enable Sentry SDK debug mode
+    sentry_traces_sample_rate: float = 0.1
+    sentry_profiles_sample_rate: float = 0.1
+    sentry_send_default_pii: bool = False
+    sentry_attach_stacktrace: bool = True
+    sentry_max_breadcrumbs: int = 100
+    sentry_debug: bool = False
+
+    # =========================================================================
+    # Structured Logging
+    # =========================================================================
+    log_level: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    log_format: str = "json"  # json (production) or text (development)
+    log_file: Optional[str] = None  # Optional log file path
 
     model_config = SettingsConfigDict(
         env_file="../.env",
         env_file_encoding="utf-8",
         extra="ignore",
-        # Allow environment variables to override .env file
         env_nested_delimiter="__",
     )
 
@@ -181,18 +199,14 @@ def get_settings() -> Settings:
     settings = Settings()
 
     # Security validation for secret key
-    # SECURITY: Only allow auto-generation in explicit TESTING mode, not in debug mode
-    # Debug mode should still require explicit SECRET_KEY to prevent accidental exposure
     if settings.secret_key == _DEFAULT_SECRET_KEY:
         if os.getenv("TESTING", "false").lower() == "true":
-            # Generate a random key ONLY for automated testing
             warnings.warn(
                 "Using auto-generated secret key for testing. "
                 "This should only occur in test environments.",
                 UserWarning,
                 stacklevel=2,
             )
-            # Override with a secure random key for this test session
             object.__setattr__(settings, "secret_key", secrets.token_urlsafe(32))
         else:
             raise ValueError(
@@ -201,10 +215,7 @@ def get_settings() -> Settings:
                 'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
 
-    # SECURITY: cookie_secure defaults based on DEBUG setting if not explicitly set
-    # - Production (DEBUG=False): cookie_secure=True (HTTPS-only cookies)
-    # - Development (DEBUG=True): cookie_secure=False (allows HTTP for localhost)
-    # This ensures cookies are secure by default in production environments
+    # cookie_secure defaults based on DEBUG setting if not explicitly set
     if settings.cookie_secure is None:
         secure_value = not settings.debug
         object.__setattr__(settings, "cookie_secure", secure_value)

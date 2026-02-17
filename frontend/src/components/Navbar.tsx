@@ -1,5 +1,6 @@
 'use client'
 
+import { UserButton } from '@clerk/nextjs'
 import {
   Home,
   FileText,
@@ -8,7 +9,6 @@ import {
   Mic,
   Award,
   User,
-  LogOut,
   Menu,
   X,
   Settings,
@@ -54,7 +54,7 @@ const userMenuItems = [
  * Shows different navigation based on authentication state
  */
 export function Navbar() {
-  const { user, logout, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
@@ -100,14 +100,6 @@ export function Navbar() {
       document.removeEventListener('keydown', handleEscapeKey)
     }
   }, [mobileMenuOpen])
-
-  /**
-   * Handle logout action
-   */
-  const handleLogout = () => {
-    setMobileMenuOpen(false)
-    void logout()
-  }
 
   /**
    * Check if a path is currently active
@@ -185,14 +177,10 @@ export function Navbar() {
                   </Link>
                 ))}
 
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-md transition-colors"
-                >
-                  <LogOut className="w-4 h-4 mr-2" aria-hidden="true" />
-                  Logout
-                </button>
+                {/* Clerk UserButton - handles user menu, profile, and sign out */}
+                <div className="ml-2">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
               </>
             )}
 
@@ -256,11 +244,14 @@ export function Navbar() {
           {!isLoading && user ? (
             <div className="py-2">
               {/* User Info */}
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">
-                  {user.full_name || user.username}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.full_name || user.username}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                </div>
+                <UserButton afterSignOutUrl="/" />
               </div>
 
               {/* Navigation Links */}
@@ -301,13 +292,6 @@ export function Navbar() {
                     {item.name}
                   </Link>
                 ))}
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-3 text-base font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                >
-                  <LogOut className="w-5 h-5 mr-3" aria-hidden="true" />
-                  Logout
-                </button>
               </div>
             </div>
           ) : !isLoading ? (

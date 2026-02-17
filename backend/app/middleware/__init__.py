@@ -30,14 +30,11 @@ from app.middleware.audit import (
     init_audit_logger,
 )
 from app.middleware.auth import (
-    create_access_token,
-    create_refresh_token,
-    decode_token,
     get_current_active_user,
     get_current_admin_user,
     get_current_user,
-    get_password_hash,
-    verify_password,
+    get_token_from_request,
+    verify_clerk_token,
 )
 from app.middleware.rate_limiter import (
     DEFAULT_RATE_LIMITS,
@@ -67,15 +64,12 @@ __all__ = [
     "CSRF_COOKIE_NAME",
     "CSRF_HEADER_NAME",
     "CSRFMiddleware",
-    # Auth
-    "create_access_token",
-    "create_refresh_token",
-    "decode_token",
+    # Auth (Clerk-based)
     "get_current_active_user",
     "get_current_admin_user",
     "get_current_user",
-    "get_password_hash",
-    "verify_password",
+    "get_token_from_request",
+    "verify_clerk_token",
     # Rate limiting
     "DEFAULT_RATE_LIMITS",
     "RateLimitConfig",

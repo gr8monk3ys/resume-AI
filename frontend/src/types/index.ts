@@ -8,6 +8,7 @@ export interface User {
   is_admin: boolean;
   created_at: string;
   last_login: string | null;
+  clerk_id?: string | null;
 }
 
 export interface Profile {

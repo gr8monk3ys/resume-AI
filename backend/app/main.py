@@ -2,18 +2,25 @@
 FastAPI main application entry point.
 
 Includes security middleware:
-- Rate limiting (token bucket algorithm)
+- Rate limiting (token bucket algorithm with Redis backend)
 - Security headers (XSS protection, HSTS, CSP)
 - Request ID tracing
 - Input sanitization
 - Audit logging
 - Sentry error monitoring (optional)
 
-Background services:
+Production infrastructure:
+- Neon PostgreSQL with connection pooling
+- Redis caching via Upstash/Railway
+- Clerk authentication
+- Sentry error tracking
+- Structured JSON logging
 - Job scheduler for automated job scraping
 """
 
 import logging
+import logging.config
+import sys
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -60,9 +67,65 @@ from app.routers import (
 )
 from app.services.scheduler import get_job_scheduler
 
-logger = logging.getLogger(__name__)
-
 settings = get_settings()
+
+
+def configure_logging():
+    """Configure structured logging based on settings."""
+    log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+
+    if settings.log_format == "json":
+        # JSON format for production (parseable by log aggregators)
+        formatter_class = "logging.Formatter"
+        log_fmt = '{"timestamp":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","message":"%(message)s"}'
+    else:
+        # Human-readable format for development
+        formatter_class = "logging.Formatter"
+        log_fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+    config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "class": formatter_class,
+                "format": log_fmt,
+                "datefmt": "%Y-%m-%dT%H:%M:%S%z",
+            },
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "root": {
+            "level": log_level,
+            "handlers": ["console"],
+        },
+        "loggers": {
+            "uvicorn": {"level": log_level},
+            "uvicorn.access": {"level": "WARNING"},
+            "sqlalchemy.engine": {"level": "WARNING"},
+        },
+    }
+
+    if settings.log_file:
+        config["handlers"]["file"] = {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "default",
+            "filename": settings.log_file,
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+        }
+        config["root"]["handlers"].append("file")
+
+    logging.config.dictConfig(config)
+
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 
 def _filter_sensitive_data(event, hint):
@@ -221,6 +284,16 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Error stopping job scheduler: {e}")
 
+    # Close Redis cache connection
+    if settings.redis_url:
+        try:
+            from app.services.cache_service import close_cache_service
+
+            await close_cache_service()
+            logger.info("Cache service connection closed")
+        except Exception as e:
+            logger.error(f"Error closing cache service: {e}")
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -321,9 +394,9 @@ if settings.enable_audit_logging:
         AuditMiddleware,
         log_all_requests=False,  # Only log specific paths and errors
         log_paths={
-            "/api/auth/login",
-            "/api/auth/register",
-            "/api/auth/refresh",
+            "/api/auth/webhook",
+            "/api/auth/me",
+            "/api/auth/delete-account",
             "/api/profile",
         },
     )
@@ -373,8 +446,52 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "sentry_enabled": sentry_enabled}
+    """
+    Deep health check endpoint.
+
+    Verifies connectivity to all critical dependencies:
+    - Database (Neon PostgreSQL or SQLite)
+    - Redis (if configured)
+    - Reports overall health status
+    """
+    from app.database import check_db_health
+
+    health = {
+        "status": "healthy",
+        "version": settings.app_version,
+        "sentry_enabled": sentry_enabled,
+        "services": {},
+    }
+
+    # Check database
+    db_health = check_db_health()
+    health["services"]["database"] = db_health
+    if db_health.get("status") != "healthy":
+        health["status"] = "degraded"
+
+    # Check Redis (if configured)
+    if settings.redis_url:
+        try:
+            from app.services.cache_service import get_cache_service
+
+            cache = get_cache_service()
+            redis_health = await cache.health_check()
+            health["services"]["redis"] = redis_health
+            if redis_health.get("status") != "healthy":
+                health["status"] = "degraded"
+        except Exception as e:
+            health["services"]["redis"] = {"status": "unhealthy", "error": str(e)}
+            health["status"] = "degraded"
+    else:
+        health["services"]["redis"] = {"status": "not_configured"}
+
+    # Check Clerk (just verify key is set)
+    health["services"]["auth"] = {
+        "provider": "clerk",
+        "configured": bool(settings.clerk_secret_key),
+    }
+
+    return health
 
 
 # Prometheus-compatible metrics endpoint (only when metrics are enabled)

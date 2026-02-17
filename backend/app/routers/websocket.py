@@ -11,7 +11,7 @@ from typing import Dict, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from app.database import SessionLocal
-from app.middleware.auth import decode_token
+from app.middleware.auth import verify_clerk_token
 from app.models.user import User
 from app.services.job_alerts import get_job_alert_service
 
@@ -141,42 +141,41 @@ async def authenticate_websocket(
     websocket: WebSocket, token: str = None
 ) -> tuple[bool, int | None, str | None]:
     """
-    Authenticate a WebSocket connection using JWT token.
+    Authenticate a WebSocket connection using a Clerk JWT token.
 
     Args:
         websocket: The WebSocket connection
-        token: The JWT token
+        token: The Clerk JWT token
 
     Returns:
         Tuple of (is_authenticated, user_id, error_message)
 
     Security:
-        - Validates token signature and expiration
-        - Validates token type must be "access" (rejects refresh tokens)
-        - Validates token_version matches user's current token_version
-          (ensures tokens are invalidated after password change)
+        - Validates token signature via Clerk JWKS or secret key
+        - Validates token expiration
+        - Looks up local user by clerk_id
     """
     if not token:
         return False, None, "Authentication token required"
 
-    # Decode token with type validation (must be access token, not refresh)
-    token_data = decode_token(token, expected_type="access", validate_type=True)
-    if token_data is None:
+    # Verify the Clerk-issued JWT
+    try:
+        payload = verify_clerk_token(token)
+    except Exception:
         return False, None, "Invalid or expired token"
+
+    clerk_user_id = payload.get("sub")
+    if not clerk_user_id:
+        return False, None, "Invalid token: missing user ID"
 
     # Verify user exists and is active
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.id == token_data.user_id).first()
+        user = db.query(User).filter(User.clerk_id == clerk_user_id).first()
         if not user:
             return False, None, "User not found"
         if not user.is_active:
             return False, None, "User account is deactivated"
-
-        # Validate token version to ensure token hasn't been invalidated
-        # This catches tokens issued before a password change
-        if token_data.token_version != user.token_version:
-            return False, None, "Token has been invalidated. Please log in again."
 
         return True, user.id, None
     finally:
