@@ -157,7 +157,7 @@ class ATSAnalyzer:
         """Check for quantifiable achievements (20 points max)."""
         numbers = len(re.findall(r"\d+", self.resume_text))
         percentages = len(re.findall(r"\d+%", self.resume_text))
-        metrics = len(re.findall(r"\d+[kKmMbB]?\+?", self.resume_text))
+        metrics = len(re.findall(r"\d+(?:[kKmMbB]\+?|\+)", self.resume_text))
 
         total_quantifiers = numbers + (percentages * 2) + (metrics * 2)
         return min(total_quantifiers, 20)

@@ -13,8 +13,10 @@ Supports:
 """
 
 import asyncio
+import ipaddress
 import logging
 import re
+import socket
 from datetime import datetime
 from typing import Any, Optional, cast
 from urllib.parse import urlparse
@@ -196,6 +198,55 @@ class JobImporter:
         self._request_timestamps[source].append(now)
         return True
 
+    @staticmethod
+    def _validate_url(url: str) -> None:
+        """
+        Validate that a URL is safe to fetch (prevent SSRF attacks).
+
+        Ensures the URL uses an allowed scheme (http/https) and does not
+        resolve to a private/internal IP address.
+
+        Raises:
+            JobImportError: If the URL is invalid or targets a private network.
+        """
+        parsed = urlparse(url)
+
+        # Only allow http and https schemes
+        if parsed.scheme not in ("http", "https"):
+            raise JobImportError(
+                f"Invalid URL scheme: {parsed.scheme!r}. Only http and https are allowed.",
+                "INVALID_URL",
+                recoverable=False,
+            )
+
+        hostname = parsed.hostname
+        if not hostname:
+            raise JobImportError(
+                "Invalid URL: no hostname found.",
+                "INVALID_URL",
+                recoverable=False,
+            )
+
+        # Resolve hostname and check all resulting IPs are public
+        try:
+            addr_infos = socket.getaddrinfo(hostname, None)
+        except socket.gaierror:
+            raise JobImportError(
+                f"Could not resolve hostname: {hostname}",
+                "INVALID_URL",
+                recoverable=False,
+            )
+
+        for addr_info in addr_infos:
+            ip = ipaddress.ip_address(addr_info[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
+                raise JobImportError(
+                    f"URL resolves to a private/reserved IP address ({ip}). "
+                    "Requests to internal networks are not allowed.",
+                    "INVALID_URL",
+                    recoverable=False,
+                )
+
     async def _fetch_url(self, url: str, headers: Optional[dict] = None) -> str:
         """
         Fetch content from a URL with retry logic.
@@ -210,6 +261,8 @@ class JobImporter:
         Raises:
             JobImportError: If the request fails after retries.
         """
+        self._validate_url(url)
+
         request_headers = {**self.DEFAULT_HEADERS, **(headers or {})}
 
         for attempt in range(self.max_retries):

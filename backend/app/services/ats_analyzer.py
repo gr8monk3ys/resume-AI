@@ -1006,7 +1006,7 @@ class ATSAnalyzer:
         scores["action_verbs"] = min(action_verbs_found * 2, 15)
 
         # Quantifiable results (0-15 points)
-        numbers = len(re.findall(r"\d+%|\$\d+|\d+\+", resume))
+        numbers = len(re.findall(r"\$\d+|\d+[%+]", resume))
         metrics = len(re.findall(r"\b\d+[kKmMbB]\b", resume))
         scores["quantifiable_results"] = min((numbers + metrics) * 2, 15)
 
@@ -1068,7 +1068,7 @@ class ATSAnalyzer:
             score += 15
 
         # Check for contact information
-        if re.search(r"[\w.+-]+@[\w-]+\.[\w.-]+", resume):
+        if re.search(r"[a-zA-Z0-9](?:[a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@[a-zA-Z0-9-]+\.[a-zA-Z.]+", resume):
             score += 10
         if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", resume):
             score += 5
