@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -564,7 +564,9 @@ describe('ListView', () => {
       await user.click(checkboxes[1]!)
 
       const clearButton = screen.getByText(/clear selection/i)
-      await user.click(clearButton)
+      // fireEvent avoids userEvent's pointer-settling wait, which hangs when
+      // the clicked element removes itself from the DOM on click
+      fireEvent.click(clearButton)
 
       expect(screen.queryByText(/selected/i)).not.toBeInTheDocument()
     })
