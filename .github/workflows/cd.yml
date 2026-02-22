@@ -260,7 +260,7 @@ jobs:
     name: Verify Staging Deployment
     runs-on: ubuntu-latest
     needs: [deploy-frontend-staging, deploy-backend-staging]
-    if: always() && needs.deploy-backend-staging.result == 'success'
+    if: always() && needs.deploy-backend-staging.result == 'success' && vars.STAGING_API_URL != ''
     steps:
       - name: Wait for services to stabilize
         run: sleep 60
