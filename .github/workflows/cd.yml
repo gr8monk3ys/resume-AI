@@ -103,11 +103,24 @@ jobs:
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v6
 
+      - name: Check Vercel secrets
+        id: check-secrets
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::notice::VERCEL_TOKEN not configured - skipping Vercel deployment"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to Vercel
         id: deploy
+        if: steps.check-secrets.outputs.skip != 'true'
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -117,6 +130,7 @@ jobs:
           vercel-args: '--env NEXT_PUBLIC_API_URL=${{ vars.STAGING_API_URL }}'
 
       - name: Output deployment URL
+        if: steps.check-secrets.outputs.skip != 'true'
         run: |
           echo "Frontend deployed to: ${{ steps.deploy.outputs.url }}"
 
@@ -156,15 +170,27 @@ jobs:
     environment:
       name: staging
       url: ${{ vars.STAGING_API_URL }}
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v6
 
+      - name: Check Railway secrets
+        id: check-secrets
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::notice::RAILWAY_TOKEN not configured - skipping Railway deployment"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Railway CLI
+        if: steps.check-secrets.outputs.skip != 'true'
         run: npm install -g @railway/cli
 
       - name: Deploy Backend to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        if: steps.check-secrets.outputs.skip != 'true'
         run: |
           echo "Deploying backend to Railway staging..."
           railway link ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
@@ -173,8 +199,7 @@ jobs:
           echo "Backend deployment initiated"
 
       - name: Run Database Migrations
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        if: steps.check-secrets.outputs.skip != 'true'
         run: |
           echo "Running database migrations..."
           railway link ${{ vars.RAILWAY_STAGING_PROJECT_ID }}
@@ -182,6 +207,7 @@ jobs:
           echo "Migrations complete"
 
       - name: Wait for deployment
+        if: steps.check-secrets.outputs.skip != 'true'
         run: |
           echo "Waiting for services to be ready..."
           sleep 30
