@@ -24,7 +24,9 @@ class JobApplication(Base):
     )
 
     id: Column[int] = Column(Integer, primary_key=True, index=True)
-    profile_id: Column[int] = Column(Integer, ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
+    profile_id: Column[int] = Column(
+        Integer, ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
     company: Column[str] = Column(String, nullable=False)
     position: Column[str] = Column(String, nullable=False)
     job_description: Column[str] = Column(Text, nullable=True)
@@ -59,7 +61,9 @@ class JobApplication(Base):
     rejection_reason: Column[str] = Column(Text, nullable=True)
 
     # Resume version used for this application
-    resume_id: Column[int] = Column(Integer, ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True)
+    resume_id: Column[int] = Column(
+        Integer, ForeignKey("resumes.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Relationships
     profile = relationship("Profile", back_populates="job_applications")

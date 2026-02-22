@@ -3169,7 +3169,7 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.13.1" },
     { name = "apscheduler", specifier = ">=3.10.4" },
     { name = "asyncpg", specifier = ">=0.29.0" },
-    { name = "bcrypt", specifier = ">=4.0.0,<4.1.0" },
+    { name = "bcrypt", specifier = ">=4.0.0,<5.1.0" },
     { name = "cachetools", specifier = ">=5.3.0" },
     { name = "cffi", specifier = ">=1.16.0" },
     { name = "cryptography", specifier = ">=42.0.0" },

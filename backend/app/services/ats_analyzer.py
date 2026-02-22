@@ -1068,7 +1068,9 @@ class ATSAnalyzer:
             score += 15
 
         # Check for contact information
-        if re.search(r"[a-zA-Z0-9](?:[a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@[a-zA-Z0-9-]+\.[a-zA-Z.]+", resume):
+        if re.search(
+            r"[a-zA-Z0-9](?:[a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@[a-zA-Z0-9-]+\.[a-zA-Z.]+", resume
+        ):
             score += 10
         if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", resume):
             score += 5

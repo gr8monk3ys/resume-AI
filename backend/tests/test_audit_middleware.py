@@ -30,7 +30,6 @@ from app.middleware.audit import (
     init_audit_logger,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -263,9 +262,11 @@ class TestLoginTracking:
 
         # Manually update the attempt time to be old
         with audit_logger.get_session() as session:
-            attempt = session.query(FailedLoginAttempt).filter(
-                FailedLoginAttempt.username == "timetest"
-            ).first()
+            attempt = (
+                session.query(FailedLoginAttempt)
+                .filter(FailedLoginAttempt.username == "timetest")
+                .first()
+            )
             attempt.attempt_time = datetime.utcnow() - timedelta(hours=1)
 
         # Should find 0 in last 15 minutes now
@@ -331,10 +332,14 @@ class TestAccountLockout:
         audit_logger.lock_account("idempotent", "Second lock")
 
         with audit_logger.get_session() as session:
-            lockouts = session.query(AccountLockout).filter(
-                AccountLockout.username == "idempotent",
-                AccountLockout.unlocked_at.is_(None),
-            ).all()
+            lockouts = (
+                session.query(AccountLockout)
+                .filter(
+                    AccountLockout.username == "idempotent",
+                    AccountLockout.unlocked_at.is_(None),
+                )
+                .all()
+            )
             assert len(lockouts) == 1
 
     def test_unlock_account(self, audit_logger):
@@ -589,6 +594,7 @@ class TestAuditMiddleware:
         @app.get("/api/error")
         def error_endpoint():
             from fastapi import HTTPException
+
             raise HTTPException(status_code=500, detail="Test error")
 
         @app.get("/health")

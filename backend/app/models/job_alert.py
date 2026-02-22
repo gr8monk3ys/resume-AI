@@ -34,7 +34,9 @@ class JobAlert(Base):
 
     # Timestamps
     created_at: Column[datetime] = Column(DateTime, default=datetime.utcnow)
-    updated_at: Column[datetime] = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Column[datetime] = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     # Relationships
     user = relationship("User", backref="job_alerts")

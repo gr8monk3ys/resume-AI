@@ -39,6 +39,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.middleware.security import get_client_ip, get_user_agent
 
+
 # Create a separate base for audit models
 class AuditBase(DeclarativeBase):
     """Base class for audit SQLAlchemy models."""
