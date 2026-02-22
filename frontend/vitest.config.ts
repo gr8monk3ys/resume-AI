@@ -17,14 +17,10 @@ export default defineConfig({
     teardownTimeout: 10000,
     // Use forks pool - separate processes with isolated memory
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        maxForks: 1,
-        minForks: 1,
-        isolate: true,
-        singleFork: true,
-      },
-    },
+    // Vitest 4: poolOptions moved to top-level
+    maxForks: 1,
+    minForks: 1,
+    singleFork: true,
     // Run tests sequentially to avoid memory issues
     sequence: {
       concurrent: false,
