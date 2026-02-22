@@ -5,11 +5,10 @@ Supports both SQLite (development) and PostgreSQL (production).
 PostgreSQL includes connection pooling and async support for enterprise scale.
 """
 
+import logging
 import os
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any, AsyncGenerator, Generator
-
-import logging
 
 from fastapi import HTTPException, status
 from sqlalchemy import create_engine, event, text

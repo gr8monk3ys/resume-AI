@@ -46,9 +46,12 @@ export default tseslint.config(
       'react-hooks/exhaustive-deps': 'error',
       // React Compiler rules (react-hooks@5, bundled with Next.js 16) — disabled
       // because they flag common valid patterns (reset state in useEffect, accumulator
-      // variables in map callbacks) that are not incorrect in non-compiled code.
+      // variables in map callbacks, inner components, incompatible library warnings)
+      // that are not incorrect in non-compiled code.
       'react-hooks/immutability': 'off',
       'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/no-nested-components': 'off',
+      'react-hooks/incompatible-library': 'off',
       'import/order': [
         'error',
         {
