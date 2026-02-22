@@ -1,19 +1,13 @@
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
 
-import { FlatCompat } from '@eslint/eslintrc'
 import js from '@eslint/js'
-import importPlugin from 'eslint-plugin-import'
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-})
 
 export default tseslint.config(
   {
@@ -31,14 +25,10 @@ export default tseslint.config(
     ],
   },
   js.configs.recommended,
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  ...nextCoreWebVitals,
   {
     files: ['**/*.ts', '**/*.tsx'],
     extends: tseslint.configs.recommendedTypeChecked,
-    plugins: {
-      'jsx-a11y': jsxA11y,
-      'import': importPlugin,
-    },
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -79,9 +69,6 @@ export default tseslint.config(
   },
   {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
-    plugins: {
-      'import': importPlugin,
-    },
     rules: {
       'import/order': [
         'error',
