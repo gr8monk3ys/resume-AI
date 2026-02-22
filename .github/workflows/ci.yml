@@ -326,6 +326,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql://resuboost:testpassword@localhost:5432/resuboost_test
+          SECRET_KEY: test-secret-key-for-ci
         run: uv run alembic upgrade head
 
       - name: Start backend server
