@@ -10,7 +10,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.tsx'],
     include: ['**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', '.next', 'dist'],
+    exclude: ['node_modules', '.next', 'dist', 'e2e/**'],
     // Increase timeout for async tests
     testTimeout: 10000,
     hookTimeout: 10000,

@@ -13,6 +13,54 @@ import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
 
+interface ActionItem {
+  label: string
+  onClick?: () => void
+  href?: string
+}
+
+interface ActionButtonProps {
+  action: ActionItem
+  buttonClasses: string
+}
+
+function ActionButton({ action, buttonClasses }: ActionButtonProps) {
+  if (action.href) {
+    return (
+      <Link href={action.href} className={buttonClasses}>
+        {action.label}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" onClick={action.onClick} className={buttonClasses}>
+      {action.label}
+    </button>
+  )
+}
+
+interface SecondaryActionLinkProps {
+  secondaryAction: ActionItem
+  linkClasses: string
+}
+
+function SecondaryActionLink({ secondaryAction, linkClasses }: SecondaryActionLinkProps) {
+  if (secondaryAction.href) {
+    return (
+      <Link href={secondaryAction.href} className={linkClasses}>
+        {secondaryAction.label}
+      </Link>
+    )
+  }
+
+  return (
+    <button type="button" onClick={secondaryAction.onClick} className={linkClasses}>
+      {secondaryAction.label}
+    </button>
+  )
+}
+
 /**
  * Props for the EmptyState component
  */
@@ -24,17 +72,9 @@ interface EmptyStateProps {
   /** Icon to display (Lucide icon component) */
   icon?: LucideIcon
   /** Primary action button */
-  action?: {
-    label: string
-    onClick?: () => void
-    href?: string
-  }
+  action?: ActionItem
   /** Secondary action link */
-  secondaryAction?: {
-    label: string
-    onClick?: () => void
-    href?: string
-  }
+  secondaryAction?: ActionItem
   /** Size variant */
   size?: 'sm' | 'md' | 'lg'
   /** Additional CSS classes */
@@ -108,55 +148,19 @@ export function EmptyState({
 
   const styles = sizeStyles[size]
 
-  const ActionButton = () => {
-    if (!action) return null
+  const buttonClasses = cn(
+    'inline-flex items-center justify-center font-medium rounded-md',
+    'text-white bg-primary-600 hover:bg-primary-700',
+    'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500',
+    'transition-colors',
+    styles.button
+  )
 
-    const buttonClasses = cn(
-      'inline-flex items-center justify-center font-medium rounded-md',
-      'text-white bg-primary-600 hover:bg-primary-700',
-      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500',
-      'transition-colors',
-      styles.button
-    )
-
-    if (action.href) {
-      return (
-        <Link href={action.href} className={buttonClasses}>
-          {action.label}
-        </Link>
-      )
-    }
-
-    return (
-      <button type="button" onClick={action.onClick} className={buttonClasses}>
-        {action.label}
-      </button>
-    )
-  }
-
-  const SecondaryActionLink = () => {
-    if (!secondaryAction) return null
-
-    const linkClasses = cn(
-      'text-primary-600 hover:text-primary-700 font-medium',
-      'transition-colors',
-      size === 'sm' ? 'text-xs' : 'text-sm'
-    )
-
-    if (secondaryAction.href) {
-      return (
-        <Link href={secondaryAction.href} className={linkClasses}>
-          {secondaryAction.label}
-        </Link>
-      )
-    }
-
-    return (
-      <button type="button" onClick={secondaryAction.onClick} className={linkClasses}>
-        {secondaryAction.label}
-      </button>
-    )
-  }
+  const linkClasses = cn(
+    'text-primary-600 hover:text-primary-700 font-medium',
+    'transition-colors',
+    size === 'sm' ? 'text-xs' : 'text-sm'
+  )
 
   return (
     <div
@@ -179,10 +183,10 @@ export function EmptyState({
         </p>
       )}
 
-      {(action || secondaryAction) && (
+      {(action ?? secondaryAction) && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <ActionButton />
-          <SecondaryActionLink />
+          {action && <ActionButton action={action} buttonClasses={buttonClasses} />}
+          {secondaryAction && <SecondaryActionLink secondaryAction={secondaryAction} linkClasses={linkClasses} />}
         </div>
       )}
 

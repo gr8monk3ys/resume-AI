@@ -83,6 +83,36 @@ beforeEach(() => {
   })
 })
 
+// Mock @tanstack/react-virtual so useVirtualizer returns all items without needing
+// container measurements (jsdom reports 0-height containers, causing zero virtual rows).
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: (opts: {
+    count: number
+    estimateSize: () => number
+    overscan?: number
+    getScrollElement?: () => unknown
+    getItemKey?: (index: number) => unknown
+  }) => {
+    const size = opts.estimateSize()
+    return {
+      getVirtualItems: () =>
+        Array.from({ length: opts.count }, (_, i) => ({
+          index: i,
+          key: opts.getItemKey ? opts.getItemKey(i) : i,
+          start: i * size,
+          end: i * size + size,
+          size,
+          lane: 0,
+        })),
+      getTotalSize: () => opts.count * size,
+      measureElement: () => undefined,
+      scrollToIndex: () => undefined,
+      scrollToOffset: () => undefined,
+      options: opts,
+    }
+  },
+}))
+
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
