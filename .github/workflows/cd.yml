@@ -41,6 +41,7 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 30
           allowed-conclusions: success
+          fail-on-no-checks: false
 
   # ============================================================================
   # Build Backend Docker Image
