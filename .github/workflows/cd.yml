@@ -1,11 +1,6 @@
 name: CD - Build & Deploy
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -99,7 +94,7 @@ jobs:
     name: Deploy Frontend to Vercel (Staging)
     runs-on: ubuntu-latest
     needs: wait-for-ci
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
     environment:
       name: staging
       url: ${{ steps.deploy.outputs.url }}
@@ -166,7 +161,7 @@ jobs:
     name: Deploy Backend to Railway (Staging)
     runs-on: ubuntu-latest
     needs: build-backend
-    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
     environment:
       name: staging
       url: ${{ vars.STAGING_API_URL }}
