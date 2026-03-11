@@ -153,11 +153,44 @@ class ATSAnalyzer:
         action_verbs_found = sum(1 for verb in self.ACTION_VERBS if verb in self.resume_text)
         return min(action_verbs_found * 2, 15)
 
+    @staticmethod
+    def _clean_token(token: str) -> str:
+        """Normalize punctuation around tokens before numeric checks."""
+        return token.strip(".,;:()[]{}<>!?\"'")
+
+    @classmethod
+    def _count_quantifier_tokens(cls, text: str) -> tuple[int, int]:
+        """Count percentage and metric-style tokens without ambiguous regex."""
+        percentages = 0
+        metrics = 0
+
+        for raw_token in text.split():
+            token = cls._clean_token(raw_token).lstrip("$")
+            if not token:
+                continue
+
+            if token.endswith("%") and token[:-1].isdigit():
+                percentages += 1
+                continue
+
+            number_body = token[:-1] if token.endswith("+") else token
+            if token.endswith("+") and token[:-1].isdigit():
+                metrics += 1
+                continue
+
+            if (
+                len(number_body) > 1
+                and number_body[-1].lower() in {"k", "m", "b"}
+                and number_body[:-1].isdigit()
+            ):
+                metrics += 1
+
+        return percentages, metrics
+
     def _check_quantifiable_results(self) -> int:
         """Check for quantifiable achievements (20 points max)."""
         numbers = len(re.findall(r"\d+", self.resume_text))
-        percentages = len(re.findall(r"\d+%", self.resume_text))
-        metrics = len(re.findall(r"\d+(?:[kKmMbB]\+?|\+)", self.resume_text))
+        percentages, metrics = self._count_quantifier_tokens(self.resume_text)
 
         total_quantifiers = numbers + (percentages * 2) + (metrics * 2)
         return min(total_quantifiers, 20)

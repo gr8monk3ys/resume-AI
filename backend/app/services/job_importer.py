@@ -15,11 +15,12 @@ Supports:
 import asyncio
 import ipaddress
 import logging
+import os
 import re
 import socket
 from datetime import datetime
 from typing import Any, Optional, cast
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse, urlunsplit
 
 import httpx
 
@@ -133,6 +134,31 @@ class JobImporter:
         JobSource.UNKNOWN: 10,
     }
 
+    MAX_REDIRECTS = 5
+    SOURCE_HOSTS = {
+        JobSource.LINKEDIN: {
+            "linkedin.com": "www.linkedin.com",
+            "www.linkedin.com": "www.linkedin.com",
+        },
+        JobSource.INDEED: {
+            "indeed.com": "www.indeed.com",
+            "www.indeed.com": "www.indeed.com",
+        },
+        JobSource.GLASSDOOR: {
+            "glassdoor.com": "www.glassdoor.com",
+            "www.glassdoor.com": "www.glassdoor.com",
+        },
+        JobSource.LEVER: {
+            "jobs.lever.co": "jobs.lever.co",
+        },
+        JobSource.GREENHOUSE: {
+            "boards.greenhouse.io": "boards.greenhouse.io",
+        },
+        JobSource.GITHUB_SIMPLIFY: {
+            "raw.githubusercontent.com": "raw.githubusercontent.com",
+        },
+    }
+
     def __init__(
         self,
         timeout: int = 30,
@@ -151,6 +177,11 @@ class JobImporter:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self._request_timestamps: dict[JobSource, list[datetime]] = {}
+        self._allowed_company_hosts = {
+            host.strip().lower()
+            for host in os.getenv("JOB_IMPORT_ALLOWED_HOSTS", "").split(",")
+            if host.strip()
+        }
 
     def _detect_source(self, url: str) -> JobSource:
         """
@@ -198,23 +229,42 @@ class JobImporter:
         self._request_timestamps[source].append(now)
         return True
 
-    @staticmethod
-    def _validate_url(url: str) -> None:
-        """
-        Validate that a URL is safe to fetch (prevent SSRF attacks).
+    def _get_authorized_host(self, hostname: str, source: JobSource) -> Optional[str]:
+        """Resolve a hostname to an authorized fetch host for the requested source."""
+        hostname = hostname.rstrip(".").lower()
 
-        Ensures the URL uses an allowed scheme (http/https) and does not
-        resolve to a private/internal IP address.
+        if source in self.SOURCE_HOSTS:
+            return self.SOURCE_HOSTS[source].get(hostname)
+
+        if source in {JobSource.WORKDAY, JobSource.COMPANY_SITE}:
+            if hostname in self._allowed_company_hosts:
+                return hostname
+
+        return None
+
+    def _build_safe_fetch_url(self, url: str, source: JobSource) -> str:
+        """
+        Canonicalize and validate a fetch URL (prevent SSRF attacks).
+
+        Requests are limited to explicitly authorized hosts. Known job boards
+        are mapped to canonical hosts, while Workday and custom company domains
+        must be allowlisted through JOB_IMPORT_ALLOWED_HOSTS.
 
         Raises:
-            JobImportError: If the URL is invalid or targets a private network.
+            JobImportError: If the URL is invalid or targets an unauthorized host.
         """
         parsed = urlparse(url)
 
-        # Only allow http and https schemes
         if parsed.scheme not in ("http", "https"):
             raise JobImportError(
                 f"Invalid URL scheme: {parsed.scheme!r}. Only http and https are allowed.",
+                "INVALID_URL",
+                recoverable=False,
+            )
+
+        if parsed.username or parsed.password:
+            raise JobImportError(
+                "URLs with embedded credentials are not allowed.",
                 "INVALID_URL",
                 recoverable=False,
             )
@@ -227,12 +277,32 @@ class JobImporter:
                 recoverable=False,
             )
 
-        # Resolve hostname and check all resulting IPs are public
+        authorized_host = self._get_authorized_host(hostname, source)
+        if not authorized_host:
+            if source in {JobSource.WORKDAY, JobSource.COMPANY_SITE}:
+                raise JobImportError(
+                    "Company and Workday imports must use an allowlisted hostname.",
+                    "INVALID_URL",
+                    recoverable=False,
+                )
+            raise JobImportError(
+                f"Unsupported hostname for {source.value}: {hostname}",
+                "INVALID_URL",
+                recoverable=False,
+            )
+
+        if parsed.port is not None and parsed.port not in (80, 443):
+            raise JobImportError(
+                f"Unsupported URL port: {parsed.port}",
+                "INVALID_URL",
+                recoverable=False,
+            )
+
         try:
-            addr_infos = socket.getaddrinfo(hostname, None)
+            addr_infos = socket.getaddrinfo(authorized_host, None)
         except socket.gaierror:
             raise JobImportError(
-                f"Could not resolve hostname: {hostname}",
+                f"Could not resolve hostname: {authorized_host}",
                 "INVALID_URL",
                 recoverable=False,
             )
@@ -247,7 +317,16 @@ class JobImporter:
                     recoverable=False,
                 )
 
-    async def _fetch_url(self, url: str, headers: Optional[dict] = None) -> str:
+        safe_netloc = authorized_host if parsed.port is None else f"{authorized_host}:{parsed.port}"
+        safe_path = parsed.path or "/"
+        return urlunsplit((parsed.scheme, safe_netloc, safe_path, parsed.query, ""))
+
+    async def _fetch_url(
+        self,
+        url: str,
+        source: JobSource,
+        headers: Optional[dict] = None,
+    ) -> str:
         """
         Fetch content from a URL with retry logic.
 
@@ -261,23 +340,56 @@ class JobImporter:
         Raises:
             JobImportError: If the request fails after retries.
         """
-        self._validate_url(url)
-
         request_headers = {**self.DEFAULT_HEADERS, **(headers or {})}
+        current_url = self._build_safe_fetch_url(url, source)
 
         for attempt in range(self.max_retries):
             try:
                 async with httpx.AsyncClient(
                     timeout=self.timeout,
-                    follow_redirects=True,
+                    follow_redirects=False,
                 ) as client:
-                    response = await client.get(url, headers=request_headers)
+                    redirect_count = 0
+                    response: Optional[httpx.Response] = None
+
+                    while redirect_count <= self.MAX_REDIRECTS:
+                        response = await client.get(current_url, headers=request_headers)
+                        if not response.is_redirect:
+                            break
+
+                        location = response.headers.get("location")
+                        if not location:
+                            raise JobImportError(
+                                "Redirect response missing Location header.",
+                                "INVALID_URL",
+                                recoverable=False,
+                            )
+
+                        current_url = self._build_safe_fetch_url(
+                            urljoin(current_url, location),
+                            source,
+                        )
+                        redirect_count += 1
+
+                    if response is None:
+                        raise JobImportError(
+                            "Failed to fetch URL.",
+                            "FETCH_ERROR",
+                            recoverable=False,
+                        )
+
+                    if redirect_count > self.MAX_REDIRECTS:
+                        raise JobImportError(
+                            "Too many redirects while fetching URL.",
+                            "INVALID_URL",
+                            recoverable=False,
+                        )
 
                     if response.status_code == 429:
-                        raise RateLimitError(f"Rate limited by {urlparse(url).netloc}")
+                        raise RateLimitError(f"Rate limited by {urlparse(current_url).netloc}")
 
                     if response.status_code == 403:
-                        raise AccessDeniedError(f"Access denied by {urlparse(url).netloc}")
+                        raise AccessDeniedError(f"Access denied by {urlparse(current_url).netloc}")
 
                     if response.status_code == 404:
                         raise JobImportError(
@@ -844,7 +956,7 @@ class JobImporter:
                 "Please wait before making more requests."
             )
 
-        html = await self._fetch_url(url)
+        html = await self._fetch_url(url, detected_source)
 
         job_data = self.parse_job_listing_page(html, detected_source)
         job_data.job_url = url
@@ -903,7 +1015,7 @@ class JobImporter:
         content = None
         for readme_url in readme_urls:
             try:
-                content = await self._fetch_url(readme_url)
+                content = await self._fetch_url(readme_url, JobSource.GITHUB_SIMPLIFY)
                 break
             except JobImportError:
                 continue
