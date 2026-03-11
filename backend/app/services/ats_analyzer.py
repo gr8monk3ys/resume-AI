@@ -1006,9 +1006,8 @@ class ATSAnalyzer:
         scores["action_verbs"] = min(action_verbs_found * 2, 15)
 
         # Quantifiable results (0-15 points)
-        numbers = len(re.findall(r"\$\d+|\d+[%+]", resume))
-        metrics = len(re.findall(r"\b\d+[kKmMbB]\b", resume))
-        scores["quantifiable_results"] = min((numbers + metrics) * 2, 15)
+        quantified, metrics = self._count_quantified_tokens(resume)
+        scores["quantifiable_results"] = min((quantified + metrics) * 2, 15)
 
         # Length appropriateness (0-10 points)
         word_count = len(resume.split())
@@ -1048,6 +1047,54 @@ class ATSAnalyzer:
 
         return min(score, 100), matched, missing
 
+    @staticmethod
+    def _clean_resume_token(token: str) -> str:
+        """Strip punctuation around tokens while keeping in-token separators."""
+        return token.strip(".,;:()[]{}<>!?\"'")
+
+    @classmethod
+    def _contains_email_address(cls, text: str) -> bool:
+        """Detect email-like tokens without a backtracking-heavy regex."""
+        for raw_token in text.split():
+            token = cls._clean_resume_token(raw_token)
+            if token.count("@") != 1:
+                continue
+
+            local, domain = token.split("@")
+            if not local or "." not in domain:
+                continue
+
+            tld = domain.rsplit(".", 1)[-1]
+            if len(tld) < 2:
+                continue
+
+            if all(char.isalnum() or char in "._%+-" for char in local) and all(
+                char.isalnum() or char in ".-" for char in domain
+            ):
+                return True
+
+        return False
+
+    @classmethod
+    def _count_quantified_tokens(cls, text: str) -> tuple[int, int]:
+        """Count quantified result tokens without ambiguous regex alternation."""
+        quantified = 0
+        metrics = 0
+
+        for raw_token in text.split():
+            token = cls._clean_resume_token(raw_token).lstrip("$")
+            if not token:
+                continue
+
+            if token.endswith(("%", "+")) and token[:-1].isdigit():
+                quantified += 1
+                continue
+
+            if len(token) > 1 and token[-1].lower() in {"k", "m", "b"} and token[:-1].isdigit():
+                metrics += 1
+
+        return quantified, metrics
+
     def _calculate_formatting_score(self, resume: str) -> int:
         """Calculate score based on resume formatting."""
         score = 0
@@ -1068,9 +1115,7 @@ class ATSAnalyzer:
             score += 15
 
         # Check for contact information
-        if re.search(
-            r"[a-zA-Z0-9](?:[a-zA-Z0-9._%+-]*[a-zA-Z0-9])?@[a-zA-Z0-9-]+\.[a-zA-Z.]+", resume
-        ):
+        if self._contains_email_address(resume):
             score += 10
         if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", resume):
             score += 5
