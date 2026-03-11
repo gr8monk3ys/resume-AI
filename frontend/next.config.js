@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 
 /**
@@ -27,6 +29,7 @@ const additionalImageDomains = process.env.NEXT_PUBLIC_IMAGE_DOMAINS
 
 const nextConfig = {
   output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '..'),
 
   // CDN Asset Prefix - serves static assets from CDN in production
   assetPrefix: process.env.NODE_ENV === 'production' ? assetPrefix : undefined,
