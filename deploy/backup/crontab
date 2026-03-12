@@ -1,0 +1,9 @@
+# Crontab for automated PostgreSQL backups
+#
+# Format: minute hour day month weekday command
+#
+# Daily backup at 2:00 AM
+0 2 * * * /bin/sh /backup.sh >> /var/log/backup.log 2>&1
+
+# Weekly full cleanup on Sundays at 3:00 AM
+0 3 * * 0 /bin/sh /backup.sh --cleanup >> /var/log/backup.log 2>&1

@@ -1,0 +1,12 @@
+# SSL certificates directory
+#
+# Place your SSL certificates here:
+# - fullchain.pem (certificate + intermediate)
+# - privkey.pem (private key)
+#
+# For development/staging, you can generate self-signed certs:
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout privkey.pem -out fullchain.pem \
+#     -subj "/CN=staging.resuboost.ai"
+#
+# For production, use Let's Encrypt or another CA.

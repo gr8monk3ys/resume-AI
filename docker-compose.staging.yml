@@ -1,0 +1,188 @@
+# Docker Compose - Staging Environment
+# Usage: docker-compose -f docker-compose.staging.yml up -d
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Frontend - Next.js Application
+  # ==========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=https://api-staging.resuboost.ai
+        - NEXT_PUBLIC_ENVIRONMENT=staging
+    image: resuboost-frontend:staging
+    container_name: resuboost-frontend-staging
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=https://api-staging.resuboost.ai
+      - NEXT_PUBLIC_ENVIRONMENT=staging
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - resuboost-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ==========================================================================
+  # Backend - FastAPI Application
+  # ==========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.staging
+    image: resuboost-backend:staging
+    container_name: resuboost-backend-staging
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env.staging
+    environment:
+      - DATABASE_URL=postgresql://resuboost:${DB_PASSWORD}@db:5432/resuboost_staging
+      - SECRET_KEY=${SECRET_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - backend-data:/app/data
+      - backend-logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - resuboost-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ==========================================================================
+  # PostgreSQL Database
+  # ==========================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: resuboost-db-staging
+    environment:
+      - POSTGRES_USER=resuboost
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=resuboost_staging
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - resuboost-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resuboost -d resuboost_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  # ==========================================================================
+  # Redis Cache (Optional - for rate limiting and sessions)
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: resuboost-redis-staging
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - resuboost-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # ==========================================================================
+  # Nginx Reverse Proxy
+  # ==========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: resuboost-nginx-staging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/staging.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - resuboost-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  resuboost-staging:
+    driver: bridge
+    name: resuboost-staging-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres-data:
+    name: resuboost-postgres-staging
+  redis-data:
+    name: resuboost-redis-staging
+  backend-data:
+    name: resuboost-backend-data-staging
+  backend-logs:
+    name: resuboost-backend-logs-staging
+  nginx-logs:
+    name: resuboost-nginx-logs-staging
