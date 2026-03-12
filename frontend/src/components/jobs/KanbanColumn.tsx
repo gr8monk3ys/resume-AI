@@ -15,7 +15,7 @@ import type { JobApplication, JobStatus, CompanyFilter } from '@/types'
 const CARD_HEIGHT = 160
 const CARD_GAP = 12
 
-export interface KanbanColumnProps {
+interface KanbanColumnProps {
   status: JobStatus
   jobs: JobApplication[]
   onAddJob: (status: JobStatus) => void

@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 /**
  * Network status information returned by the hook
  */
-export interface NetworkStatus {
+interface NetworkStatus {
   /** Whether the browser is currently online */
   isOnline: boolean
   /** Whether the connection was recently restored (was offline, now online) */
@@ -19,7 +19,7 @@ export interface NetworkStatus {
 /**
  * Options for the useNetworkStatus hook
  */
-export interface UseNetworkStatusOptions {
+interface UseNetworkStatusOptions {
   /**
    * Duration in milliseconds to show "back online" status
    * Default: 3000 (3 seconds)
@@ -185,19 +185,4 @@ export function useNetworkStatus(
     lastChanged,
     lastOfflineDuration,
   }
-}
-
-/**
- * Simple hook variant that just returns online status boolean
- *
- * @returns boolean indicating if browser is online
- *
- * @example
- * ```tsx
- * const isOnline = useIsOnline()
- * ```
- */
-export function useIsOnline(): boolean {
-  const { isOnline } = useNetworkStatus()
-  return isOnline
 }

@@ -14,7 +14,7 @@ import { cn, getStatusColor } from '@/lib/utils'
 
 import type { JobApplication, JobStats, WeeklyApplicationData, JobGoals } from '@/types'
 
-export interface AnalyticsTabProps {
+interface AnalyticsTabProps {
   jobs: JobApplication[]
   stats: JobStats | null
 }

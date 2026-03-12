@@ -164,7 +164,7 @@ const ListViewRow = memo(function ListViewRow({
   )
 })
 
-export interface ListViewProps {
+interface ListViewProps {
   jobs: JobApplication[]
   onEditJob: (job: JobApplication) => void
   onDeleteJob: (id: number) => void

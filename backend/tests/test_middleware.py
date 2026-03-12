@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from app.middleware.rate_limiter import (

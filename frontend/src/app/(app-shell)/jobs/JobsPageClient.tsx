@@ -28,7 +28,7 @@ import type {
 } from '@/types'
 
 const KanbanBoard = dynamic(
-  () => import('@/components/jobs').then((mod) => ({ default: mod.KanbanBoard })),
+  () => import('@/components/jobs/KanbanBoard').then((mod) => ({ default: mod.KanbanBoard })),
   {
     loading: () => <TabLoadingSkeleton />,
     ssr: false,
@@ -36,7 +36,7 @@ const KanbanBoard = dynamic(
 )
 
 const ListView = dynamic(
-  () => import('@/components/jobs').then((mod) => ({ default: mod.ListView })),
+  () => import('@/components/jobs/ListView').then((mod) => ({ default: mod.ListView })),
   {
     loading: () => <TabLoadingSkeleton />,
     ssr: false,
@@ -44,7 +44,7 @@ const ListView = dynamic(
 )
 
 const AnalyticsTab = dynamic(
-  () => import('@/components/jobs').then((mod) => ({ default: mod.AnalyticsTab })),
+  () => import('@/components/jobs/AnalyticsTab').then((mod) => ({ default: mod.AnalyticsTab })),
   {
     loading: () => <TabLoadingSkeleton />,
     ssr: false,
@@ -52,7 +52,7 @@ const AnalyticsTab = dynamic(
 )
 
 const TimelineTab = dynamic(
-  () => import('@/components/jobs').then((mod) => ({ default: mod.TimelineTab })),
+  () => import('@/components/jobs/TimelineTab').then((mod) => ({ default: mod.TimelineTab })),
   {
     loading: () => <TabLoadingSkeleton />,
     ssr: false,

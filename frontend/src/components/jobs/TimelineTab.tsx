@@ -20,7 +20,7 @@ import { AddEventModal } from './AddEventModal'
 
 import type { JobApplication, InterviewEvent, InterviewEventType } from '@/types'
 
-export interface TimelineTabProps {
+interface TimelineTabProps {
   jobs: JobApplication[]
   events: InterviewEvent[]
   onAddEvent: (event: Omit<InterviewEvent, 'id' | 'created_at'>) => void

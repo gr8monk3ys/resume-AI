@@ -15,14 +15,11 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, Optional, Protocol, Tuple
 
 from fastapi import HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-
-if TYPE_CHECKING:
-    from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
@@ -210,13 +207,13 @@ class RedisStorage:
         self._key_prefix = key_prefix
         self._connection_timeout = connection_timeout
         self._socket_timeout = socket_timeout
-        self._redis: Optional["Redis"] = None
+        self._redis: Optional[Any] = None
         self._connection_lock = asyncio.Lock()
         self._connected = False
         self._last_connection_attempt = 0.0
         self._connection_retry_delay = 5.0  # seconds between reconnection attempts
 
-    async def _get_redis(self) -> Optional["Redis"]:
+    async def _get_redis(self) -> Optional[Any]:
         """Get Redis connection, creating one if needed."""
         if self._redis is not None and self._connected:
             return self._redis

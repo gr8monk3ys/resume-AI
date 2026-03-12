@@ -36,21 +36,11 @@ export interface WebVitalsMetric {
   navigationType: string
 }
 
-export interface WebVitalsReport {
+interface WebVitalsReport {
   metrics: Partial<Record<MetricName, WebVitalsMetric>>
   timestamp: number
   url: string
   userAgent: string
-}
-
-/**
- * Get the rating for a metric based on its value
- */
-export function getMetricRating(name: MetricName, value: number): MetricRating {
-  const threshold = WEB_VITALS_THRESHOLDS[name]
-  if (value <= threshold.good) return 'good'
-  if (value <= threshold.needsImprovement) return 'needs-improvement'
-  return 'poor'
 }
 
 /**
@@ -102,13 +92,6 @@ export function subscribeToMetrics(
   return () => {
     metricCallbacks.delete(callback)
   }
-}
-
-/**
- * Get current collected metrics
- */
-export function getCollectedMetrics(): Partial<Record<MetricName, WebVitalsMetric>> {
-  return { ...collectedMetrics }
 }
 
 /**
@@ -264,16 +247,4 @@ export async function initWebVitals(
   onLCP(handler, { reportAllChanges })
   onFCP(handler, { reportAllChanges })
   onTTFB(handler, { reportAllChanges })
-}
-
-/**
- * Create a report of all collected metrics
- */
-export function createWebVitalsReport(): WebVitalsReport {
-  return {
-    metrics: { ...collectedMetrics },
-    timestamp: Date.now(),
-    url: typeof window !== 'undefined' ? window.location.href : '',
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-  }
 }

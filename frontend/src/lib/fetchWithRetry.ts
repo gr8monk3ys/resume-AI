@@ -251,30 +251,3 @@ export async function fetchWithRetry(
     lastError
   )
 }
-
-/**
- * Create a pre-configured fetchWithRetry function
- *
- * @param defaultOptions - Default options to apply to all requests
- * @returns A configured fetchWithRetry function
- *
- * @example
- * ```ts
- * const apiFetch = createFetchWithRetry({
- *   maxRetries: 3,
- *   initialDelay: 500,
- *   onRetry: (attempt, delay) => {
- *     console.log(`Retry attempt ${attempt} after ${delay}ms`)
- *   },
- * })
- *
- * const response = await apiFetch('/api/data')
- * ```
- */
-export function createFetchWithRetry(
-  defaultOptions: FetchRetryOptions = {}
-): (url: string | URL, options?: FetchRetryOptions) => Promise<Response> {
-  return (url: string | URL, options: FetchRetryOptions = {}) => {
-    return fetchWithRetry(url, { ...defaultOptions, ...options })
-  }
-}

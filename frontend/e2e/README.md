@@ -88,20 +88,6 @@ test.fixme(true, 'Flaky: Race condition - JIRA-123')
 test.skip(process.env.CI === 'true', 'Quarantined: Investigating timing issue')
 ```
 
-## Test Helpers
-
-Common test utilities are available in `helpers.ts`:
-
-```typescript
-import { loginAsDemo, logout, createJobApplication } from './helpers'
-
-test('my test', async ({ page }) => {
-  await loginAsDemo(page)
-  // Test code
-  await logout(page)
-})
-```
-
 ## CI/CD Integration
 
 Tests run in CI with:

@@ -7,7 +7,7 @@ import { JOB_STATUSES } from '@/lib/jobs'
 
 import type { JobApplication, JobStatus } from '@/types'
 
-export interface JobFormModalProps {
+interface JobFormModalProps {
   job?: JobApplication | null
   initialStatus?: JobStatus
   onClose: () => void

@@ -7,7 +7,7 @@ import { EVENT_TYPES } from '@/lib/jobs'
 
 import type { JobApplication, InterviewEvent, InterviewEventType } from '@/types'
 
-export interface AddEventModalProps {
+interface AddEventModalProps {
   jobs: JobApplication[]
   onClose: () => void
   onAdd: (event: Omit<InterviewEvent, 'id' | 'created_at'>) => void

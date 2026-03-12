@@ -8,7 +8,7 @@ import type {
   WebVitalsReporterOptions,
 } from '@/lib/webVitals'
 
-export interface UseWebVitalsOptions extends WebVitalsReporterOptions {
+interface UseWebVitalsOptions extends WebVitalsReporterOptions {
   /**
    * Whether to enable Web Vitals tracking
    * @default true
@@ -16,7 +16,7 @@ export interface UseWebVitalsOptions extends WebVitalsReporterOptions {
   enabled?: boolean
 }
 
-export interface UseWebVitalsReturn {
+interface UseWebVitalsReturn {
   /**
    * Current collected metrics
    */
@@ -135,5 +135,3 @@ export function useWebVitals(
     overallScore,
   }
 }
-
-export type { MetricName, WebVitalsMetric }

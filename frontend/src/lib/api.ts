@@ -325,10 +325,7 @@ class RequestQueueManager {
   }
 }
 
-/**
- * Singleton request queue manager instance
- */
-export const requestQueue = new RequestQueueManager()
+const requestQueue = new RequestQueueManager()
 
 /**
  * Default retry options for API requests
@@ -1099,87 +1096,4 @@ export const filtersApi = {
       body: JSON.stringify({ title, company, description }),
     })
   },
-}
-
-/**
- * Account/Settings API
- */
-export const accountApi = {
-  deleteAccount: async (password: string, token?: string): Promise<void> => {
-    await authenticatedRequest('/api/auth/delete-account', token, {
-      method: 'DELETE',
-      body: JSON.stringify({ password }),
-    })
-  },
-
-  exportData: async (token?: string): Promise<Blob> => {
-    try {
-      const headers: HeadersInit = token
-        ? { Authorization: `Bearer ${token}` }
-        : {}
-
-      const response = await fetchWithRetry(`${API_BASE_URL}/api/auth/export-data`, {
-        method: 'GET',
-        headers,
-        credentials: 'include',
-        ...defaultRetryOptions,
-      })
-
-      if (!response.ok) {
-        throw new ApiError('Failed to export data', response.status)
-      }
-
-      return response.blob()
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
-      if (error instanceof NetworkError) {
-        throw new ApiError(
-          'Unable to export data. Please check your internet connection.',
-          0,
-          undefined,
-          { isOffline: true }
-        )
-      }
-      throw new ApiError('Failed to export data', 0)
-    }
-  },
-}
-
-/**
- * Utility functions for working with the request queue
- */
-export const offlineUtils = {
-  /**
-   * Get the request queue manager instance
-   */
-  getQueue: () => requestQueue,
-
-  /**
-   * Check if there are pending offline requests
-   */
-  hasPendingRequests: () => requestQueue.hasPending,
-
-  /**
-   * Get count of pending requests
-   */
-  getPendingCount: () => requestQueue.length,
-
-  /**
-   * Subscribe to queue changes
-   */
-  onQueueChange: (callback: (count: number) => void) => {
-    return requestQueue.subscribe((queue) => callback(queue.length))
-  },
-
-  /**
-   * Manually trigger queue processing
-   */
-  processQueue: () => requestQueue.processQueue(),
-
-  /**
-   * Clear all pending requests
-   */
-  clearQueue: () => requestQueue.clear(),
 }

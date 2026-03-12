@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def _filter_sensitive_data(event, hint):
+def _filter_sensitive_data(event, _hint):
     """
     Filter sensitive data from Sentry events before sending.
 

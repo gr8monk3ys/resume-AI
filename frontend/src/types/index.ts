@@ -23,19 +23,6 @@ export interface Profile {
   updated_at: string;
 }
 
-// Auth types
-export interface LoginCredentials {
-  username: string;
-  password: string;
-}
-
-export interface RegisterData {
-  username: string;
-  email: string;
-  password: string;
-  full_name?: string;
-}
-
 export interface AuthTokens {
   access_token: string;
   refresh_token: string;
@@ -162,13 +149,6 @@ export interface InterviewEvent {
 export interface WeeklyApplicationData {
   week: string;
   count: number;
-}
-
-export interface CompanySuccessRate {
-  company: string;
-  applications: number;
-  offers: number;
-  rate: number;
 }
 
 export interface JobGoals {

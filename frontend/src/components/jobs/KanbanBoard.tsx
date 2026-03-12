@@ -21,7 +21,7 @@ import { KanbanColumn } from './KanbanColumn'
 
 import type { JobApplication, JobStatus, CompanyFilter } from '@/types'
 
-export interface KanbanBoardProps {
+interface KanbanBoardProps {
   jobs: JobApplication[]
   onAddJob: (status: JobStatus) => void
   onEditJob: (job: JobApplication) => void

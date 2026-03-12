@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 /**
  * Props for the ErrorFallback component
  */
-export interface ErrorFallbackProps {
+interface ErrorFallbackProps {
   /** The error that was caught */
   error: Error
   /** Callback to reset the error boundary and retry */

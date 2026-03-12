@@ -22,7 +22,7 @@ interface ErrorLogData {
 /**
  * Props for the ErrorBoundary component
  */
-export interface ErrorBoundaryProps {
+interface ErrorBoundaryProps {
   /** Child components to render */
   children: ReactNode
   /** Optional custom fallback component */
@@ -203,31 +203,4 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // No error, render children normally
     return children
   }
-}
-
-/**
- * Higher-order component to wrap a component with an ErrorBoundary
- *
- * Usage:
- * ```tsx
- * const SafeComponent = withErrorBoundary(MyComponent, {
- *   fallbackTitle: 'Component Error',
- * })
- * ```
- */
-export function withErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
-): React.FC<P> {
-  const displayName = WrappedComponent.displayName || WrappedComponent.name || 'Component'
-
-  const ComponentWithErrorBoundary: React.FC<P> = (props) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <WrappedComponent {...props} />
-    </ErrorBoundary>
-  )
-
-  ComponentWithErrorBoundary.displayName = `withErrorBoundary(${displayName})`
-
-  return ComponentWithErrorBoundary
 }

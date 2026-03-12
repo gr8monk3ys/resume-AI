@@ -18,7 +18,7 @@ import { cn, getStatusColor, formatDate } from '@/lib/utils'
 
 import type { JobApplication, JobStatus, CompanyFilter } from '@/types'
 
-export interface SortableJobCardProps {
+interface SortableJobCardProps {
   job: JobApplication
   onEdit: (job: JobApplication) => void
   onDelete: (id: number) => void

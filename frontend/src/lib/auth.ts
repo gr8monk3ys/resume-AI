@@ -57,37 +57,6 @@ export function useAuth(): AuthContextType {
 }
 
 /**
- * NOTE: localStorage token storage has been removed for security.
- *
- * Tokens are now stored in HTTP-only cookies which:
- * 1. Cannot be accessed by JavaScript (XSS protection)
- * 2. Are automatically sent with requests (credentials: 'include')
- * 3. Are managed by the browser, not the application
- *
- * The following functions are kept as no-ops for backward compatibility
- * during migration, but will be removed in a future version.
- */
-
-/**
- * @deprecated Tokens are now stored in HTTP-only cookies
- */
-export function getStoredTokens(): null {
-  console.warn(
-    'getStoredTokens is deprecated. Tokens are now stored in HTTP-only cookies.'
-  )
-  return null
-}
-
-/**
- * @deprecated Tokens are now stored in HTTP-only cookies
- */
-export function setStoredTokens(): void {
-  console.warn(
-    'setStoredTokens is deprecated. Tokens are now stored in HTTP-only cookies.'
-  )
-}
-
-/**
  * Removes any legacy tokens left in localStorage from the pre-cookie auth flow.
  */
 export function clearLegacyTokens(): void {
@@ -96,14 +65,4 @@ export function clearLegacyTokens(): void {
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('token_type')
   }
-}
-
-/**
- * @deprecated Tokens are now stored in HTTP-only cookies
- */
-export function clearStoredTokens(): void {
-  console.warn(
-    'clearStoredTokens is deprecated. Use logout() to clear auth cookies.'
-  )
-  clearLegacyTokens()
 }
