@@ -67,17 +67,15 @@ describe('JobFormModal', () => {
         <JobFormModal onClose={mockOnClose} onSave={mockOnSave} initialStatus="Interview" />
       )
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const statusSelect = screen.getByLabelText(/status/i) as HTMLSelectElement
-      expect(statusSelect.value).toBe('Interview')
+      const statusSelect = screen.getByLabelText(/status/i)
+      expect(statusSelect).toHaveValue('Interview')
     })
 
     it('should default to Bookmarked status when no initial status provided', () => {
       render(<JobFormModal onClose={mockOnClose} onSave={mockOnSave} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const statusSelect = screen.getByLabelText(/status/i) as HTMLSelectElement
-      expect(statusSelect.value).toBe('Bookmarked')
+      const statusSelect = screen.getByLabelText(/status/i)
+      expect(statusSelect).toHaveValue('Bookmarked')
     })
   })
 

@@ -6,10 +6,10 @@ export default function MarketingHomePage() {
   return (
     <>
       <Head>
-        <title>AI Job Search Toolkit | ResuBoost AI</title>
+        <title>Search-First Job Search Workspace | ResuBoost AI</title>
         <meta
           name="description"
-          content="Optimize resumes, track applications, and prepare for interviews with AI-powered job search tools."
+          content="Keep your target roles, application pipeline, resume tuning, and interview prep in one search-first workspace."
         />
       </Head>
       <main id="main-content">

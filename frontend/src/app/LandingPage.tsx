@@ -1,155 +1,340 @@
 import {
-  FileText,
-  Briefcase,
-  FileEdit,
-  Mic,
-  Award,
   ArrowRight,
-  CheckCircle,
-  TrendingUp,
-  Target,
+  Briefcase,
+  CheckCircle2,
+  FileText,
+  Filter,
+  MessagesSquare,
+  Radar,
 } from 'lucide-react'
+import Link from 'next/link'
 
-const landingFeatures = [
+import { BrandMark } from '@/components/BrandMark'
+
+const landingStats = [
+  { label: 'Role briefs', value: 'Target roles, locations, and exclusions' },
+  { label: 'Resume tuning', value: 'ATS scoring, keyword gaps, and version control' },
+  { label: 'Follow-through', value: 'Application memory and interview context in one loop' },
+]
+
+const productCards = [
   {
-    name: 'Resume Hub',
-    description: 'Get ATS scores and AI-powered optimization suggestions for your resumes',
-    icon: FileText,
-    color: 'bg-blue-500',
+    icon: Filter,
+    title: 'Search briefs that stay focused',
+    description:
+      'Define roles, seniority, locations, and company rules once so the rest of the search starts from signal instead of noise.',
   },
   {
-    name: 'Job Pipeline',
-    description: 'Kanban board to track and manage your job applications',
     icon: Briefcase,
-    color: 'bg-green-500',
+    title: 'A pipeline that remembers the details',
+    description:
+      'Track where each application stands, what changed last, and which companies need follow-up before momentum slips.',
   },
   {
-    name: 'Interview Center',
-    description: 'Prepare for interviews with AI-powered STAR method responses',
-    icon: Mic,
-    color: 'bg-purple-500',
+    icon: FileText,
+    title: 'Resume versions tied to the opportunity',
+    description:
+      'Keep tailored resumes, ATS feedback, and document drafts close to the jobs they are meant to win.',
   },
   {
-    name: 'Document Generator',
-    description: 'Generate personalized cover letters and professional documents',
-    icon: FileEdit,
-    color: 'bg-orange-500',
-  },
-  {
-    name: 'Career Tools',
-    description: 'Track your career journal, goals, and professional growth',
-    icon: Award,
-    color: 'bg-pink-500',
+    icon: MessagesSquare,
+    title: 'Interview prep from the same context',
+    description:
+      'Prepare answers, notes, and follow-ups without losing the trail of the application that led there.',
   },
 ]
 
+const workflowPanels = [
+  {
+    title: 'Search with intent',
+    description:
+      'Capture the job families you actually want, set company rules, and keep the week aligned around a short target list.',
+    bullets: ['Role priorities stay visible', 'Filters reduce wasted tabs', 'Focus shifts are easy to update'],
+  },
+  {
+    title: 'Run the application loop cleanly',
+    description:
+      'Move from bookmarked leads to applied, interview, and offer without scattering notes across docs and browser tabs.',
+    bullets: ['Recent movement is obvious', 'Follow-ups stop slipping', 'Pipeline health is visible at a glance'],
+  },
+  {
+    title: 'Keep materials ready',
+    description:
+      'Tune resumes, generate documents, and prepare interviews from the same source material so every step compounds.',
+    bullets: ['Resume versions stay organized', 'Documents stay on-message', 'Interview prep pulls from real job context'],
+  },
+]
+
+function LandingHeader() {
+  return (
+    <header className="shell-width pt-6">
+      <div className="surface-card-strong flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <BrandMark subdued />
+        <nav className="flex items-center gap-2 sm:gap-3" aria-label="Marketing navigation">
+          <Link
+            href="/login"
+            className="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white/70"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 rounded-full bg-[#10243f] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0b1728]"
+          >
+            Start free
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </nav>
+      </div>
+    </header>
+  )
+}
+
+function SearchPreview() {
+  return (
+    <div className="surface-card-strong rise-in overflow-hidden p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Search Brief Preview
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-[-0.05em] text-slate-950">
+            Frontend roles with clean signals
+          </h2>
+        </div>
+        <span className="rounded-full bg-[color:var(--signal-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--signal)]">
+          Active
+        </span>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {['Senior Frontend', 'Product-minded teams', 'Remote or NYC', 'Avoid recruiting agencies'].map((item) => (
+          <span
+            key={item}
+            className="rounded-full border border-black/6 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        {[
+          {
+            company: 'Northstar',
+            role: 'Staff Frontend Engineer',
+            note: 'Strong design-system fit, ATS keywords aligned',
+            match: '92 match',
+          },
+          {
+            company: 'Common Atlas',
+            role: 'Senior Product Engineer',
+            note: 'Hybrid search + analytics workflow, follow up in 3 days',
+            match: '86 match',
+          },
+        ].map((job) => (
+          <article
+            key={job.company}
+            className="rounded-[1.4rem] border border-black/6 bg-[color:var(--surface-ink)] p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  {job.company}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-950">
+                  {job.role}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{job.note}</p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--accent-strong)]">
+                {job.match}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function LandingPage() {
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-white">
-      <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-24 lg:px-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-            <span className="block">ResuBoost AI</span>
-            <span className="mt-2 block text-2xl text-primary-600 sm:text-4xl md:text-5xl">
-              Your AI-Powered Job Search Toolkit
-            </span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base text-gray-500 sm:mt-6 sm:max-w-2xl sm:text-xl">
-            Optimize your resume, track applications, generate cover letters, and prepare for interviews, all powered
-            by cutting-edge AI technology.
-          </p>
-          <div className="mt-8 flex flex-col justify-center gap-4 sm:mt-10 sm:flex-row sm:gap-4">
-            <a
-              href="/register"
-              className="inline-flex h-[48px] w-full items-center justify-center rounded-md border border-transparent bg-primary-600 px-8 text-base font-medium leading-none text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:h-[56px] sm:w-auto md:px-10 md:text-lg"
-            >
-              Get Started Free
-              <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-            </a>
-            <a
-              href="/login"
-              className="inline-flex h-[48px] w-full items-center justify-center rounded-md border-2 border-primary-600 bg-white px-8 text-base font-medium leading-none text-primary-600 transition-colors hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:h-[56px] sm:w-auto md:px-10 md:text-lg"
-            >
-              Sign In
-            </a>
-          </div>
-        </div>
-      </section>
+    <div className="pb-16">
+      <LandingHeader />
 
-      <section
-        className="bg-primary-600 py-12"
-        style={{ contentVisibility: 'auto', containIntrinsicSize: '480px' }}
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 text-center">
-            <h2 className="text-3xl font-bold text-white sm:text-4xl">
-              Built for the parts of the search that usually break momentum
-            </h2>
-            <p className="mt-3 text-lg text-primary-100">
-              Keep your materials sharp, your pipeline organized, and your next step visible.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-8 text-center md:grid-cols-3">
-            <div className="flex flex-col items-center">
-              <CheckCircle className="mb-4 h-12 w-12 text-white" aria-hidden="true" />
-              <h3 className="text-xl font-semibold text-white">ATS-Optimized</h3>
-              <p className="mt-2 text-primary-100">Get your resume past automated screening systems</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <TrendingUp className="mb-4 h-12 w-12 text-white" aria-hidden="true" />
-              <h3 className="text-xl font-semibold text-white">AI-Powered</h3>
-              <p className="mt-2 text-primary-100">Leverage advanced AI for personalized suggestions</p>
-            </div>
-            <div className="flex flex-col items-center">
-              <Target className="mb-4 h-12 w-12 text-white" aria-hidden="true" />
-              <h3 className="text-xl font-semibold text-white">Track Progress</h3>
-              <p className="mt-2 text-primary-100">Visualize and manage your entire job search</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <section className="shell-width py-8 sm:py-10 lg:py-14">
+        <div className="surface-card relative overflow-hidden px-6 py-8 sm:px-8 sm:py-10 lg:px-10">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(15,118,110,0.16),transparent_52%)] lg:block"
+          />
+          <div className="hero-grid lg:grid-cols-[1.12fr_0.88fr] lg:items-start">
+            <div className="relative z-10">
+              <span className="eyebrow-pill">Search-first workflow</span>
+              <h1 className="mt-5 max-w-4xl font-display text-5xl font-semibold tracking-[-0.07em] text-slate-950 sm:text-6xl lg:text-[4.9rem]">
+                ResuBoost AI keeps your search brief, pipeline, and prep in one operating surface.
+              </h1>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+                Stop rebuilding context every time you open a new tab. Set your target roles, track real application movement, tune materials fast, and walk into interviews with the right history still attached.
+              </p>
 
-      <section
-        className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
-        style={{ contentVisibility: 'auto', containIntrinsicSize: '960px' }}
-      >
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">Everything You Need to Land Your Dream Job</h2>
-          <p className="mt-4 text-lg text-gray-500">A complete toolkit designed to streamline your job search process</p>
-        </div>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {landingFeatures.map((feature) => (
-            <div
-              key={feature.name}
-              className="rounded-xl border border-gray-100 bg-white p-6 shadow-md transition-shadow hover:shadow-lg"
-            >
-              <div className={`${feature.color} flex h-14 w-14 items-center justify-center rounded-xl`}>
-                <feature.icon className="h-7 w-7 text-white" aria-hidden="true" />
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#10243f] px-6 text-base font-semibold text-white transition hover:bg-[#0b1728]"
+                >
+                  Build your search system
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex min-h-14 items-center justify-center rounded-full border border-black/8 bg-white/70 px-6 text-base font-semibold text-slate-700 transition hover:bg-white"
+                >
+                  Sign in
+                </Link>
               </div>
-              <h3 className="mt-5 text-xl font-semibold text-gray-900">{feature.name}</h3>
-              <p className="mt-3 text-gray-500">{feature.description}</p>
+
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
+                {landingStats.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-[1.35rem] border border-black/6 bg-white/65 p-4"
+                  >
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            <SearchPreview />
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="shell-width py-6 sm:py-8"
+        style={{ contentVisibility: 'auto', containIntrinsicSize: '900px' }}
+      >
+        <div className="text-center">
+          <span className="eyebrow-pill">What changes</span>
+          <h2 className="mt-5 font-display text-4xl font-semibold tracking-[-0.06em] text-slate-950 sm:text-5xl">
+            The search feels smaller because the context stays put.
+          </h2>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+            The point is not adding more AI widgets. It is keeping your target, materials, applications, and interview prep close enough that each step improves the next one.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 lg:grid-cols-2">
+          {productCards.map((card) => (
+            <article
+              key={card.title}
+              className="surface-card-strong rise-in p-6 sm:p-7"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--accent-soft)] text-[color:var(--accent-strong)]">
+                <card.icon className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <h3 className="mt-5 font-display text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+                {card.title}
+              </h3>
+              <p className="mt-3 text-base leading-7 text-slate-600">{card.description}</p>
+            </article>
           ))}
         </div>
       </section>
 
       <section
-        className="bg-gray-50 py-16"
-        style={{ contentVisibility: 'auto', containIntrinsicSize: '360px' }}
+        className="shell-width py-6 sm:py-10"
+        style={{ contentVisibility: 'auto', containIntrinsicSize: '850px' }}
       >
-        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-gray-900">Ready to Boost Your Job Search?</h2>
-          <p className="mt-4 text-lg text-gray-500">
-            Join thousands of job seekers who have streamlined their search with ResuBoost AI
-          </p>
-          <div className="mt-8">
-            <a
-              href="/register"
-              className="inline-flex h-[48px] items-center justify-center rounded-md border border-transparent bg-primary-600 px-8 text-base font-medium leading-none text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:h-[56px] md:px-10 md:text-lg"
-            >
-              Create Your Free Account
-              <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
-            </a>
+        <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="surface-card-strong flex flex-col justify-between p-6 sm:p-8">
+            <div>
+              <span className="eyebrow-pill">How it feels</span>
+              <h2 className="mt-5 font-display text-4xl font-semibold tracking-[-0.06em] text-slate-950">
+                Built for the messy middle of a real search.
+              </h2>
+              <p className="mt-4 text-base leading-7 text-slate-600">
+                Most job hunts stall when the details spread across notes, tabs, and versions. ResuBoost AI pulls that back into one rhythm.
+              </p>
+            </div>
+            <div className="mt-8 rounded-[1.5rem] border border-black/6 bg-[#10243f] p-5 text-white">
+              <div className="flex items-center gap-3">
+                <Radar className="h-5 w-5 text-[#ffba66]" aria-hidden="true" />
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/70">
+                  Search system
+                </p>
+              </div>
+              <p className="mt-3 text-lg font-semibold">
+                Keep signal visible even when the week gets noisy.
+              </p>
+              <p className="mt-3 text-sm leading-6 text-white/72">
+                Run your search from a short target list, not a pile of browser tabs and half-finished docs.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            {workflowPanels.map((panel) => (
+              <article
+                key={panel.title}
+                className="surface-card-strong p-6 sm:p-7"
+              >
+                <h3 className="font-display text-2xl font-semibold tracking-[-0.04em] text-slate-950">
+                  {panel.title}
+                </h3>
+                <p className="mt-3 text-base leading-7 text-slate-600">{panel.description}</p>
+                <ul className="mt-5 grid gap-3">
+                  {panel.bullets.map((bullet) => (
+                    <li key={bullet} className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 flex-none text-[color:var(--signal)]"
+                        aria-hidden="true"
+                      />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="shell-width pt-6">
+        <div className="surface-card-strong overflow-hidden bg-[#10243f] px-6 py-8 text-white sm:px-8 sm:py-10">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <span className="eyebrow-pill border-white/10 bg-white/10 text-white/70 before:bg-[#ffba66]">
+                Ready when the search gets real
+              </span>
+              <h2 className="mt-5 font-display text-4xl font-semibold tracking-[-0.06em] text-white sm:text-5xl">
+                Build a tighter job search loop.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-white/72">
+                Start with the role targets you actually care about, keep the pipeline clean, and make every resume and interview round less repetitive.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <Link
+                href="/register"
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-white px-6 text-base font-semibold text-[#10243f] transition hover:bg-[#fff4e9]"
+              >
+                Create your workspace
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/12 bg-white/8 px-6 text-base font-semibold text-white transition hover:bg-white/14"
+              >
+                Sign in
+              </Link>
+            </div>
           </div>
         </div>
       </section>

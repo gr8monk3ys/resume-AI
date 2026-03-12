@@ -76,7 +76,7 @@ function TestConsumer() {
       <button
         data-testid="login-btn"
         onClick={() => {
-          login('testuser', 'password123').catch(console.error)
+          void login('testuser', 'password123').catch(() => undefined)
         }}
       >
         Login
@@ -87,11 +87,11 @@ function TestConsumer() {
       <button
         data-testid="register-btn"
         onClick={() => {
-          register({
+          void register({
             username: 'newuser',
             email: 'new@example.com',
             password: 'password123',
-          }).catch(console.error)
+          }).catch(() => undefined)
         }}
       >
         Register
@@ -508,7 +508,7 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('user-status')).toHaveTextContent('Not logged in')
       })
 
-      // localStorage tokens should be cleared (clearStoredTokens is called)
+      // Any legacy localStorage tokens should be cleared during auth reset.
       expect(localStorage.getItem('access_token')).toBeNull()
     })
   })

@@ -77,9 +77,8 @@ describe('AddEventModal', () => {
     it('should default to "Select a job..." option', () => {
       render(<AddEventModal jobs={mockJobs} onClose={mockOnClose} onAdd={mockOnAdd} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const jobSelect = screen.getByLabelText(/job application/i) as HTMLSelectElement
-      expect(jobSelect.value).toBe('0')
+      const jobSelect = screen.getByLabelText(/job application/i)
+      expect(jobSelect).toHaveValue('0')
       expect(screen.getByText('Select a job...')).toBeInTheDocument()
     })
 
@@ -108,9 +107,8 @@ describe('AddEventModal', () => {
     it('should default to phone_screen', () => {
       render(<AddEventModal jobs={mockJobs} onClose={mockOnClose} onAdd={mockOnAdd} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const eventTypeSelect = screen.getByLabelText(/event type/i) as HTMLSelectElement
-      expect(eventTypeSelect.value).toBe('phone_screen')
+      const eventTypeSelect = screen.getByLabelText(/event type/i)
+      expect(eventTypeSelect).toHaveValue('phone_screen')
     })
   })
 
@@ -118,9 +116,8 @@ describe('AddEventModal', () => {
     it('should default duration to 60 minutes', () => {
       render(<AddEventModal jobs={mockJobs} onClose={mockOnClose} onAdd={mockOnAdd} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const durationInput = screen.getByLabelText(/duration/i) as HTMLInputElement
-      expect(durationInput.value).toBe('60')
+      const durationInput = screen.getByLabelText(/duration/i)
+      expect(durationInput).toHaveValue(60)
     })
 
     it('should have empty string defaults for optional text fields', () => {
@@ -386,17 +383,15 @@ describe('AddEventModal', () => {
     it('should have minimum value of 15 minutes', () => {
       render(<AddEventModal jobs={mockJobs} onClose={mockOnClose} onAdd={mockOnAdd} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const durationInput = screen.getByLabelText(/duration/i) as HTMLInputElement
-      expect(durationInput.min).toBe('15')
+      const durationInput = screen.getByLabelText(/duration/i)
+      expect(durationInput).toHaveAttribute('min', '15')
     })
 
     it('should have step of 15 minutes', () => {
       render(<AddEventModal jobs={mockJobs} onClose={mockOnClose} onAdd={mockOnAdd} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const durationInput = screen.getByLabelText(/duration/i) as HTMLInputElement
-      expect(durationInput.step).toBe('15')
+      const durationInput = screen.getByLabelText(/duration/i)
+      expect(durationInput).toHaveAttribute('step', '15')
     })
   })
 
@@ -404,9 +399,8 @@ describe('AddEventModal', () => {
     it('should validate meeting link as URL', () => {
       render(<AddEventModal jobs={mockJobs} onClose={mockOnClose} onAdd={mockOnAdd} />)
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const meetingLinkInput = screen.getByLabelText(/meeting link/i) as HTMLInputElement
-      expect(meetingLinkInput.type).toBe('url')
+      const meetingLinkInput = screen.getByLabelText(/meeting link/i)
+      expect(meetingLinkInput).toHaveAttribute('type', 'url')
     })
 
     it('should have placeholder for meeting link', () => {

@@ -3,9 +3,9 @@ import { DashboardClient } from '@/app/DashboardClient'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Job Search Dashboard',
+  title: 'Job Search Command Center',
   description:
-    'Track applications, improve resumes, and manage your AI-powered job search workflow.',
+    'Run your search from one command center for applications, filters, resumes, and interview prep.',
 }
 
 export default function DashboardPage() {

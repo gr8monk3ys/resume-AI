@@ -215,40 +215,38 @@ describe('HomePage', () => {
       renderHomePage({ user: null, isLoading: false })
 
       expect(screen.getByRole('heading', { name: /resuboost ai/i })).toBeInTheDocument()
-      expect(screen.getByText(/your ai-powered job search toolkit/i)).toBeInTheDocument()
+      expect(screen.getByText(/stop rebuilding context every time you open a new tab/i)).toBeInTheDocument()
     })
 
     it('should render call-to-action buttons', () => {
       renderHomePage({ user: null, isLoading: false })
 
-      expect(screen.getByRole('link', { name: /get started free/i })).toHaveAttribute('href', '/register')
-      expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login')
+      expect(screen.getByRole('link', { name: /build your search system/i })).toHaveAttribute('href', '/register')
+      expect(screen.getAllByRole('link', { name: /sign in/i })[0]).toHaveAttribute('href', '/login')
     })
 
     it('should render feature cards', () => {
       renderHomePage({ user: null, isLoading: false })
 
-      expect(screen.getByText(/resume hub/i)).toBeInTheDocument()
-      expect(screen.getByText(/job pipeline/i)).toBeInTheDocument()
-      expect(screen.getByText(/interview center/i)).toBeInTheDocument()
-      expect(screen.getByText(/document generator/i)).toBeInTheDocument()
-      expect(screen.getByText(/career tools/i)).toBeInTheDocument()
+      expect(screen.getByText(/search briefs that stay focused/i)).toBeInTheDocument()
+      expect(screen.getByText(/a pipeline that remembers the details/i)).toBeInTheDocument()
+      expect(screen.getByText(/resume versions tied to the opportunity/i)).toBeInTheDocument()
+      expect(screen.getByText(/interview prep from the same context/i)).toBeInTheDocument()
     })
 
     it('should render value propositions', () => {
       renderHomePage({ user: null, isLoading: false })
 
-      // Use getByRole with level to be more specific
-      expect(screen.getByRole('heading', { level: 3, name: /ats-optimized/i })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { level: 3, name: /ai-powered/i })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { level: 3, name: /track progress/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 3, name: /search with intent/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 3, name: /run the application loop cleanly/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 3, name: /keep materials ready/i })).toBeInTheDocument()
     })
 
     it('should render bottom CTA section', () => {
       renderHomePage({ user: null, isLoading: false })
 
-      expect(screen.getByText(/ready to boost your job search/i)).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: /create your free account/i })).toHaveAttribute('href', '/register')
+      expect(screen.getByText(/build a tighter job search loop/i)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /create your workspace/i })).toHaveAttribute('href', '/register')
     })
   })
 
@@ -274,10 +272,10 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        expect(screen.getByText('Resumes')).toBeInTheDocument()
-        expect(screen.getByText('Applications')).toBeInTheDocument()
-        expect(screen.getByText('Cover Letters')).toBeInTheDocument()
-        expect(screen.getByText('Response Rate')).toBeInTheDocument()
+        expect(screen.getByText('Active pipeline')).toBeInTheDocument()
+        expect(screen.getByText('Response rate')).toBeInTheDocument()
+        expect(screen.getByText('Resume average')).toBeInTheDocument()
+        expect(screen.getByText('Cover letter drafts')).toBeInTheDocument()
       })
     })
 
@@ -285,23 +283,22 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        // Find stats by their container
-        const statsSection = screen.getByText('Resumes').closest('a')
-        expect(within(statsSection!).getByText('2')).toBeInTheDocument()
+        const pipelineCard = screen.getByText('Active pipeline').closest('a')
+        expect(within(pipelineCard!).getByText('3')).toBeInTheDocument()
       })
 
       await waitFor(() => {
-        const applicationsCard = screen.getByText('Applications').closest('a')
-        expect(within(applicationsCard!).getByText('3')).toBeInTheDocument()
+        const resumeAverageCard = screen.getByText('Resume average').closest('a')
+        expect(within(resumeAverageCard!).getByText('88')).toBeInTheDocument()
       })
 
       await waitFor(() => {
-        const coverLettersCard = screen.getByText('Cover Letters').closest('a')
+        const coverLettersCard = screen.getByText('Cover letter drafts').closest('a')
         expect(within(coverLettersCard!).getByText('1')).toBeInTheDocument()
       })
 
       await waitFor(() => {
-        const responseRateCard = screen.getByText('Response Rate').closest('a')
+        const responseRateCard = screen.getByText('Response rate').closest('a')
         expect(within(responseRateCard!).getByText('40%')).toBeInTheDocument()
       })
     })
@@ -310,7 +307,7 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        expect(screen.getByText('Recent Applications')).toBeInTheDocument()
+        expect(screen.getByText('Recent applications')).toBeInTheDocument()
       })
 
       // The applications are loaded async and sorted by updated_at
@@ -328,9 +325,9 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        expect(screen.getByText('Applied')).toBeInTheDocument()
-        expect(screen.getByText('Interview')).toBeInTheDocument()
-        expect(screen.getByText('Phone Screen')).toBeInTheDocument()
+        expect(screen.getAllByText('Applied').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Interview').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('Phone Screen').length).toBeGreaterThan(0)
       })
     })
 
@@ -338,13 +335,12 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        expect(screen.getByText('Quick Actions')).toBeInTheDocument()
+        expect(screen.getByText('Open the right workspace')).toBeInTheDocument()
       })
 
-      // Check for navigation links
       const nav = screen.getByRole('navigation', { name: /quick actions/i })
-      expect(within(nav).getByRole('link', { name: /resume hub/i })).toHaveAttribute('href', '/resumes')
-      expect(within(nav).getByRole('link', { name: /job pipeline/i })).toHaveAttribute('href', '/jobs')
+      expect(within(nav).getByRole('link', { name: /tune search filters/i })).toHaveAttribute('href', '/jobs/filters')
+      expect(within(nav).getByRole('link', { name: /review pipeline/i })).toHaveAttribute('href', '/jobs')
     })
 
     it('should show empty state when no applications', async () => {
@@ -353,7 +349,7 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        expect(screen.getByText(/no applications yet/i)).toBeInTheDocument()
+        expect(screen.getByText(/no applications tracked yet/i)).toBeInTheDocument()
         expect(screen.getByRole('link', { name: /add your first application/i })).toBeInTheDocument()
       })
     })
@@ -367,19 +363,18 @@ describe('HomePage', () => {
 
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
-      // Stats should show dash while loading
-      const resumesCard = screen.getByText('Resumes').closest('a')
-      expect(within(resumesCard!).getByText('-')).toBeInTheDocument()
+      const activePipelineCard = screen.getByText('Active pipeline').closest('a')
+      expect(within(activePipelineCard!).getByText('-')).toBeInTheDocument()
     })
 
     it('should link stats cards to correct pages', async () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        expect(screen.getByText('Resumes').closest('a')).toHaveAttribute('href', '/resumes')
-        expect(screen.getByText('Applications').closest('a')).toHaveAttribute('href', '/jobs')
-        expect(screen.getByText('Cover Letters').closest('a')).toHaveAttribute('href', '/documents')
-        expect(screen.getByText('Response Rate').closest('a')).toHaveAttribute('href', '/jobs')
+        expect(screen.getByText('Active pipeline').closest('a')).toHaveAttribute('href', '/jobs')
+        expect(screen.getByText('Resume average').closest('a')).toHaveAttribute('href', '/resumes')
+        expect(screen.getByText('Cover letter drafts').closest('a')).toHaveAttribute('href', '/documents')
+        expect(screen.getByText('Response rate').closest('a')).toHaveAttribute('href', '/analytics')
       })
     })
   })
@@ -398,10 +393,9 @@ describe('HomePage', () => {
         expect(screen.getByText(/welcome back/i)).toBeInTheDocument()
       })
 
-      // Should show zero values for failed calls
       await waitFor(() => {
-        const resumesCard = screen.getByText('Resumes').closest('a')
-        expect(within(resumesCard!).getByText('0')).toBeInTheDocument()
+        const pipelineCard = screen.getByText('Active pipeline').closest('a')
+        expect(within(pipelineCard!).getByText('0')).toBeInTheDocument()
       })
     })
 
@@ -414,15 +408,13 @@ describe('HomePage', () => {
       renderHomePage({ user: mockUser, isAuthenticated: true, isLoading: false })
 
       await waitFor(() => {
-        // Jobs should show
-        const applicationsCard = screen.getByText('Applications').closest('a')
-        expect(within(applicationsCard!).getByText('3')).toBeInTheDocument()
+        const activePipelineCard = screen.getByText('Active pipeline').closest('a')
+        expect(within(activePipelineCard!).getByText('3')).toBeInTheDocument()
       })
 
-      // Resumes should show 0 due to error
       await waitFor(() => {
-        const resumesCard = screen.getByText('Resumes').closest('a')
-        expect(within(resumesCard!).getByText('0')).toBeInTheDocument()
+        const resumeAverageCard = screen.getByText('Resume average').closest('a')
+        expect(within(resumeAverageCard!).getByText('No score')).toBeInTheDocument()
       })
     })
   })
@@ -435,13 +427,13 @@ describe('HomePage', () => {
       // The exact format depends on current date, so we just verify structure
       await waitFor(() => {
         // Check that the recent applications section loads
-        expect(screen.getByText('Recent Applications')).toBeInTheDocument()
+        expect(screen.getByText('Recent applications')).toBeInTheDocument()
       })
 
       // Applications have date text rendered (Today, Yesterday, Xd ago, or MMM DD)
       // We check for the Clock icon which accompanies date text
       await waitFor(() => {
-        const clockIcons = document.querySelectorAll('.lucide-clock')
+        const clockIcons = document.querySelectorAll('.lucide-clock-3')
         expect(clockIcons.length).toBeGreaterThan(0)
       })
     })
