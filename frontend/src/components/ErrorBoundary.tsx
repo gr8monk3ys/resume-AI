@@ -1,6 +1,6 @@
 'use client'
 
-import * as Sentry from '@sentry/nextjs'
+import { captureException, withScope } from '@sentry/react'
 import { Component } from 'react'
 
 import { ErrorFallback } from '@/components/ErrorFallback'
@@ -65,7 +65,7 @@ function logError(data: ErrorLogData): void {
   console.groupEnd()
 
   // Report error to Sentry with additional context
-  Sentry.withScope((scope) => {
+  withScope((scope) => {
     // Add component stack as extra context
     if (data.componentStack) {
       scope.setExtra('componentStack', data.componentStack)
@@ -82,7 +82,7 @@ function logError(data: ErrorLogData): void {
     scope.setLevel('error')
 
     // Capture the exception
-    Sentry.captureException(data.error)
+    captureException(data.error)
   })
 }
 

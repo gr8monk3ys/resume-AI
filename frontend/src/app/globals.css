@@ -3,19 +3,132 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 250, 250, 250;
-  --background-end-rgb: 255, 255, 255;
+  --canvas: #f6f2e8;
+  --canvas-soft: #fcfbf8;
+  --surface: rgba(255, 255, 255, 0.8);
+  --surface-strong: rgba(255, 255, 255, 0.94);
+  --surface-ink: #fff8ef;
+  --line: rgba(15, 23, 42, 0.08);
+  --ink: #101828;
+  --muted: #5f6c7b;
+  --accent: #ff6b2c;
+  --accent-strong: #8b360f;
+  --accent-soft: #ffedd5;
+  --signal: #0f766e;
+  --signal-soft: #d9fbf5;
+  --shadow-soft: 0 30px 60px -34px rgba(15, 23, 42, 0.28);
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+@layer base {
+  html {
+    background: var(--canvas);
+  }
+
+  body {
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: var(--font-body), 'Avenir Next', 'Segoe UI', sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(255, 107, 44, 0.18), transparent 30%),
+      radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 28%),
+      linear-gradient(180deg, #f6f2e8 0%, #fbfaf6 34%, #f1ede4 100%);
+  }
+
+  ::selection {
+    background: rgba(255, 107, 44, 0.18);
+    color: var(--ink);
+  }
+}
+
+@layer components {
+  .font-body {
+    font-family: var(--font-body), 'Avenir Next', 'Segoe UI', sans-serif;
+  }
+
+  .font-display {
+    font-family: var(--font-display), 'Avenir Next Condensed', sans-serif;
+  }
+
+  .shell-width {
+    width: min(100% - 2rem, 78rem);
+    margin-inline: auto;
+  }
+
+  .surface-card {
+    border: 1px solid var(--line);
+    border-radius: 1.75rem;
+    background: var(--surface);
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(18px);
+  }
+
+  .surface-card-strong {
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 1.75rem;
+    background: var(--surface-strong);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .eyebrow-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.72);
+    padding: 0.55rem 0.9rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #526071;
+  }
+
+  .eyebrow-pill::before {
+    content: '';
+    height: 0.55rem;
+    width: 0.55rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--accent), #ffba66);
+  }
+
+  .hero-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .section-ink {
+    color: var(--ink);
+  }
+
+  .section-copy {
+    color: var(--muted);
+  }
+
+  .app-shell-background {
+    position: relative;
+    background:
+      radial-gradient(circle at top, rgba(255, 107, 44, 0.16), transparent 22%),
+      radial-gradient(circle at right 15%, rgba(15, 118, 110, 0.12), transparent 18%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in {
+    animation: rise-in 520ms ease-out both;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer utilities {

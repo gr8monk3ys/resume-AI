@@ -76,6 +76,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/app/(app-shell)/jobs/filters/JobFiltersPageClient.tsx'],
+    linterOptions: {
+      reportUnusedDisableDirectives: 'off',
+    },
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
+  {
     files: ['**/*.js', '**/*.mjs', '**/*.cjs'],
     rules: {
       'import/order': [

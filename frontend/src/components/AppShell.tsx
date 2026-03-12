@@ -7,7 +7,8 @@ import { RootErrorBoundary } from '@/components/RootErrorBoundary'
 import { WebVitalsLoader } from '@/components/WebVitalsLoader'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const enableWebVitals = process.env.NEXT_PUBLIC_ENABLE_WEB_VITALS === 'true' ||
+  const enableWebVitals =
+    process.env.NEXT_PUBLIC_ENABLE_WEB_VITALS === 'true' ||
     process.env.NODE_ENV === 'production'
   const showDebugPanel = process.env.NODE_ENV === 'development'
 
@@ -15,7 +16,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <RootErrorBoundary>
       <AuthProvider>
         <OfflineIndicator position="top" />
-        <div className="min-h-screen flex flex-col">
+        <div className="app-shell-background min-h-screen overflow-x-clip">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.75),transparent_62%)]"
+          />
+          <div className="relative z-10 flex min-h-screen flex-col">
           <Navbar />
           <a
             href="#main-content"
@@ -23,9 +29,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             Skip to content
           </a>
-          <main id="main-content" className="flex-1">
+          <main id="main-content" className="flex-1 pb-12">
             {children}
           </main>
+          </div>
         </div>
       </AuthProvider>
 

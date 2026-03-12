@@ -88,16 +88,22 @@ export function setStoredTokens(): void {
 }
 
 /**
+ * Removes any legacy tokens left in localStorage from the pre-cookie auth flow.
+ */
+export function clearLegacyTokens(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('token_type')
+  }
+}
+
+/**
  * @deprecated Tokens are now stored in HTTP-only cookies
  */
 export function clearStoredTokens(): void {
   console.warn(
     'clearStoredTokens is deprecated. Use logout() to clear auth cookies.'
   )
-  // Clean up any legacy tokens that might still exist
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('token_type')
-  }
+  clearLegacyTokens()
 }

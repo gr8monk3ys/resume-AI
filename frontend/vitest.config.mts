@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { fileURLToPath } from 'url'
+
+const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   plugins: [react()],
@@ -43,7 +46,7 @@ export default defineConfig({
     // Fail fast in CI environments
     bail: process.env.CI ? 1 : 0,
     // Suppress noisy console warnings during tests
-    onConsoleLog(log, type) {
+    onConsoleLog(log) {
       // Suppress React hydration warnings and other noisy logs
       if (log.includes('Warning:') || log.includes('act(...)')) {
         return false
@@ -69,7 +72,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': resolve(rootDir, './src'),
     },
   },
 })

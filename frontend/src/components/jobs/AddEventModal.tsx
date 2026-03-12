@@ -156,12 +156,15 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
               min={15}
               step={15}
               value={formData.duration_minutes}
-              onChange={(e) =>
+              onChange={(e) => {
+                const nextDuration = Number.parseInt(e.target.value, 10)
                 setFormData({
                   ...formData,
-                  duration_minutes: parseInt(e.target.value),
+                  duration_minutes: Number.isNaN(nextDuration)
+                    ? 0
+                    : nextDuration,
                 })
-              }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>

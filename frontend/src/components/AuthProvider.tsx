@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 
 import { authApi, ApiError } from '@/lib/api'
-import { AuthContext, clearStoredTokens } from '@/lib/auth'
+import { AuthContext, clearLegacyTokens } from '@/lib/auth'
 
 import type { User } from '@/types'
 
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const clearAuthState = useCallback((nextIsLoading = false) => {
     // Clear any legacy localStorage tokens
-    clearStoredTokens()
+    clearLegacyTokens()
     setAuthState({
       user: null,
       isAuthenticated: false,

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -369,9 +369,7 @@ describe('SortableJobCard', () => {
       expect(mockOnStatusChange).toHaveBeenCalledWith(1, 'Interview')
     })
 
-    it('should stop propagation when job URL is clicked', async () => {
-      const user = userEvent.setup()
-
+    it('should stop propagation when job URL is clicked', () => {
       render(
         <SortableJobCard
           job={defaultJob}
@@ -382,7 +380,7 @@ describe('SortableJobCard', () => {
       )
 
       const urlLink = screen.getByLabelText('Open job link')
-      await user.click(urlLink)
+      fireEvent.click(urlLink)
 
       // onEdit should not be called when clicking URL
       expect(mockOnEdit).not.toHaveBeenCalled()
@@ -423,9 +421,8 @@ describe('SortableJobCard', () => {
         />
       )
 
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const statusSelect = screen.getByLabelText('Change job status') as HTMLSelectElement
-      expect(statusSelect.value).toBe('Applied')
+      const statusSelect = screen.getByLabelText('Change job status')
+      expect(statusSelect).toHaveValue('Applied')
     })
   })
 
