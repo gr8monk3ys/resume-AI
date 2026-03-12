@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 
 import { useWebVitals } from '@/hooks/useWebVitals'
 import { formatMetricValue, type MetricName, type WebVitalsMetric } from '@/lib/webVitals'
@@ -11,12 +11,6 @@ interface WebVitalsDebugProps {
    * @default 'bottom-right'
    */
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
-
-  /**
-   * Whether to start expanded
-   * @default false
-   */
-  defaultExpanded?: boolean
 
   /**
    * Only show in development mode
@@ -109,21 +103,15 @@ function MetricRow({ metric }: MetricRowProps) {
  */
 export function WebVitalsDebug({
   position = 'bottom-right',
-  defaultExpanded = false,
   devOnly = true,
 }: WebVitalsDebugProps) {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
-  const [isMounted, setIsMounted] = useState(false)
 
   const { metrics, overallScore, isComplete } = useWebVitals({
     enabled: true,
     logToConsole: false,
   })
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
@@ -138,8 +126,7 @@ export function WebVitalsDebug({
     return null
   }
 
-  // Don't render on server or if hidden
-  if (!isMounted || !isVisible) {
+  if (!isVisible) {
     return null
   }
 
@@ -251,5 +238,3 @@ export function WebVitalsDebug({
     </div>
   )
 }
-
-export default WebVitalsDebug

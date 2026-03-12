@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import HomePage from '@/app/page'
+import { DashboardClient } from '@/app/DashboardClient'
 import { jobsApi, resumesApi, coverLettersApi } from '@/lib/api'
 import { AuthContext, AuthContextType } from '@/lib/auth'
+import MarketingHomePage from '@/pages/index'
 
 import type { User, JobApplication, Resume, CoverLetter, JobStats } from '@/types'
 
@@ -178,9 +179,14 @@ function renderHomePage(authContextOverrides: Partial<AuthContextType> = {}) {
     ...authContextOverrides,
   }
 
+  const HomePageComponent =
+    defaultContext.user && defaultContext.isAuthenticated
+      ? DashboardClient
+      : MarketingHomePage
+
   return render(
     <AuthContext.Provider value={defaultContext}>
-      <HomePage />
+      <HomePageComponent />
     </AuthContext.Provider>
   )
 }
@@ -196,10 +202,11 @@ describe('HomePage', () => {
   })
 
   describe('Loading State', () => {
-    it('should show loading spinner when auth is loading', () => {
+    it('should keep rendering the landing page while auth bootstrap is loading', () => {
       renderHomePage({ isLoading: true })
 
-      expect(screen.getByRole('status', { name: /loading/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /resuboost ai/i })).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: /loading/i })).not.toBeInTheDocument()
     })
   })
 
@@ -465,10 +472,11 @@ describe('HomePage', () => {
       })
     })
 
-    it('should have proper aria-labels for loading states', () => {
+    it('should not introduce a blocking loading status on the public landing page', () => {
       renderHomePage({ isLoading: true })
 
-      expect(screen.getByRole('status')).toHaveAttribute('aria-label', 'Loading')
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.getByRole('main')).toHaveAttribute('id', 'main-content')
     })
   })
 

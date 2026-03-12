@@ -84,11 +84,13 @@ export function SkeletonText({
   className?: string
   lastLineWidth?: string
 }) {
+  const lineKeys = Array.from({ length: lines }, (_, index) => `line-${index}`)
+
   return (
     <div className={cn('space-y-2', className)} role="status" aria-label="Loading text">
-      {Array.from({ length: lines }).map((_, index) => (
+      {lineKeys.map((lineKey, index) => (
         <Skeleton
-          key={index}
+          key={lineKey}
           variant="text"
           width={index === lines - 1 && lines > 1 ? lastLineWidth : 'w-full'}
           height="h-4"

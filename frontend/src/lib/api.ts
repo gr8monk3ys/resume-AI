@@ -46,6 +46,11 @@ interface ApiErrorResponse {
   message?: string
 }
 
+interface AuthStatusResponse {
+  authenticated: boolean
+  user: User | null
+}
+
 /**
  * Custom API error class with status code
  */
@@ -626,18 +631,19 @@ export const authApi = {
   },
 
   /**
-   * Check if user is authenticated by attempting to get user info
+   * Check if user is authenticated without treating logged-out visitors as errors
    *
-   * This is useful for checking auth status on page load when
-   * using HTTP-only cookies (since JS cannot read them).
+   * This is useful for checking auth status on page load when using
+   * HTTP-only cookies, because JavaScript cannot read the cookie directly.
    */
   checkAuth: async (): Promise<User | null> => {
     try {
-      return await cookieAuthRequest<User>('/api/auth/me')
+      const response = await cookieAuthRequest<AuthStatusResponse>(
+        '/api/auth/status'
+      )
+      return response.authenticated ? response.user : null
     } catch (error) {
-      // Not authenticated or error - return null (expected behavior for auth check)
-      if (error instanceof ApiError && error.status !== 401) {
-        // Log unexpected errors (not 401 which is expected for unauthenticated)
+      if (error instanceof ApiError) {
         console.debug('Auth check failed with unexpected error:', error)
       }
       return null

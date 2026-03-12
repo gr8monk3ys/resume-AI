@@ -54,7 +54,7 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
 
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -65,13 +65,18 @@ from app.middleware.auth import (
     create_refresh_token,
     decode_token,
     get_current_user,
+    get_token_from_request,
     get_password_hash,
     verify_password,
 )
 from app.middleware.security import get_client_ip, get_user_agent
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.user import Token, UserCreate, UserResponse
+from app.schemas.user import AuthStatusResponse, Token, UserCreate, UserResponse
+
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/api/auth/login", auto_error=False
+)
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
@@ -429,6 +434,36 @@ async def logout(
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information."""
     return current_user
+
+
+@router.get("/status", response_model=AuthStatusResponse)
+async def get_auth_status(
+    request: Request,
+    bearer_token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+):
+    """
+    Check whether the current request is authenticated without returning a 401.
+
+    This is used by the frontend bootstrap flow on public routes so an
+    unauthenticated visitor does not generate console noise on first paint.
+    """
+    token = get_token_from_request(request, bearer_token)
+    if not token:
+        return AuthStatusResponse(authenticated=False)
+
+    token_data = decode_token(token, expected_type="access", validate_type=True)
+    if token_data is None:
+        return AuthStatusResponse(authenticated=False)
+
+    user = db.query(User).filter(User.id == token_data.user_id).first()
+    if user is None or not user.is_active:
+        return AuthStatusResponse(authenticated=False)
+
+    if token_data.token_version != user.token_version:
+        return AuthStatusResponse(authenticated=False)
+
+    return AuthStatusResponse(authenticated=True, user=user)
 
 
 @router.get("/lockout-status/{username}", response_model=LockoutStatusResponse)

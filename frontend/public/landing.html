@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Job Search Toolkit | ResuBoost AI</title>
+    <meta
+      name="description"
+      content="Optimize resumes, track applications, and prepare for interviews with AI-powered job search tools."
+    />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-soft: #f1f5f9;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --muted: #475569;
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --primary-soft: #dbeafe;
+        --success: #0f766e;
+        --max-width: 72rem;
+        --shadow: 0 22px 50px -30px rgba(15, 23, 42, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top, rgba(37, 99, 235, 0.16), transparent 34%),
+          linear-gradient(180deg, #f8fafc 0%, #ffffff 38%, #f8fafc 100%);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: 1rem;
+        top: -3rem;
+        z-index: 10;
+        border-radius: 999px;
+        background: var(--surface);
+        padding: 0.75rem 1rem;
+        box-shadow: var(--shadow);
+      }
+
+      .skip-link:focus {
+        top: 1rem;
+      }
+
+      .shell {
+        width: min(100% - 2rem, var(--max-width));
+        margin: 0 auto;
+      }
+
+      .hero {
+        padding: 2.5rem 0 1.25rem;
+      }
+
+      .hero-panel {
+        border: 1px solid rgba(37, 99, 235, 0.12);
+        border-radius: 1.75rem;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .hero-grid {
+        display: grid;
+        gap: 2rem;
+        padding: 2rem;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary-dark);
+        padding: 0.45rem 0.85rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.4rem, 6vw, 4.8rem);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      .hero-accent {
+        display: block;
+        margin-top: 0.5rem;
+        color: var(--primary);
+        font-size: clamp(1.5rem, 4vw, 3.3rem);
+      }
+
+      .hero-copy {
+        max-width: 40rem;
+        margin: 1.1rem 0 0;
+        color: var(--muted);
+        font-size: clamp(1rem, 2.3vw, 1.2rem);
+        line-height: 1.65;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+        margin-top: 1.35rem;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 3.25rem;
+        border-radius: 999px;
+        padding: 0 1.25rem;
+        font-size: 1rem;
+        font-weight: 700;
+        transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+      }
+
+      .button-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .button-primary:hover {
+        background: var(--primary-dark);
+      }
+
+      .button-secondary {
+        border: 1px solid rgba(37, 99, 235, 0.2);
+        background: rgba(255, 255, 255, 0.88);
+        color: var(--primary-dark);
+      }
+
+      .hero-proof {
+        display: grid;
+        gap: 0.75rem;
+        align-content: start;
+      }
+
+      .proof-card {
+        border: 1px solid var(--border);
+        border-radius: 1.25rem;
+        background: linear-gradient(180deg, rgba(219, 234, 254, 0.9), rgba(255, 255, 255, 0.92));
+        padding: 1.25rem;
+      }
+
+      .proof-card strong {
+        display: block;
+        font-size: 1rem;
+      }
+
+      .proof-card span {
+        display: block;
+        margin-top: 0.35rem;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .proof-strip {
+        display: grid;
+        gap: 0.85rem;
+        margin-top: 0.85rem;
+      }
+
+      .proof-pill {
+        border-radius: 999px;
+        background: var(--surface-soft);
+        color: var(--muted);
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+
+      .section {
+        padding: 1.25rem 0 3rem;
+      }
+
+      .section[data-deferred] {
+        content-visibility: auto;
+      }
+
+      .section-heading {
+        max-width: 42rem;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .section-heading h2 {
+        margin: 0;
+        font-size: clamp(1.9rem, 4vw, 3rem);
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+
+      .section-heading p {
+        margin: 0.9rem auto 0;
+        color: var(--muted);
+        font-size: 1rem;
+        line-height: 1.65;
+      }
+
+      .stats {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1.75rem;
+      }
+
+      .stat-card {
+        border-radius: 1.25rem;
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1.25rem;
+      }
+
+      .stat-card strong {
+        display: block;
+        font-size: 1.35rem;
+      }
+
+      .stat-card span {
+        display: block;
+        margin-top: 0.35rem;
+        color: #cbd5e1;
+        line-height: 1.55;
+      }
+
+      .feature-grid {
+        display: grid;
+        gap: 1rem;
+        margin-top: 2rem;
+      }
+
+      .feature-card {
+        border: 1px solid var(--border);
+        border-radius: 1.25rem;
+        background: rgba(255, 255, 255, 0.96);
+        padding: 1.25rem;
+      }
+
+      .feature-card strong {
+        display: block;
+        font-size: 1.05rem;
+      }
+
+      .feature-card p {
+        margin: 0.55rem 0 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .feature-tag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        background: var(--surface-soft);
+        color: var(--primary-dark);
+        padding: 0.3rem 0.65rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .cta-panel {
+        border: 1px solid rgba(37, 99, 235, 0.12);
+        border-radius: 1.5rem;
+        background: linear-gradient(140deg, rgba(37, 99, 235, 0.08), rgba(255, 255, 255, 0.95));
+        padding: 1.75rem;
+        text-align: center;
+      }
+
+      .cta-panel p {
+        max-width: 34rem;
+        margin: 0.75rem auto 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .cta-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.85rem;
+        margin-top: 1.25rem;
+      }
+
+      @media (min-width: 900px) {
+        .hero {
+          padding-top: 3rem;
+        }
+
+        .hero-grid {
+          grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.85fr);
+          padding: 2.5rem;
+        }
+
+        .proof-strip,
+        .stats,
+        .feature-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <main id="main-content">
+      <section class="hero">
+        <div class="shell">
+          <div class="hero-panel">
+            <div class="hero-grid">
+              <div>
+                <span class="eyebrow">Resume, pipeline, and interview prep</span>
+                <h1>
+                  ResuBoost AI
+                  <span class="hero-accent">Your AI-Powered Job Search Toolkit</span>
+                </h1>
+                <p class="hero-copy">
+                  Optimize your resume, track applications, generate tailored documents, and stay ready for every
+                  interview without bouncing between disconnected tools.
+                </p>
+                <div class="hero-actions">
+                  <a class="button button-primary" href="/register">Get Started Free</a>
+                  <a class="button button-secondary" href="/login">Sign In</a>
+                </div>
+              </div>
+              <div class="hero-proof" aria-label="Why job seekers use ResuBoost AI">
+                <div class="proof-card">
+                  <strong>Resume guidance that stays practical</strong>
+                  <span>See ATS alignment, close keyword gaps, and keep every version tied to the role you want.</span>
+                </div>
+                <div class="proof-strip">
+                  <div class="proof-pill">Job pipeline that does not lose context</div>
+                  <div class="proof-pill">Interview prep that turns notes into usable answers</div>
+                  <div class="proof-pill">Document generation that keeps momentum intact</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" data-deferred>
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Built for the parts of the search that usually break momentum</h2>
+            <p>
+              Keep your materials sharp, your pipeline organized, and your next step visible without adding another
+              bloated dashboard to maintain.
+            </p>
+          </div>
+          <div class="stats" aria-label="Core value propositions">
+            <div class="stat-card">
+              <strong>ATS-Optimized</strong>
+              <span>Understand how your resume reads before it disappears into a screening system.</span>
+            </div>
+            <div class="stat-card">
+              <strong>AI-Powered</strong>
+              <span>Use targeted suggestions instead of generic templates and repetitive copy-paste work.</span>
+            </div>
+            <div class="stat-card">
+              <strong>Track Progress</strong>
+              <span>Keep applications, documents, and preparation in one place so the search stays coherent.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" data-deferred>
+        <div class="shell">
+          <div class="section-heading">
+            <h2>Everything you need to land your next role</h2>
+            <p>A complete toolkit designed to streamline the search without hiding the work that actually matters.</p>
+          </div>
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="feature-tag">Resume Hub</span>
+              <strong>Refine resume versions against real job requirements</strong>
+              <p>Track ATS scores, keyword coverage, and version history so each submission stays deliberate.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-tag">Job Pipeline</span>
+              <strong>See your search as an operating system, not a spreadsheet</strong>
+              <p>Track status, next steps, and recency across every application without losing company context.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-tag">Interview Center</span>
+              <strong>Turn raw experience into polished answer frameworks</strong>
+              <p>Prepare STAR responses, talking points, and follow-up notes before the interview loop starts.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-tag">Documents</span>
+              <strong>Generate role-specific cover letters and supporting material quickly</strong>
+              <p>Keep every document aligned with the same resume version and job target you are applying for.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-tag">Career Tools</span>
+              <strong>Keep long searches from turning into scattered decisions</strong>
+              <p>Capture goals, reflections, and signals from each interview so your process compounds over time.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-tag">Start Fast</span>
+              <strong>Move from idea to active search without setup drag</strong>
+              <p>Create an account, add your materials, and start tracking work immediately instead of configuring tools.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" data-deferred>
+        <div class="shell">
+          <div class="cta-panel">
+            <h2>Ready to boost your job search?</h2>
+            <p>
+              Join ResuBoost AI to keep your applications, resumes, and interview preparation moving in the same
+              direction from day one.
+            </p>
+            <div class="cta-actions">
+              <a class="button button-primary" href="/register">Create Your Free Account</a>
+              <a class="button button-secondary" href="/login">Sign In</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
