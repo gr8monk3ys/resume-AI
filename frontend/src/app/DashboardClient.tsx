@@ -8,10 +8,8 @@ import {
   Award,
   Settings,
   ArrowRight,
-  CheckCircle,
   TrendingUp,
   Clock,
-  Target,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
@@ -86,124 +84,17 @@ interface DashboardStats {
   jobStats: JobStats | null
 }
 
-/**
- * Landing page component for unauthenticated users
- */
-function LandingPage() {
-  return (
-    <div className="bg-gradient-to-b from-gray-50 to-white">
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
-            <span className="block">ResuBoost AI</span>
-            <span className="block text-primary-600 mt-2">
-              Your AI-Powered Job Search Toolkit
-            </span>
-          </h1>
-          <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-500 sm:text-xl">
-            Optimize your resume, track applications, generate cover letters, and prepare
-            for interviews - all powered by cutting-edge AI technology.
-          </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors md:py-4 md:text-lg md:px-10"
-            >
-              Get Started Free
-              <ArrowRight className="ml-2 w-5 h-5" aria-hidden="true" />
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center px-8 py-3 border-2 border-primary-600 text-base font-medium rounded-md text-primary-600 bg-white hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors md:py-4 md:text-lg md:px-10"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </div>
+interface DashboardState {
+  stats: DashboardStats
+  recentApplications: JobApplication[]
+  isLoadingStats: boolean
+}
 
-      {/* Value Proposition */}
-      <div className="bg-primary-600 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="flex flex-col items-center">
-              <CheckCircle className="w-12 h-12 text-white mb-4" aria-hidden="true" />
-              <h3 className="text-xl font-semibold text-white">ATS-Optimized</h3>
-              <p className="mt-2 text-primary-100">
-                Get your resume past automated screening systems
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <TrendingUp className="w-12 h-12 text-white mb-4" aria-hidden="true" />
-              <h3 className="text-xl font-semibold text-white">AI-Powered</h3>
-              <p className="mt-2 text-primary-100">
-                Leverage advanced AI for personalized suggestions
-              </p>
-            </div>
-            <div className="flex flex-col items-center">
-              <Target className="w-12 h-12 text-white mb-4" aria-hidden="true" />
-              <h3 className="text-xl font-semibold text-white">Track Progress</h3>
-              <p className="mt-2 text-primary-100">
-                Visualize and manage your entire job search
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            Everything You Need to Land Your Dream Job
-          </h2>
-          <p className="mt-4 text-lg text-gray-500">
-            A complete toolkit designed to streamline your job search process
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {features.slice(0, -1).map((feature) => (
-            <div
-              key={feature.name}
-              className="bg-white rounded-xl shadow-md p-6 border border-gray-100 hover:shadow-lg transition-shadow"
-            >
-              <div
-                className={`${feature.color} w-14 h-14 rounded-xl flex items-center justify-center`}
-              >
-                <feature.icon className="w-7 h-7 text-white" aria-hidden="true" />
-              </div>
-              <h3 className="mt-5 text-xl font-semibold text-gray-900">
-                {feature.name}
-              </h3>
-              <p className="mt-3 text-gray-500">{feature.description}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA Section */}
-      <div className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900">
-            Ready to Boost Your Job Search?
-          </h2>
-          <p className="mt-4 text-lg text-gray-500">
-            Join thousands of job seekers who have streamlined their search with ResuBoost AI
-          </p>
-          <div className="mt-8">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors md:py-4 md:text-lg md:px-10"
-            >
-              Create Your Free Account
-              <ArrowRight className="ml-2 w-5 h-5" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+const EMPTY_DASHBOARD_STATS: DashboardStats = {
+  totalResumes: 0,
+  totalApplications: 0,
+  totalCoverLetters: 0,
+  jobStats: null,
 }
 
 /**
@@ -461,86 +352,107 @@ function formatDate(dateString: string): string {
   }
 }
 
+function DashboardAuthFallback() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
+      <h1 className="text-3xl font-bold text-gray-900">Sign in to view your dashboard</h1>
+      <p className="mt-4 text-lg text-gray-500">
+        Your session is not active, so the dashboard data could not be loaded.
+      </p>
+      <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center rounded-md bg-primary-600 px-6 py-3 text-white hover:bg-primary-700"
+        >
+          Sign In
+        </Link>
+        <Link
+          href="/register"
+          className="inline-flex items-center justify-center rounded-md border border-primary-600 px-6 py-3 text-primary-600 hover:bg-primary-50"
+        >
+          Create Account
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 /**
  * Main DashboardClient component
  * Shows landing page for unauthenticated users, dashboard for authenticated users
  */
 export function DashboardClient() {
-  const { user, isAuthenticated, isLoading } = useAuth()
-  const [stats, setStats] = useState<DashboardStats>({
-    totalResumes: 0,
-    totalApplications: 0,
-    totalCoverLetters: 0,
-    jobStats: null,
+  const { user, isAuthenticated } = useAuth()
+  const [dashboardState, setDashboardState] = useState<DashboardState>({
+    stats: EMPTY_DASHBOARD_STATS,
+    recentApplications: [],
+    isLoadingStats: true,
   })
-  const [recentApplications, setRecentApplications] = useState<JobApplication[]>([])
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
 
   useEffect(() => {
+    let isMounted = true
+
     async function fetchDashboardData() {
-      if (!isAuthenticated) {
-        setIsLoadingStats(false)
-        return
+      let nextState: DashboardState = {
+        stats: EMPTY_DASHBOARD_STATS,
+        recentApplications: [],
+        isLoadingStats: false,
       }
 
-      try {
-        const [resumes, jobs, coverLetters, jobStats] = await Promise.all([
-          resumesApi.list().catch(() => [] as Resume[]),
-          jobsApi.list().catch(() => [] as JobApplication[]),
-          coverLettersApi.list().catch(() => [] as CoverLetter[]),
-          jobsApi.getStats().catch(() => null),
-        ])
+      if (isAuthenticated) {
+        try {
+          const [resumes, jobs, coverLetters, jobStats] = await Promise.all([
+            resumesApi.list().catch(() => [] as Resume[]),
+            jobsApi.list().catch(() => [] as JobApplication[]),
+            coverLettersApi.list().catch(() => [] as CoverLetter[]),
+            jobsApi.getStats().catch(() => null),
+          ])
 
-        setStats({
-          totalResumes: resumes.length,
-          totalApplications: jobs.length,
-          totalCoverLetters: coverLetters.length,
-          jobStats,
-        })
+          // Sort jobs by updated_at and take the 5 most recent
+          const sortedJobs = [...jobs].sort(
+            (a, b) =>
+              new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          )
+          nextState = {
+            stats: {
+              totalResumes: resumes.length,
+              totalApplications: jobs.length,
+              totalCoverLetters: coverLetters.length,
+              jobStats,
+            },
+            recentApplications: sortedJobs.slice(0, 5),
+            isLoadingStats: false,
+          }
+        } catch (error) {
+          console.error('Failed to fetch dashboard data:', error)
+        }
+      }
 
-        // Sort jobs by updated_at and take the 5 most recent
-        const sortedJobs = [...jobs].sort(
-          (a, b) =>
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        )
-        setRecentApplications(sortedJobs.slice(0, 5))
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error)
-      } finally {
-        setIsLoadingStats(false)
+      if (isMounted) {
+        setDashboardState(nextState)
       }
     }
 
     if (user) {
       void fetchDashboardData()
     }
+
+    return () => {
+      isMounted = false
+    }
   }, [user, isAuthenticated])
 
-  // Show loading spinner while checking auth state
-  if (isLoading) {
-    return (
-      <div
-        className="flex items-center justify-center min-h-[60vh]"
-        role="status"
-        aria-label="Loading"
-      >
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
-      </div>
-    )
-  }
-
-  // Show landing page for unauthenticated users
   if (!user) {
-    return <LandingPage />
+    return <DashboardAuthFallback />
   }
 
   // Show dashboard for authenticated users
   return (
     <Dashboard
       user={user}
-      stats={stats}
-      recentApplications={recentApplications}
-      isLoadingStats={isLoadingStats}
+      stats={dashboardState.stats}
+      recentApplications={dashboardState.recentApplications}
+      isLoadingStats={dashboardState.isLoadingStats}
     />
   )
 }

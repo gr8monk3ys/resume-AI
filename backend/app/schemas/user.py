@@ -78,6 +78,13 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
+class AuthStatusResponse(BaseModel):
+    """Schema for cookie-based auth bootstrap checks."""
+
+    authenticated: bool
+    user: Optional[UserResponse] = None
+
+
 class Token(BaseModel):
     """JWT token response."""
 

@@ -359,7 +359,7 @@ describe('AuthProvider', () => {
   })
 
   describe('Route Protection', () => {
-    it('should redirect unauthenticated users from protected routes', async () => {
+    it('should leave protected-route redirects to middleware for unauthenticated users', async () => {
       mockPathname.mockReturnValue('/resumes')
 
       render(
@@ -369,13 +369,14 @@ describe('AuthProvider', () => {
       )
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/login')
+        expect(screen.getByTestId('user-status')).toHaveTextContent('Not logged in')
       })
 
-      expect(sessionStorage.getItem('redirectAfterLogin')).toBe('/resumes')
+      expect(mockPush).not.toHaveBeenCalled()
+      expect(sessionStorage.getItem('redirectAfterLogin')).toBeNull()
     })
 
-    it('should redirect authenticated users from auth routes to home', async () => {
+    it('should leave auth-route redirects to middleware for authenticated users', async () => {
       mockPathname.mockReturnValue('/login')
 
       vi.mocked(authApi.checkAuth).mockResolvedValue(mockUser)
@@ -392,9 +393,7 @@ describe('AuthProvider', () => {
         )
       })
 
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/')
-      })
+      expect(mockPush).not.toHaveBeenCalled()
     })
 
     it('should allow unauthenticated access to public routes', async () => {
@@ -448,7 +447,7 @@ describe('AuthProvider', () => {
       expect(authApi.checkAuth).toHaveBeenCalled()
     })
 
-    it('should logout when token refresh fails', async () => {
+    it('should stay logged out when bootstrap finds no valid session', async () => {
       mockPathname.mockReturnValue('/resumes')
 
       // checkAuth returns null (expired/invalid session)
@@ -465,7 +464,8 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('user-status')).toHaveTextContent('Not logged in')
       })
 
-      expect(mockPush).toHaveBeenCalledWith('/login')
+      expect(authApi.refresh).not.toHaveBeenCalled()
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 

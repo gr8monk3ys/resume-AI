@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import RegisterPage from '@/app/register/page'
+import RegisterPage from '@/app/(app-shell)/register/page'
 import { ApiError } from '@/lib/api'
 import { AuthContext, AuthContextType } from '@/lib/auth'
 
@@ -493,7 +493,7 @@ describe('RegisterPage', () => {
   })
 
   describe('Authentication Redirect', () => {
-    it('should redirect authenticated users to home', async () => {
+    it('should defer authenticated-user redirects to middleware', async () => {
       const mockUser = {
         id: 1,
         username: 'testuser',
@@ -505,10 +505,11 @@ describe('RegisterPage', () => {
         last_login: null,
       }
 
-      renderRegisterPage({ user: mockUser, isLoading: false })
+      const { container } = renderRegisterPage({ user: mockUser, isLoading: false })
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/')
+        expect(container.firstChild).toBeNull()
+        expect(mockPush).not.toHaveBeenCalled()
       })
     })
   })

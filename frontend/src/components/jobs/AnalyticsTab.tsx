@@ -251,9 +251,9 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
             Applications Per Week
           </h3>
           <div className="flex items-end gap-2 h-40">
-            {weeklyData.map((item, index) => (
+            {weeklyData.map((item) => (
               <div
-                key={index}
+                key={item.week}
                 className="flex-1 flex flex-col items-center justify-end"
               >
                 <div

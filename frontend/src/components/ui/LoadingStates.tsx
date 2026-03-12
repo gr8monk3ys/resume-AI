@@ -2,6 +2,10 @@ import { cn } from '@/lib/utils'
 
 import { Skeleton, SkeletonText, SkeletonAvatar, SkeletonButton, SkeletonInput } from './Skeleton'
 
+function buildLoadingKeys(count: number, prefix: string): string[] {
+  return Array.from({ length: count }, (_, index) => `${prefix}-${index}`)
+}
+
 /**
  * Loading skeleton for card components (resume cards, job cards, etc.)
  * Matches the card design pattern used throughout the application
@@ -103,6 +107,10 @@ export function TableSkeleton({
   showHeader?: boolean
   className?: string
 }) {
+  const headerKeys = buildLoadingKeys(columns, 'header')
+  const rowKeys = buildLoadingKeys(rows, 'row')
+  const columnKeys = buildLoadingKeys(columns, 'column')
+
   return (
     <div
       className={cn('bg-white rounded-lg shadow overflow-hidden', className)}
@@ -113,8 +121,8 @@ export function TableSkeleton({
         {showHeader && (
           <thead className="bg-gray-50">
             <tr>
-              {Array.from({ length: columns }).map((_, index) => (
-                <th key={index} className="px-6 py-3">
+              {headerKeys.map((headerKey, index) => (
+                <th key={headerKey} className="px-6 py-3">
                   <Skeleton
                     variant="text"
                     width={index === 0 ? 'w-32' : 'w-20'}
@@ -126,10 +134,10 @@ export function TableSkeleton({
           </thead>
         )}
         <tbody className="bg-white divide-y divide-gray-200">
-          {Array.from({ length: rows }).map((_, rowIndex) => (
-            <tr key={rowIndex} className="animate-pulse">
-              {Array.from({ length: columns }).map((_, colIndex) => (
-                <td key={colIndex} className="px-6 py-4 whitespace-nowrap">
+          {rowKeys.map((rowKey) => (
+            <tr key={rowKey} className="animate-pulse">
+              {columnKeys.map((columnKey, colIndex) => (
+                <td key={`${rowKey}-${columnKey}`} className="px-6 py-4 whitespace-nowrap">
                   {colIndex === 0 ? (
                     <div className="flex items-center gap-3">
                       <Skeleton variant="rectangular" width="w-5" height="h-5" />
@@ -172,14 +180,16 @@ export function FormSkeleton({
   showSubmitButton?: boolean
   className?: string
 }) {
+  const fieldKeys = buildLoadingKeys(fields, 'field')
+
   return (
     <div
       className={cn('space-y-6', className)}
       role="status"
       aria-label="Loading form"
     >
-      {Array.from({ length: fields }).map((_, index) => (
-        <div key={index}>
+      {fieldKeys.map((fieldKey) => (
+        <div key={fieldKey}>
           {/* Label */}
           <Skeleton variant="text" width="w-24" height="h-4" className="mb-2" />
 
@@ -220,6 +230,10 @@ export function FormSkeleton({
  * Includes header, stats cards, and content area
  */
 export function PageSkeleton({ className }: { className?: string }) {
+  const statCardKeys = buildLoadingKeys(4, 'stats-card')
+  const recentItemKeys = buildLoadingKeys(5, 'recent-item')
+  const quickActionKeys = buildLoadingKeys(6, 'quick-action')
+
   return (
     <div
       className={cn('max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8', className)}
@@ -234,9 +248,9 @@ export function PageSkeleton({ className }: { className?: string }) {
 
       {/* Stats cards row */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {Array.from({ length: 4 }).map((_, index) => (
+        {statCardKeys.map((cardKey) => (
           <div
-            key={index}
+            key={cardKey}
             className="bg-white rounded-xl shadow-md p-6 border border-gray-100"
           >
             <div className="flex items-center">
@@ -261,8 +275,8 @@ export function PageSkeleton({ className }: { className?: string }) {
             </div>
 
             <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="py-4 border-b border-gray-100 last:border-0">
+              {recentItemKeys.map((itemKey) => (
+                <div key={itemKey} className="py-4 border-b border-gray-100 last:border-0">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <Skeleton variant="text" width="w-48" height="h-4" className="mb-1" />
@@ -285,8 +299,8 @@ export function PageSkeleton({ className }: { className?: string }) {
             <Skeleton variant="text" width="w-32" height="h-6" className="mb-6" />
 
             <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="flex items-center p-3">
+              {quickActionKeys.map((actionKey) => (
+                <div key={actionKey} className="flex items-center p-3">
                   <Skeleton variant="rounded" width="w-10" height="h-10" />
                   <div className="ml-4 flex-1">
                     <Skeleton variant="text" width="w-24" height="h-4" />
@@ -319,15 +333,17 @@ export function ListSkeleton({
   variant?: 'default' | 'compact' | 'detailed'
   className?: string
 }) {
+  const itemKeys = buildLoadingKeys(items, 'list-item')
+
   return (
     <div
       className={cn('divide-y divide-gray-100', className)}
       role="status"
       aria-label="Loading list"
     >
-      {Array.from({ length: items }).map((_, index) => (
+      {itemKeys.map((itemKey) => (
         <div
-          key={index}
+          key={itemKey}
           className={cn(
             'flex items-center',
             variant === 'compact' ? 'py-3' : 'py-4'
@@ -383,6 +399,8 @@ export function KanbanColumnSkeleton({
   cards?: number
   className?: string
 }) {
+  const cardKeys = buildLoadingKeys(cards, 'kanban-card')
+
   return (
     <div
       className={cn('bg-gray-50 rounded-lg p-4 min-w-[300px]', className)}
@@ -400,8 +418,8 @@ export function KanbanColumnSkeleton({
 
       {/* Cards */}
       <div className="space-y-3">
-        {Array.from({ length: cards }).map((_, index) => (
-          <CompactCardSkeleton key={index} />
+        {cardKeys.map((cardKey) => (
+          <CompactCardSkeleton key={cardKey} />
         ))}
       </div>
     </div>
@@ -420,14 +438,16 @@ export function KanbanBoardSkeleton({
   cardsPerColumn?: number
   className?: string
 }) {
+  const columnKeys = buildLoadingKeys(columns, 'kanban-column')
+
   return (
     <div
       className={cn('flex gap-4 overflow-x-auto pb-4', className)}
       role="status"
       aria-label="Loading kanban board"
     >
-      {Array.from({ length: columns }).map((_, index) => (
-        <KanbanColumnSkeleton key={index} cards={cardsPerColumn} />
+      {columnKeys.map((columnKey) => (
+        <KanbanColumnSkeleton key={columnKey} cards={cardsPerColumn} />
       ))}
     </div>
   )
@@ -564,4 +584,3 @@ export function CenteredLoader({
     </div>
   )
 }
-

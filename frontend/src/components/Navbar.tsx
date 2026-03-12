@@ -56,13 +56,9 @@ const userMenuItems = [
 export function Navbar() {
   const { user, logout, isLoading } = useAuth()
   const pathname = usePathname()
+  const currentPathname = pathname ?? '/'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [pathname])
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -109,28 +105,29 @@ export function Navbar() {
     void logout()
   }
 
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false)
+  }
+
   /**
    * Check if a path is currently active
    */
   const isActivePath = (href: string): boolean => {
     if (href === '/') {
-      return pathname === '/'
+      return currentPathname === '/' || currentPathname === '/dashboard'
     }
-    return pathname.startsWith(href)
+    return currentPathname.startsWith(href)
   }
 
   return (
-    <nav
-      className="bg-white shadow-sm border-b sticky top-0 z-50"
-      role="navigation"
-      aria-label="Main navigation"
-    >
+    <nav className="bg-white shadow-sm border-b sticky top-0 z-50" aria-label="Main navigation">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
             <Link
               href="/"
+              onClick={closeMobileMenu}
               className="flex items-center focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-md"
             >
               <span className="text-xl font-bold text-primary-600">
@@ -203,7 +200,7 @@ export function Navbar() {
                   href="/login"
                   className={cn(
                     'inline-flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors',
-                    pathname === '/login'
+                    currentPathname === '/login'
                       ? 'bg-primary-50 text-primary-700'
                       : 'text-gray-600 hover:text-gray-900'
                   )}
@@ -226,7 +223,7 @@ export function Navbar() {
           <div className="flex items-center lg:hidden">
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen((isOpen) => !isOpen)}
               className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}
@@ -243,16 +240,12 @@ export function Navbar() {
       </div>
 
       {/* Mobile Menu */}
-      <div
-        ref={mobileMenuRef}
-        id="mobile-menu"
-        className={cn(
-          'lg:hidden transition-all duration-200 ease-in-out overflow-hidden',
-          mobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
-        )}
-        aria-hidden={!mobileMenuOpen}
-      >
-        <div className="bg-white border-t shadow-lg">
+      {mobileMenuOpen && (
+        <div
+          ref={mobileMenuRef}
+          id="mobile-menu"
+          className="lg:hidden border-t bg-white shadow-lg"
+        >
           {!isLoading && user ? (
             <div className="py-2">
               {/* User Info */}
@@ -269,6 +262,7 @@ export function Navbar() {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={closeMobileMenu}
                     className={cn(
                       'flex items-center px-4 py-3 text-base font-medium transition-colors',
                       isActivePath(item.href)
@@ -289,6 +283,7 @@ export function Navbar() {
                   <Link
                     key={item.name}
                     href={item.href}
+                    onClick={closeMobileMenu}
                     className={cn(
                       'flex items-center px-4 py-3 text-base font-medium transition-colors',
                       isActivePath(item.href)
@@ -314,9 +309,10 @@ export function Navbar() {
             <div className="py-3 space-y-1">
               <Link
                 href="/login"
+                onClick={closeMobileMenu}
                 className={cn(
                   'flex items-center px-4 py-3 text-base font-medium transition-colors',
-                  pathname === '/login'
+                  currentPathname === '/login'
                     ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 )}
@@ -326,9 +322,10 @@ export function Navbar() {
               </Link>
               <Link
                 href="/register"
+                onClick={closeMobileMenu}
                 className={cn(
                   'flex items-center px-4 py-3 text-base font-medium transition-colors',
-                  pathname === '/register'
+                  currentPathname === '/register'
                     ? 'bg-primary-50 text-primary-700 border-l-4 border-primary-600'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 )}
@@ -339,7 +336,7 @@ export function Navbar() {
             </div>
           ) : null}
         </div>
-      </div>
+      )}
     </nav>
   )
 }

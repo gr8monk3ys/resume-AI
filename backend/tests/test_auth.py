@@ -281,6 +281,46 @@ class TestCurrentUser:
         assert "password_hash" not in data
 
 
+class TestAuthStatus:
+    """Tests for the non-error auth bootstrap endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_status_unauthenticated_returns_false(self, client: AsyncClient, db: Session):
+        """Unauthenticated bootstrap requests should return a neutral response."""
+        response = await client.get("/api/auth/status")
+
+        assert response.status_code == 200
+        assert response.json() == {"authenticated": False, "user": None}
+
+    @pytest.mark.asyncio
+    async def test_status_with_cookie_returns_user(
+        self, client: AsyncClient, db: Session, test_user: User, test_token: str
+    ):
+        """Browser requests with auth cookies should return the current user."""
+        client.cookies.set("access_token", test_token)
+
+        response = await client.get("/api/auth/status")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is True
+        assert data["user"]["id"] == test_user.id
+        assert data["user"]["username"] == test_user.username
+
+    @pytest.mark.asyncio
+    async def test_status_with_bearer_header_returns_user(
+        self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
+    ):
+        """API clients using bearer tokens should get the same bootstrap state."""
+        response = await client.get("/api/auth/status", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["authenticated"] is True
+        assert data["user"]["id"] == test_user.id
+        assert data["user"]["email"] == test_user.email
+
+
 class TestPasswordChange:
     """Tests for password change endpoint."""
 

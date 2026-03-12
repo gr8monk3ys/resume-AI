@@ -18,6 +18,7 @@ const TOKEN_REFRESH_INTERVAL = 14 * 60 * 1000
  * Protected routes that require authentication
  */
 const PROTECTED_ROUTES = [
+  '/dashboard',
   '/resumes',
   '/jobs',
   '/interview',
@@ -30,10 +31,50 @@ const PROTECTED_ROUTES = [
   '/analytics',
 ]
 
-/**
- * Auth routes that authenticated users should be redirected from
- */
-const AUTH_ROUTES = ['/login', '/register']
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  )
+}
+
+function isSafeRedirectPath(pathname: string | null): pathname is string {
+  return Boolean(pathname && pathname.startsWith('/') && !pathname.startsWith('//'))
+}
+
+function getPostLoginRedirect(): string {
+  if (typeof window === 'undefined') {
+    return '/'
+  }
+
+  const queryRedirect = new URLSearchParams(window.location.search).get(
+    'redirectTo'
+  )
+  if (isSafeRedirectPath(queryRedirect)) {
+    return queryRedirect
+  }
+
+  const storedRedirect = sessionStorage.getItem('redirectAfterLogin')
+  if (isSafeRedirectPath(storedRedirect)) {
+    sessionStorage.removeItem('redirectAfterLogin')
+    return storedRedirect
+  }
+
+  return '/'
+}
+
+interface AuthState {
+  user: User | null
+  isAuthenticated: boolean
+  isLoading: boolean
+  authError: string | null
+}
+
+const INITIAL_AUTH_STATE: AuthState = {
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+  authError: null,
+}
 
 /**
  * AuthProvider component that manages authentication state
@@ -46,23 +87,33 @@ const AUTH_ROUTES = ['/login', '/register']
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [user, setUser] = useState<User | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [authState, setAuthState] = useState<AuthState>(INITIAL_AUTH_STATE)
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null)
   const isRefreshingRef = useRef(false)
+  const { user, isAuthenticated, isLoading, authError } = authState
+
+  const applyAuthenticatedUser = useCallback((userData: User) => {
+    setAuthState({
+      user: userData,
+      isAuthenticated: true,
+      isLoading: false,
+      authError: null,
+    })
+  }, [])
 
   /**
    * Clear all auth state
    * Note: Cookies are cleared server-side via the logout endpoint
    */
-  const clearAuthState = useCallback(() => {
+  const clearAuthState = useCallback((nextIsLoading = false) => {
     // Clear any legacy localStorage tokens
     clearStoredTokens()
-    setUser(null)
-    setIsAuthenticated(false)
-    setAuthError(null)
+    setAuthState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: nextIsLoading,
+      authError: null,
+    })
 
     if (refreshTimerRef.current) {
       clearInterval(refreshTimerRef.current)
@@ -85,16 +136,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Call refresh endpoint - cookies are sent automatically
       await authApi.refresh()
-      setAuthError(null)
+      setAuthState((prev) => ({ ...prev, authError: null }))
       return true
     } catch (error) {
       // If refresh fails, user needs to log in again
       console.error('Token refresh failed:', error)
       clearAuthState()
+      const currentPathname = pathname ?? '/'
 
       // Only redirect if on a protected route
-      if (PROTECTED_ROUTES.some((route) => pathname.startsWith(route))) {
-        router.push('/login')
+      if (isProtectedRoute(currentPathname)) {
+        router.push(`/login?redirectTo=${encodeURIComponent(currentPathname)}`)
       }
 
       return false
@@ -119,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshAuth])
 
   /**
-   * Check authentication status by calling the /me endpoint
+   * Check authentication status with a non-error bootstrap endpoint
    * This is the secure way to verify auth with HTTP-only cookies
    */
   const checkAuthStatus = useCallback(async (): Promise<User | null> => {
@@ -133,21 +185,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Initialize auth state on mount
-   * Since we use HTTP-only cookies, we need to verify auth status with the server
+   * Since we use HTTP-only cookies, we verify auth status with the server
    */
   useEffect(() => {
     let isMounted = true
 
     async function initializeAuth() {
       try {
-        // Check if user is authenticated by calling /me endpoint
+        // Check if user is authenticated without treating logged-out visitors as failures
         const userData = await checkAuthStatus()
 
         if (!isMounted) return
 
         if (userData) {
-          setUser(userData)
-          setIsAuthenticated(true)
+          applyAuthenticatedUser(userData)
           setupRefreshTimer()
         } else {
           clearAuthState()
@@ -156,10 +207,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return
         console.error('Auth initialization failed:', error)
         clearAuthState()
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-        }
       }
     }
 
@@ -172,40 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearInterval(refreshTimerRef.current)
       }
     }
-  }, [checkAuthStatus, clearAuthState, setupRefreshTimer])
-
-  /**
-   * Handle route protection
-   * Redirect unauthenticated users from protected routes
-   * Redirect authenticated users from auth routes
-   */
-  useEffect(() => {
-    if (isLoading) return
-
-    const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
-      pathname.startsWith(route)
-    )
-    const isAuthRoute = AUTH_ROUTES.includes(pathname)
-
-    if (!isAuthenticated && isProtectedRoute) {
-      // Store the intended destination for redirect after login
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('redirectAfterLogin', pathname)
-      }
-      router.push('/login')
-    } else if (isAuthenticated && isAuthRoute) {
-      // Redirect to stored destination or home
-      let redirectTo = '/'
-      if (typeof window !== 'undefined') {
-        const stored = sessionStorage.getItem('redirectAfterLogin')
-        if (stored) {
-          redirectTo = stored
-          sessionStorage.removeItem('redirectAfterLogin')
-        }
-      }
-      router.push(redirectTo)
-    }
-  }, [isAuthenticated, isLoading, pathname, router])
+  }, [applyAuthenticatedUser, checkAuthStatus, clearAuthState, setupRefreshTimer])
 
   /**
    * Login with username and password
@@ -213,7 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const login = useCallback(
     async (username: string, password: string) => {
-      setAuthError(null)
+      setAuthState((prev) => ({ ...prev, authError: null }))
 
       try {
         // Login - cookies are set by the server response
@@ -225,30 +239,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Failed to get user info after login')
         }
 
-        setUser(userData)
-        setIsAuthenticated(true)
+        applyAuthenticatedUser(userData)
         setupRefreshTimer()
 
         // Handle redirect after successful login
-        let redirectTo = '/'
-        if (typeof window !== 'undefined') {
-          const stored = sessionStorage.getItem('redirectAfterLogin')
-          if (stored) {
-            redirectTo = stored
-            sessionStorage.removeItem('redirectAfterLogin')
-          }
-        }
-        router.push(redirectTo)
+        router.push(getPostLoginRedirect())
       } catch (error) {
         if (error instanceof ApiError) {
-          setAuthError(error.message)
+          setAuthState((prev) => ({ ...prev, authError: error.message }))
           throw error
         }
-        setAuthError('An unexpected error occurred')
+        setAuthState((prev) => ({
+          ...prev,
+          authError: 'An unexpected error occurred',
+        }))
         throw new Error('An unexpected error occurred')
       }
     },
-    [router, setupRefreshTimer]
+    [applyAuthenticatedUser, router, setupRefreshTimer]
   )
 
   /**
@@ -278,7 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string
       full_name?: string
     }) => {
-      setAuthError(null)
+      setAuthState((prev) => ({ ...prev, authError: null }))
 
       try {
         await authApi.register(data)
@@ -286,10 +294,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await login(data.username, data.password)
       } catch (error) {
         if (error instanceof ApiError) {
-          setAuthError(error.message)
+          setAuthState((prev) => ({ ...prev, authError: error.message }))
           throw error
         }
-        setAuthError('An unexpected error occurred')
+        setAuthState((prev) => ({
+          ...prev,
+          authError: 'An unexpected error occurred',
+        }))
         throw new Error('An unexpected error occurred')
       }
     },
