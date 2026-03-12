@@ -285,9 +285,7 @@ class TestAuthStatus:
     """Tests for the non-error auth bootstrap endpoint."""
 
     @pytest.mark.asyncio
-    async def test_status_unauthenticated_returns_false(
-        self, client: AsyncClient, db: Session
-    ):
+    async def test_status_unauthenticated_returns_false(self, client: AsyncClient, db: Session):
         """Unauthenticated bootstrap requests should return a neutral response."""
         response = await client.get("/api/auth/status")
 

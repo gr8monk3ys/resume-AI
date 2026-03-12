@@ -65,8 +65,8 @@ from app.middleware.auth import (
     create_refresh_token,
     decode_token,
     get_current_user,
-    get_token_from_request,
     get_password_hash,
+    get_token_from_request,
     verify_password,
 )
 from app.middleware.security import get_client_ip, get_user_agent
@@ -74,9 +74,7 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.user import AuthStatusResponse, Token, UserCreate, UserResponse
 
-oauth2_scheme_optional = OAuth2PasswordBearer(
-    tokenUrl="/api/auth/login", auto_error=False
-)
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
