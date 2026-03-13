@@ -189,6 +189,14 @@ async def lifespan(app: FastAPI):
     # Startup
     init_db()
 
+    # Verify database connectivity before accepting requests
+    db_health = check_db_health()
+    if db_health.get("status") != "healthy":
+        raise RuntimeError(
+            f"Database health check failed on startup: {db_health.get('error', 'unknown error')}"
+        )
+    logger.info("Database health check passed")
+
     # Initialize audit logger with settings
     if settings.enable_audit_logging:
         init_audit_logger(
