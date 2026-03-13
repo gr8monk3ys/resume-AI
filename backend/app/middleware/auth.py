@@ -13,7 +13,8 @@ from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
@@ -121,7 +122,7 @@ def decode_token(
             token_type=token_type,
             token_version=token_version,
         )
-    except JWTError:
+    except (PyJWTError, ValueError):
         return None
 
 

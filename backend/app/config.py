@@ -122,6 +122,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
+    # Proxy settings
+    # Set to True ONLY when running behind a trusted reverse proxy (Railway, Vercel, nginx)
+    # When False, X-Forwarded-For header is ignored to prevent IP spoofing
+    trust_proxy_headers: bool = False
+
     # Security middleware settings
     enable_rate_limiting: bool = True
     enable_security_headers: bool = True

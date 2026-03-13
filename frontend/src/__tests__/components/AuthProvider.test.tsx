@@ -114,7 +114,6 @@ describe('AuthProvider', () => {
 
   const mockTokens = {
     access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZXhwIjoxOTk5OTk5OTk5fQ.test',
-    refresh_token: 'mock-refresh-token',
     token_type: 'bearer',
   }
 

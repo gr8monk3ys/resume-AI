@@ -258,15 +258,16 @@ class TestClientIdentifier:
         assert result == "ip:192.168.1.1"
 
     def test_get_client_identifier_with_forwarded_header(self):
-        """Test identifier uses X-Forwarded-For header."""
+        """Test identifier uses X-Forwarded-For only when trust_proxy_headers is enabled."""
         request = MagicMock()
         request.state = MagicMock(spec=[])
         request.headers = {"X-Forwarded-For": "10.0.0.1, 192.168.1.1"}
         request.client = MagicMock()
         request.client.host = "127.0.0.1"
 
+        # Default: trust_proxy_headers=False, so X-Forwarded-For is ignored
         result = get_client_identifier(request)
-        assert result == "ip:10.0.0.1"
+        assert result == "ip:127.0.0.1"
 
 
 # =============================================================================
@@ -523,14 +524,15 @@ class TestRequestHelpers:
         assert result == "192.168.1.100"
 
     def test_get_client_ip_forwarded(self):
-        """Test getting IP from X-Forwarded-For."""
+        """Test that X-Forwarded-For is ignored when trust_proxy_headers is False."""
         request = MagicMock()
         request.headers = {"X-Forwarded-For": "10.0.0.1, 192.168.1.1, 127.0.0.1"}
         request.client = MagicMock()
         request.client.host = "127.0.0.1"
 
+        # Default: trust_proxy_headers=False, uses direct client IP
         result = get_client_ip(request)
-        assert result == "10.0.0.1"
+        assert result == "127.0.0.1"
 
     def test_get_client_ip_no_client(self):
         """Test getting IP when no client info."""

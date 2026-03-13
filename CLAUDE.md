@@ -193,10 +193,6 @@ AUTH_RATE_LIMIT_REQUESTS=5
 AUTH_LOCKOUT_THRESHOLD=10
 ```
 
-## Demo Account
-
-Username: `demo` | Password: `demo123`
-
 ## Testing
 
 ```bash

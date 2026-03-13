@@ -393,7 +393,9 @@ def get_client_ip(request: Request) -> str:
     """
     Get the client IP address from a request.
 
-    Handles X-Forwarded-For header for reverse proxy setups.
+    Only trusts X-Forwarded-For when TRUST_PROXY_HEADERS is enabled
+    (i.e., when running behind a known reverse proxy like Railway/nginx).
+    This prevents IP spoofing via forged headers.
 
     Args:
         request: FastAPI request object
@@ -401,10 +403,14 @@ def get_client_ip(request: Request) -> str:
     Returns:
         Client IP address string
     """
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # Get the first (client) IP in the chain
-        return forwarded.split(",")[0].strip()
+    from app.config import get_settings
+
+    settings = get_settings()
+
+    if settings.trust_proxy_headers:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
 
     if request.client:
         return request.client.host

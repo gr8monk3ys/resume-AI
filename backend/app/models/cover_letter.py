@@ -2,7 +2,7 @@
 Cover letter model for storing generated cover letters.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
@@ -21,8 +21,8 @@ class CoverLetter(Base):
         Integer, ForeignKey("job_applications.id", ondelete="SET NULL"), nullable=True
     )
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     profile = relationship("Profile", back_populates="cover_letters")

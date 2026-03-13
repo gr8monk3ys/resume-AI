@@ -199,8 +199,9 @@ async def login(
     """
     Login and get access token.
 
-    Sets HTTP-only cookies for browser-based authentication while also returning
-    tokens in the response body for backward compatibility with API clients.
+    Sets HTTP-only cookies for browser-based authentication.
+    Returns access_token in body for OAuth2 compatibility (API clients/Swagger UI).
+    Refresh token is delivered exclusively via HTTP-only cookie.
 
     Includes brute force protection:
     - Tracks failed login attempts
@@ -209,6 +210,7 @@ async def login(
 
     Security:
     - Tokens are set as HTTP-only cookies (prevents XSS token theft)
+    - Refresh token never appears in response body
     - Secure flag enabled in production (HTTPS only)
     - SameSite=Lax prevents CSRF attacks
     """
@@ -301,7 +303,7 @@ async def login(
     safe_commit(db, "update last login")
 
     # Create tokens with token_version for invalidation support
-    # Note: 'sub' must be a string per JWT spec (jose library enforces this)
+    # Note: 'sub' must be a string per JWT spec
     token_data = {"sub": str(user.id), "username": user.username}
     access_token = create_access_token(token_data, token_version=user.token_version)
     refresh_token = create_refresh_token(token_data, token_version=user.token_version)
@@ -309,8 +311,9 @@ async def login(
     # Set HTTP-only cookies for browser-based authentication
     set_auth_cookies(response, access_token, refresh_token)
 
-    # Also return tokens in body for backward compatibility with API clients
-    return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
+    # Return access_token in body for OAuth2 compatibility (API clients/Swagger UI)
+    # Refresh token is only delivered via HTTP-only cookie for security
+    return Token(access_token=access_token, token_type="bearer")
 
 
 class RefreshTokenRequest(BaseModel):
@@ -376,7 +379,7 @@ async def refresh_tokens(
         )
 
     # Create new tokens with current token_version
-    # Note: 'sub' must be a string per JWT spec (jose library enforces this)
+    # Note: 'sub' must be a string per JWT spec
     new_token_data = {"sub": str(user.id), "username": user.username}
     new_access_token = create_access_token(new_token_data, token_version=user.token_version)
     new_refresh_token = create_refresh_token(new_token_data, token_version=user.token_version)
@@ -384,43 +387,44 @@ async def refresh_tokens(
     # Set new HTTP-only cookies
     set_auth_cookies(response, new_access_token, new_refresh_token)
 
-    return Token(
-        access_token=new_access_token, refresh_token=new_refresh_token, token_type="bearer"
-    )
+    # Return access_token in body for OAuth2 compatibility
+    # Refresh token is only delivered via HTTP-only cookie for security
+    return Token(access_token=new_access_token, token_type="bearer")
 
 
 @router.post("/logout")
 async def logout(
     request: Request,
     response: Response,
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
-    Logout and clear authentication cookies.
+    Logout, invalidate all tokens, and clear authentication cookies.
 
     This endpoint:
-    1. Clears HTTP-only authentication cookies
-    2. Returns success even if not authenticated (idempotent)
-
-    Note: This does not invalidate the JWT tokens themselves.
-    For full session invalidation, use the password change endpoint
-    which increments token_version.
+    1. Increments token_version to invalidate ALL existing tokens for this user
+    2. Clears HTTP-only authentication cookies
+    3. Logs the logout event for audit trail
     """
     ip_address = get_client_ip(request)
     request_id = getattr(request.state, "request_id", None)
 
-    # Log logout event if user was authenticated
-    if current_user:
-        audit_logger = get_audit_logger()
-        audit_logger.log_event(
-            AuditEventType.LOGOUT,
-            f"User {current_user.username} logged out",
-            user_id=current_user.id,
-            username=current_user.username,
-            ip_address=ip_address,
-            request_id=request_id,
-            success=True,
-        )
+    # Invalidate all existing tokens by incrementing token_version
+    current_user.token_version = (current_user.token_version or 0) + 1
+    safe_commit(db, "logout token invalidation")
+
+    # Log logout event
+    audit_logger = get_audit_logger()
+    audit_logger.log_event(
+        AuditEventType.LOGOUT,
+        f"User {current_user.username} logged out",
+        user_id=current_user.id,
+        username=current_user.username,
+        ip_address=ip_address,
+        request_id=request_id,
+        success=True,
+    )
 
     # Clear authentication cookies
     clear_auth_cookies(response)

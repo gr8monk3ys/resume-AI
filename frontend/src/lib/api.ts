@@ -526,7 +526,7 @@ export const authApi = {
    * Login with username and password
    *
    * On success, the server sets HTTP-only cookies containing the tokens.
-   * The response body also contains tokens for backward compatibility.
+   * The response body contains access_token for OAuth2 compatibility.
    */
   login: async (username: string, password: string): Promise<AuthTokens> => {
     const formData = new URLSearchParams()
@@ -597,7 +597,7 @@ export const authApi = {
   refresh: async (refreshToken?: string): Promise<AuthTokens> => {
     return apiRequest<AuthTokens>('/api/auth/refresh', {
       method: 'POST',
-      // Include refresh_token in body for backward compatibility with API clients
+      // Include refresh_token in body for API clients without cookie support
       body: refreshToken ? JSON.stringify({ refresh_token: refreshToken }) : '{}',
     })
   },

@@ -23,7 +23,7 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 
 from app.config import get_settings
-from app.database import init_db
+from app.database import check_db_health, dispose_engines, init_db
 from app.middleware.audit import AuditMiddleware, init_audit_logger
 from app.middleware.rate_limiter import (
     DEFAULT_RATE_LIMITS,
@@ -218,6 +218,10 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Error stopping job scheduler: {e}")
 
+    # Dispose database engines to release all connections
+    await dispose_engines()
+    logger.info("Database engines disposed")
+
 
 app = FastAPI(
     title=settings.app_name,
@@ -354,8 +358,14 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "sentry_enabled": sentry_enabled}
+    """Health check endpoint with database connectivity verification."""
+    db_health = check_db_health()
+    is_healthy = db_health.get("status") == "healthy"
+    return {
+        "status": "healthy" if is_healthy else "unhealthy",
+        "database": db_health,
+        "sentry_enabled": sentry_enabled,
+    }
 
 
 # Debug endpoints - only available when DEBUG=True

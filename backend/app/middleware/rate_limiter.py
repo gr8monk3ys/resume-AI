@@ -517,13 +517,10 @@ def get_client_identifier(request: Request) -> str:
     if user_id:
         return f"user:{user_id}"
 
-    # Fall back to IP address
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # Get the first IP in the chain (client IP)
-        client_ip = forwarded.split(",")[0].strip()
-    else:
-        client_ip = request.client.host if request.client else "unknown"
+    # Fall back to IP address using the trusted get_client_ip function
+    from app.middleware.security import get_client_ip
+
+    client_ip = get_client_ip(request)
 
     return f"ip:{client_ip}"
 

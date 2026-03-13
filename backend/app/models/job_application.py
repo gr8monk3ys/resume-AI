@@ -2,7 +2,7 @@
 Job application model for tracking applications.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -38,9 +38,9 @@ class JobApplication(Base):
     location: Column[str] = Column(String, nullable=True)
     job_url: Column[str] = Column(String, nullable=True)
     notes: Column[str] = Column(Text, nullable=True)
-    created_at: Column[datetime] = Column(DateTime, default=datetime.utcnow)
+    created_at: Column[datetime] = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Column[datetime] = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), index=True
     )  # Added index
 
     # HR Contact tracking fields

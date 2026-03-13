@@ -2,7 +2,7 @@
 Job alert model for real-time job notifications.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -33,9 +33,9 @@ class JobAlert(Base):
     last_notified: Column[datetime] = Column(DateTime, nullable=True)
 
     # Timestamps
-    created_at: Column[datetime] = Column(DateTime, default=datetime.utcnow)
+    created_at: Column[datetime] = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Column[datetime] = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships

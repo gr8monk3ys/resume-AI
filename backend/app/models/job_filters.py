@@ -2,7 +2,7 @@
 Job filtering models for company filters, keyword filters, and application questions.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from sqlalchemy import Column, DateTime
@@ -58,7 +58,7 @@ class CompanyFilter(Base):
         SQLEnum(CompanyFilterType), nullable=False, default=CompanyFilterType.BLACKLIST
     )
     reason = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationship
     user = relationship("User", backref="company_filters")
@@ -80,7 +80,7 @@ class KeywordFilter(Base):
     applies_to: Column[KeywordAppliesTo] = Column(
         SQLEnum(KeywordAppliesTo), nullable=False, default=KeywordAppliesTo.BOTH
     )
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationship
     user = relationship("User", backref="keyword_filters")
@@ -101,8 +101,8 @@ class ApplicationQuestion(Base):
         SQLEnum(QuestionType), nullable=False, default=QuestionType.TEXT
     )
     category = Column(String(100), nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationship
     user = relationship("User", backref="application_questions")

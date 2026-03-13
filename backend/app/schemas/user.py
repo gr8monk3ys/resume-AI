@@ -86,10 +86,13 @@ class AuthStatusResponse(BaseModel):
 
 
 class Token(BaseModel):
-    """JWT token response."""
+    """JWT token response (OAuth2 compatible).
+
+    The refresh_token is delivered exclusively via HTTP-only cookies
+    and is never included in the response body to prevent XSS token theft.
+    """
 
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 
