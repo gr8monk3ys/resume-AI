@@ -18,7 +18,7 @@ services:
     container_name: resuboost-db-dev
     environment:
       POSTGRES_USER: resuboost
-      POSTGRES_PASSWORD: devpassword
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword}
       POSTGRES_DB: resuboost_dev
     ports:
       - "5432:5432"
@@ -60,9 +60,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://resuboost:devpassword@db:5432/resuboost_dev
+      - DATABASE_URL=postgresql://resuboost:${DB_PASSWORD:-devpassword}@db:5432/resuboost_dev
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=dev-secret-key-not-for-production-use-only
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env or environment}
       - LLM_PROVIDER=mock
       - DEBUG=true
       - ENABLE_RATE_LIMITING=true
