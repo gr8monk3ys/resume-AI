@@ -8,10 +8,20 @@ ResuBoost AI is a job search toolkit with multi-provider LLM support, designed a
 
 **Supported LLM Providers:** OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
 
+## Quick Start
+
+```bash
+make setup      # Creates .env, installs dependencies
+make dev        # Starts backend (8000) + frontend (3000)
+```
+
+The app works out of the box with mock AI responses. Set `OPENAI_API_KEY` in `.env` for real AI features.
+
 ## Commands
 
 ```bash
 # Development - using Makefile
+make setup      # First-time setup (creates .env, installs deps)
 make help       # Show all available commands
 make backend    # Start FastAPI backend (port 8000)
 make frontend   # Start Next.js frontend (port 3000)
@@ -158,7 +168,7 @@ result = await service.tailor_resume(resume_content, job_description)
 **LLM Provider Configuration** (choose one):
 ```bash
 # Provider selection (default: openai)
-LLM_PROVIDER=openai  # Options: openai, anthropic, google, ollama, mock
+LLM_PROVIDER=mock  # Options: openai, anthropic, google, ollama, mock (default: mock)
 
 # OpenAI
 OPENAI_API_KEY=your_key_here

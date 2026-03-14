@@ -60,7 +60,9 @@ class Settings(BaseSettings):
     cookie_path: str = "/"
 
     # LLM Provider Configuration
-    llm_provider: str = "openai"  # openai, anthropic, google, ollama, mock
+    # Default to "mock" so the app works out of the box without API keys.
+    # Set to "openai", "anthropic", "google", or "ollama" for real AI responses.
+    llm_provider: str = "mock"
     llm_request_timeout: int = 60
 
     # LLM Retry Configuration
@@ -179,23 +181,20 @@ def get_settings() -> Settings:
     settings = Settings()
 
     # Security validation for secret key
-    # SECURITY: Only allow auto-generation in explicit TESTING mode, not in debug mode
-    # Debug mode should still require explicit SECRET_KEY to prevent accidental exposure
     if settings.secret_key == _DEFAULT_SECRET_KEY:
-        if os.getenv("TESTING", "false").lower() == "true":
-            # Generate a random key ONLY for automated testing
+        if os.getenv("TESTING", "false").lower() == "true" or settings.debug:
+            # Auto-generate a random key for dev/testing so the app starts without config
             warnings.warn(
-                "Using auto-generated secret key for testing. "
-                "This should only occur in test environments.",
+                "SECRET_KEY not set — using auto-generated key. "
+                "Sessions will not persist across restarts. "
+                "Set SECRET_KEY in production.",
                 UserWarning,
                 stacklevel=2,
             )
-            # Override with a secure random key for this test session
             object.__setattr__(settings, "secret_key", secrets.token_urlsafe(32))
         else:
             raise ValueError(
-                "SECURITY ERROR: SECRET_KEY environment variable must be set! "
-                "This is required even in debug mode to prevent accidental secret exposure. "
+                "SECRET_KEY environment variable must be set in production! "
                 'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
             )
 
