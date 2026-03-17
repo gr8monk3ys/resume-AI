@@ -67,6 +67,7 @@ const DASHBOARD_ACTIONS = [
 ]
 
 function getActiveApplications(jobs: JobApplication[]) {
+  if (!Array.isArray(jobs)) return []
   return jobs.filter((job) => OPEN_STATUSES.includes(job.status))
 }
 

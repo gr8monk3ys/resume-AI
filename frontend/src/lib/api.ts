@@ -688,7 +688,8 @@ export const profileApi = {
  */
 export const resumesApi = {
   list: async (token?: string): Promise<Resume[]> => {
-    return authenticatedRequest<Resume[]>('/api/resumes', token)
+    const res = await authenticatedRequest<{ items: Resume[] }>('/api/resumes', token)
+    return Array.isArray(res) ? res : res.items ?? []
   },
 
   get: async (id: number, token?: string): Promise<Resume> => {
@@ -793,7 +794,8 @@ export const resumesApi = {
  */
 export const jobsApi = {
   list: async (token?: string): Promise<JobApplication[]> => {
-    return authenticatedRequest<JobApplication[]>('/api/jobs', token)
+    const res = await authenticatedRequest<{ items: JobApplication[] }>('/api/jobs', token)
+    return Array.isArray(res) ? res : res.items ?? []
   },
 
   get: async (id: number, token?: string): Promise<JobApplication> => {
@@ -877,7 +879,8 @@ export const jobsApi = {
  */
 export const coverLettersApi = {
   list: async (token?: string): Promise<CoverLetter[]> => {
-    return authenticatedRequest<CoverLetter[]>('/api/cover-letters', token)
+    const res = await authenticatedRequest<{ items: CoverLetter[] }>('/api/cover-letters', token)
+    return Array.isArray(res) ? res : res.items ?? []
   },
 
   get: async (id: number, token?: string): Promise<CoverLetter> => {
