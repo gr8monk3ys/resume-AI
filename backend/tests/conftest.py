@@ -27,6 +27,8 @@ os.environ["ENABLE_AUDIT_LOGGING"] = "false"
 os.environ["ENABLE_SECURITY_HEADERS"] = "false"
 os.environ["ENABLE_INPUT_SANITIZATION"] = "false"
 os.environ["ENABLE_SCHEDULER"] = "false"
+os.environ["ENABLE_BILLING"] = "false"
+os.environ["ENABLE_EMAIL"] = "false"
 os.environ["DEBUG"] = "false"
 
 # Add backend directory to path for imports

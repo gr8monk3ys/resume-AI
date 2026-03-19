@@ -148,6 +148,22 @@ class Settings(BaseSettings):
     scheduler_min_interval_minutes: int = 5
     scheduler_max_interval_minutes: int = 1440  # 24 hours
 
+    # Feature flags for Phase 1 rollout
+    enable_billing: bool = False  # Stripe checkout, feature gating enforcement
+    enable_email: bool = False  # All outbound email sending
+
+    # Stripe settings
+    stripe_secret_key: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    stripe_pro_monthly_price_id: Optional[str] = None
+    stripe_pro_annual_price_id: Optional[str] = None
+
+    # Email settings (Resend)
+    resend_api_key: Optional[str] = None
+    from_email: str = "ResuBoost <noreply@resuboost.com>"
+    app_url: str = "http://localhost:3000"  # For email links
+
     # Sentry Error Monitoring
     # Leave SENTRY_DSN empty to disable Sentry (optional integration)
     sentry_dsn: Optional[str] = None
