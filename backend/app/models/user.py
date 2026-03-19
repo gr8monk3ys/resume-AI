@@ -28,5 +28,18 @@ class User(Base):
     # Incrementing this value invalidates all previously issued tokens for this user
     token_version = Column(Integer, default=0, nullable=False)
 
+    # Email verification
+    email_verified = Column(Boolean, default=False)
+    email_notifications = Column(Boolean, default=True)
+    email_verification_token = Column(String, nullable=True)
+
+    # Activity tracking
+    last_active_at = Column(DateTime, nullable=True)
+
+    # Onboarding
+    onboarding_completed = Column(Boolean, default=False)
+    onboarding_dismissed = Column(Boolean, default=False)
+    onboarding_step = Column(Integer, default=0)
+
     # Relationship to profile
     profile = relationship("Profile", back_populates="user", uselist=False)
