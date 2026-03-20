@@ -100,7 +100,11 @@ def create_scheduled_job(
         return job
     except Exception as e:
         settings = get_settings()
-        detail = f"Failed to create scheduled job: {str(e)}" if settings.debug else "Failed to create scheduled job. Please try again."
+        detail = (
+            f"Failed to create scheduled job: {str(e)}"
+            if settings.debug
+            else "Failed to create scheduled job. Please try again."
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=detail,

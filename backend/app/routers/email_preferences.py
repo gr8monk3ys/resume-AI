@@ -21,10 +21,10 @@ def get_email_preferences(
 ):
     """Return current email notification preferences."""
     return EmailPreferencesResponse(
-        email_notifications=current_user.email_notifications,
-        email_nudges=current_user.email_nudges,
-        email_weekly_digest=current_user.email_weekly_digest,
-        email_reengagement=current_user.email_reengagement,
+        email_notifications=bool(current_user.email_notifications),
+        email_nudges=bool(current_user.email_nudges),
+        email_weekly_digest=bool(current_user.email_weekly_digest),
+        email_reengagement=bool(current_user.email_reengagement),
     )
 
 
@@ -42,8 +42,8 @@ def update_email_preferences(
     db.refresh(current_user)
 
     return EmailPreferencesResponse(
-        email_notifications=current_user.email_notifications,
-        email_nudges=current_user.email_nudges,
-        email_weekly_digest=current_user.email_weekly_digest,
-        email_reengagement=current_user.email_reengagement,
+        email_notifications=bool(current_user.email_notifications),
+        email_nudges=bool(current_user.email_nudges),
+        email_weekly_digest=bool(current_user.email_weekly_digest),
+        email_reengagement=bool(current_user.email_reengagement),
     )

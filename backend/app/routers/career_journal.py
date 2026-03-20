@@ -213,7 +213,11 @@ def enhance_achievement(
         )
     except Exception as e:
         settings = get_settings()
-        detail = f"Failed to enhance achievement: {str(e)}" if settings.debug else "Failed to enhance achievement. Please try again."
+        detail = (
+            f"Failed to enhance achievement: {str(e)}"
+            if settings.debug
+            else "Failed to enhance achievement. Please try again."
+        )
         raise HTTPException(
             status_code=500,
             detail=detail,

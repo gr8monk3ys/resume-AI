@@ -217,9 +217,7 @@ class TestGetCompanyFilter:
         db.commit()
         db.refresh(cf)
 
-        response = await client.get(
-            f"/api/filters/companies/{cf.id}", headers=auth_headers
-        )
+        response = await client.get(f"/api/filters/companies/{cf.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == cf.id
@@ -230,9 +228,7 @@ class TestGetCompanyFilter:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test getting a non-existent company filter."""
-        response = await client.get(
-            "/api/filters/companies/99999", headers=auth_headers
-        )
+        response = await client.get("/api/filters/companies/99999", headers=auth_headers)
         assert response.status_code == 404
 
 
@@ -253,9 +249,7 @@ class TestDeleteCompanyFilter:
         db.commit()
         db.refresh(cf)
 
-        response = await client.delete(
-            f"/api/filters/companies/{cf.id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/filters/companies/{cf.id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify it's deleted
@@ -267,9 +261,7 @@ class TestDeleteCompanyFilter:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test deleting a non-existent company filter."""
-        response = await client.delete(
-            "/api/filters/companies/99999", headers=auth_headers
-        )
+        response = await client.delete("/api/filters/companies/99999", headers=auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -291,11 +283,7 @@ class TestDeleteCompanyFilter:
         assert response.status_code == 204
 
         # Verify all are deleted
-        remaining = (
-            db.query(CompanyFilter)
-            .filter(CompanyFilter.user_id == test_user.id)
-            .count()
-        )
+        remaining = db.query(CompanyFilter).filter(CompanyFilter.user_id == test_user.id).count()
         assert remaining == 0
 
 
@@ -382,9 +370,7 @@ class TestKeywordFilters:
         db.commit()
         db.refresh(kf)
 
-        response = await client.get(
-            f"/api/filters/keywords/{kf.id}", headers=auth_headers
-        )
+        response = await client.get(f"/api/filters/keywords/{kf.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["keyword"] == "remote"
@@ -394,9 +380,7 @@ class TestKeywordFilters:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test getting a non-existent keyword filter."""
-        response = await client.get(
-            "/api/filters/keywords/99999", headers=auth_headers
-        )
+        response = await client.get("/api/filters/keywords/99999", headers=auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -414,9 +398,7 @@ class TestKeywordFilters:
         db.commit()
         db.refresh(kf)
 
-        response = await client.delete(
-            f"/api/filters/keywords/{kf.id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/filters/keywords/{kf.id}", headers=auth_headers)
         assert response.status_code == 204
 
         deleted = db.query(KeywordFilter).filter(KeywordFilter.id == kf.id).first()
@@ -427,9 +409,7 @@ class TestKeywordFilters:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test deleting a non-existent keyword filter."""
-        response = await client.delete(
-            "/api/filters/keywords/99999", headers=auth_headers
-        )
+        response = await client.delete("/api/filters/keywords/99999", headers=auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -524,9 +504,7 @@ class TestApplicationQuestions:
         db.commit()
         db.refresh(q)
 
-        response = await client.get(
-            f"/api/filters/questions/{q.id}", headers=auth_headers
-        )
+        response = await client.get(f"/api/filters/questions/{q.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["question_pattern"] == "salary expectations"
@@ -537,9 +515,7 @@ class TestApplicationQuestions:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test getting a non-existent question."""
-        response = await client.get(
-            "/api/filters/questions/99999", headers=auth_headers
-        )
+        response = await client.get("/api/filters/questions/99999", headers=auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -598,16 +574,10 @@ class TestApplicationQuestions:
         db.commit()
         db.refresh(q)
 
-        response = await client.delete(
-            f"/api/filters/questions/{q.id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/filters/questions/{q.id}", headers=auth_headers)
         assert response.status_code == 204
 
-        deleted = (
-            db.query(ApplicationQuestion)
-            .filter(ApplicationQuestion.id == q.id)
-            .first()
-        )
+        deleted = db.query(ApplicationQuestion).filter(ApplicationQuestion.id == q.id).first()
         assert deleted is None
 
     @pytest.mark.asyncio
@@ -615,9 +585,7 @@ class TestApplicationQuestions:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test deleting a non-existent question."""
-        response = await client.delete(
-            "/api/filters/questions/99999", headers=auth_headers
-        )
+        response = await client.delete("/api/filters/questions/99999", headers=auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -833,9 +801,7 @@ class TestImportDefaults:
         self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
     ):
         """Test importing default question templates."""
-        response = await client.post(
-            "/api/filters/import-defaults", headers=auth_headers
-        )
+        response = await client.post("/api/filters/import-defaults", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -851,9 +817,7 @@ class TestImportDefaults:
         await client.post("/api/filters/import-defaults", headers=auth_headers)
 
         # Import again - should skip all
-        response = await client.post(
-            "/api/filters/import-defaults", headers=auth_headers
-        )
+        response = await client.post("/api/filters/import-defaults", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["skipped_count"] > 0

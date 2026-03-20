@@ -108,7 +108,9 @@ class BillingService:
         Returns None when billing is disabled or Stripe is unavailable.
         """
         if not self.enabled:
-            logger.debug("Billing disabled — skipping portal session for customer %s", stripe_customer_id)
+            logger.debug(
+                "Billing disabled — skipping portal session for customer %s", stripe_customer_id
+            )
             return None
 
         if stripe is None:
@@ -124,7 +126,9 @@ class BillingService:
             logger.info("Portal session created for customer %s", stripe_customer_id)
             return session.url
         except Exception as exc:
-            logger.error("Failed to create portal session for customer %s: %s", stripe_customer_id, exc)
+            logger.error(
+                "Failed to create portal session for customer %s: %s", stripe_customer_id, exc
+            )
             return None
 
     # ------------------------------------------------------------------
@@ -146,9 +150,7 @@ class BillingService:
             return False
 
         try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, self.webhook_secret
-            )
+            event = stripe.Webhook.construct_event(payload, sig_header, self.webhook_secret)
         except stripe.error.SignatureVerificationError as exc:
             logger.warning("Invalid webhook signature: %s", exc)
             return False
@@ -241,7 +243,9 @@ class BillingService:
             sub.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc)
 
         db.commit()
-        logger.info("Subscription %s updated: plan=%s status=%s", stripe_sub_id, sub.plan, sub.status)
+        logger.info(
+            "Subscription %s updated: plan=%s status=%s", stripe_sub_id, sub.plan, sub.status
+        )
 
     def _handle_subscription_deleted(self, subscription, db) -> None:
         """
@@ -278,11 +282,7 @@ class BillingService:
         from app.services.email_service import get_email_service
 
         customer_id = invoice.get("customer")
-        sub = (
-            db.query(Subscription)
-            .filter(Subscription.stripe_customer_id == customer_id)
-            .first()
-        )
+        sub = db.query(Subscription).filter(Subscription.stripe_customer_id == customer_id).first()
         if sub is None:
             logger.warning("invoice.payment_failed: no subscription for customer %s", customer_id)
             return
@@ -309,7 +309,9 @@ class BillingService:
                     html=html,
                 )
         except Exception as exc:
-            logger.error("Failed to send payment-failed email for customer %s: %s", customer_id, exc)
+            logger.error(
+                "Failed to send payment-failed email for customer %s: %s", customer_id, exc
+            )
 
         logger.info("Subscription for customer %s set to past_due", customer_id)
 

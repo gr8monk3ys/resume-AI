@@ -22,7 +22,11 @@ class CompanyResearch(Base):
     notes = Column(Text, nullable=True)
     checklist = Column(Text, nullable=True)  # JSON array of {text, done}
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     profile = relationship("Profile", back_populates="company_research")

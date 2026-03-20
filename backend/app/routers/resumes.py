@@ -98,9 +98,13 @@ def create_resume(
     if settings.enable_billing:
         sub = get_user_subscription(db, current_user.id)
         if not is_pro_user(sub):
-            resume_count = db.query(Resume).filter(
-                Resume.profile_id == profile.id,
-            ).count()
+            resume_count = (
+                db.query(Resume)
+                .filter(
+                    Resume.profile_id == profile.id,
+                )
+                .count()
+            )
             if resume_count >= 2:
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

@@ -221,9 +221,11 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
                 request_id = getattr(request.state, "request_id", "unknown")
                 client_ip = self._get_client_ip(request)
                 logger.warning(
-                    "Input validation violations - "
-                    "request_id=%s, ip=%s, path=%s, violations=%s",
-                    request_id, client_ip, path, violations,
+                    "Input validation violations - " "request_id=%s, ip=%s, path=%s, violations=%s",
+                    request_id,
+                    client_ip,
+                    path,
+                    violations,
                 )
 
             # Optionally block the request
@@ -474,7 +476,9 @@ class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
 
                     logger.warning(
                         "Request body too large: %s bytes on path %s (limit: %s)",
-                        content_length, path, self.max_body_size,
+                        content_length,
+                        path,
+                        self.max_body_size,
                     )
                     return JSONResponse(
                         status_code=413,

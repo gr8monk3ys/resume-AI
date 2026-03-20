@@ -79,9 +79,13 @@ def create_research(
     if settings.enable_billing:
         sub = get_user_subscription(db, current_user.id)
         if not is_pro_user(sub):
-            research_count = db.query(CompanyResearch).filter(
-                CompanyResearch.profile_id == profile.id,
-            ).count()
+            research_count = (
+                db.query(CompanyResearch)
+                .filter(
+                    CompanyResearch.profile_id == profile.id,
+                )
+                .count()
+            )
             if research_count >= 3:
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

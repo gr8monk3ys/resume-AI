@@ -20,9 +20,16 @@ from app.services.email_scheduler import (
 )
 
 
-def _create_user(db, *, username="emailtest", email_notifications=True,
-                 email_nudges=True, email_weekly_digest=True,
-                 email_reengagement=True, last_active_at=None):
+def _create_user(
+    db,
+    *,
+    username="emailtest",
+    email_notifications=True,
+    email_nudges=True,
+    email_weekly_digest=True,
+    email_reengagement=True,
+    last_active_at=None,
+):
     """Helper to create a user with email preferences set."""
     user = User(
         username=username,

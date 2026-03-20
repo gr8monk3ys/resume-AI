@@ -59,9 +59,13 @@ class CompanyResearchResponse(BaseModel):
                 try:
                     talking_points_list = json.loads(entry.talking_points)
                 except json.JSONDecodeError:
-                    talking_points_list = [t.strip() for t in entry.talking_points.split(",") if t.strip()]
+                    talking_points_list = [
+                        t.strip() for t in entry.talking_points.split(",") if t.strip()
+                    ]
             else:
-                talking_points_list = [t.strip() for t in entry.talking_points.split(",") if t.strip()]
+                talking_points_list = [
+                    t.strip() for t in entry.talking_points.split(",") if t.strip()
+                ]
 
         checklist_list = None
         if entry.checklist:

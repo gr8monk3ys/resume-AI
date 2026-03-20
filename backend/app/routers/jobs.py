@@ -76,9 +76,7 @@ def list_jobs(
 
 
 @router.get("/stats")
-def get_job_stats(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
-):
+def get_job_stats(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get job application statistics using SQL aggregation for performance."""
     profile = get_user_profile(current_user, db)
 
@@ -121,10 +119,14 @@ def create_job(
     if settings.enable_billing:
         sub = get_user_subscription(db, current_user.id)
         if not is_pro_user(sub):
-            active_count = db.query(JobApplication).filter(
-                JobApplication.profile_id == profile.id,
-                JobApplication.status != "Rejected",
-            ).count()
+            active_count = (
+                db.query(JobApplication)
+                .filter(
+                    JobApplication.profile_id == profile.id,
+                    JobApplication.status != "Rejected",
+                )
+                .count()
+            )
             if active_count >= 20:
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,

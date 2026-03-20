@@ -207,14 +207,13 @@ class TestCompanyResearchGet:
     ):
         """Test getting a specific company research entry by ID."""
         entry = _create_company_research(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             company_name="Figma",
             talking_points=["Collaborative design tool", "Acquired by Adobe then deal unwound"],
         )
 
-        response = await client.get(
-            f"/api/company-research/{entry.id}", headers=auth_headers
-        )
+        response = await client.get(f"/api/company-research/{entry.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == entry.id
@@ -270,7 +269,8 @@ class TestCompanyResearchUpdate:
     ):
         """Test updating only a subset of fields leaves other fields unchanged."""
         entry = _create_company_research(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             company_name="Linear",
             notes="Issue tracking tool focused on speed",
         )
@@ -316,7 +316,8 @@ class TestCompanyResearchUpdate:
     ):
         """Test updating the checklist field specifically."""
         entry = _create_company_research(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             company_name="Databricks",
             checklist=[{"text": "Review lakehouse architecture whitepaper", "done": False}],
         )
@@ -343,7 +344,8 @@ class TestCompanyResearchUpdate:
     ):
         """Test clearing optional fields by setting them to None."""
         entry = _create_company_research(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             company_name="Palantir",
             notes="Government and commercial data analytics",
         )
@@ -370,15 +372,11 @@ class TestCompanyResearchDelete:
         entry = _create_company_research(db, test_profile.id, company_name="WeWork")
         entry_id = entry.id
 
-        response = await client.delete(
-            f"/api/company-research/{entry_id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/company-research/{entry_id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify it is deleted
-        get_response = await client.get(
-            f"/api/company-research/{entry_id}", headers=auth_headers
-        )
+        get_response = await client.get(f"/api/company-research/{entry_id}", headers=auth_headers)
         assert get_response.status_code == 404
 
     @pytest.mark.asyncio
@@ -416,9 +414,7 @@ class TestCompanyResearchIsolation:
             db, test_profile.id, company_name="Confidential Target Acquisition Corp"
         )
 
-        response = await client.get(
-            f"/api/company-research/{entry.id}", headers=admin_auth_headers
-        )
+        response = await client.get(f"/api/company-research/{entry.id}", headers=admin_auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio

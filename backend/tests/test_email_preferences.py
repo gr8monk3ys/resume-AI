@@ -59,9 +59,7 @@ class TestUpdateEmailPreferences:
         assert data["email_nudges"] is True
 
     @pytest.mark.asyncio
-    async def test_update_persists_on_subsequent_get(
-        self, client: AsyncClient, auth_headers: dict
-    ):
+    async def test_update_persists_on_subsequent_get(self, client: AsyncClient, auth_headers: dict):
         await client.patch(
             "/api/email-preferences",
             json={"email_reengagement": False},

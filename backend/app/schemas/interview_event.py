@@ -82,7 +82,9 @@ class InterviewEventResponse(BaseModel):
                 try:
                     names_list = json.loads(entry.interviewer_names)
                 except json.JSONDecodeError:
-                    names_list = [n.strip() for n in entry.interviewer_names.split(",") if n.strip()]
+                    names_list = [
+                        n.strip() for n in entry.interviewer_names.split(",") if n.strip()
+                    ]
             else:
                 names_list = [n.strip() for n in entry.interviewer_names.split(",") if n.strip()]
 

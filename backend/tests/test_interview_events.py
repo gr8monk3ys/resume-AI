@@ -95,15 +95,11 @@ class TestInterviewEventList:
         self, client: AsyncClient, db: Session, test_profile: Profile, auth_headers: dict
     ):
         """Test that multiple events are returned ordered by scheduled_date descending."""
-        _create_interview_event(
-            db, test_profile.id, company="Airbnb", scheduled_date="2026-03-01"
-        )
+        _create_interview_event(db, test_profile.id, company="Airbnb", scheduled_date="2026-03-01")
         _create_interview_event(
             db, test_profile.id, company="Coinbase", scheduled_date="2026-05-20"
         )
-        _create_interview_event(
-            db, test_profile.id, company="Figma", scheduled_date="2026-04-10"
-        )
+        _create_interview_event(db, test_profile.id, company="Figma", scheduled_date="2026-04-10")
 
         response = await client.get("/api/interview-events", headers=auth_headers)
         assert response.status_code == 200
@@ -125,15 +121,9 @@ class TestInterviewEventList:
         self, client: AsyncClient, db: Session, test_profile: Profile, auth_headers: dict
     ):
         """Test filtering events by event type."""
-        _create_interview_event(
-            db, test_profile.id, company="Meta", event_type="Phone Screen"
-        )
-        _create_interview_event(
-            db, test_profile.id, company="Apple", event_type="System Design"
-        )
-        _create_interview_event(
-            db, test_profile.id, company="Google", event_type="Phone Screen"
-        )
+        _create_interview_event(db, test_profile.id, company="Meta", event_type="Phone Screen")
+        _create_interview_event(db, test_profile.id, company="Apple", event_type="System Design")
+        _create_interview_event(db, test_profile.id, company="Google", event_type="Phone Screen")
 
         response = await client.get(
             "/api/interview-events",
@@ -179,9 +169,7 @@ class TestInterviewEventCreate:
             "event_type": "Recruiter Call",
             "scheduled_date": "2026-04-22",
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["company"] == "Vercel"
@@ -217,9 +205,7 @@ class TestInterviewEventCreate:
             "follow_up_date": "2026-05-12",
             "follow_up_done": False,
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["company"] == "Anthropic"
@@ -285,9 +271,7 @@ class TestInterviewEventCreate:
             "scheduled_date": "2026-04-18",
             "interviewer_names": ["Elena Rodriguez", "Jakub Nowak"],
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["interviewer_names"] == ["Elena Rodriguez", "Jakub Nowak"]
@@ -309,9 +293,7 @@ class TestInterviewEventCreate:
             "scheduled_date": "2026-04-25",
             "job_application_id": test_job.id,
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["job_application_id"] == test_job.id
@@ -326,15 +308,14 @@ class TestInterviewEventGet:
     ):
         """Test getting a specific interview event by ID."""
         event = _create_interview_event(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             company="Datadog",
             position="Site Reliability Engineer",
             interviewer_names=["Alex Kim", "Jordan Lee"],
         )
 
-        response = await client.get(
-            f"/api/interview-events/{event.id}", headers=auth_headers
-        )
+        response = await client.get(f"/api/interview-events/{event.id}", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == event.id
@@ -397,7 +378,8 @@ class TestInterviewEventUpdate:
     ):
         """Test updating only a subset of fields leaves other fields unchanged."""
         event = _create_interview_event(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             company="Plaid",
             position="Platform Engineer",
             notes="Initial round with engineering manager",
@@ -480,7 +462,8 @@ class TestInterviewEventUpdate:
     ):
         """Test updating interviewer names list."""
         event = _create_interview_event(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             interviewer_names=["Original Interviewer"],
         )
 
@@ -505,15 +488,11 @@ class TestInterviewEventDelete:
         event = _create_interview_event(db, test_profile.id, company="Dropbox")
         event_id = event.id
 
-        response = await client.delete(
-            f"/api/interview-events/{event_id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/interview-events/{event_id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify it is deleted
-        get_response = await client.get(
-            f"/api/interview-events/{event_id}", headers=auth_headers
-        )
+        get_response = await client.get(f"/api/interview-events/{event_id}", headers=auth_headers)
         assert get_response.status_code == 404
 
     @pytest.mark.asyncio
@@ -551,9 +530,7 @@ class TestInterviewEventIsolation:
             db, test_profile.id, company="Confidential Interview Target"
         )
 
-        response = await client.get(
-            f"/api/interview-events/{event.id}", headers=admin_auth_headers
-        )
+        response = await client.get(f"/api/interview-events/{event.id}", headers=admin_auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -603,9 +580,7 @@ class TestInterviewEventIsolation:
         auth_headers: dict,
     ):
         """Test that listing events only returns the user's own entries."""
-        _create_interview_event(
-            db, test_profile.id, company="Test User's Secret Interview"
-        )
+        _create_interview_event(db, test_profile.id, company="Test User's Secret Interview")
 
         # Admin lists events - should see nothing
         response = await client.get("/api/interview-events", headers=admin_auth_headers)
@@ -633,9 +608,7 @@ class TestInterviewEventEdgeCases:
             "scheduled_date": "2026-04-30",
             "notes": "They'll ask about O'Reilly's framework & \"digital transformation\" strategy",
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["company"] == "Ernst & Young (EY)"
@@ -653,9 +626,7 @@ class TestInterviewEventEdgeCases:
             "scheduled_date": "2026-05-05",
             "notes": "Interview conducted in Spanish and English. \u00a1Buena suerte!",
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert "S\u00e9nior" in data["position"]
@@ -674,9 +645,7 @@ class TestInterviewEventEdgeCases:
             "is_completed": True,
             "notes": "Completed all 5 sessions. Strong positive signals from bar raiser.",
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["scheduled_date"] == "2025-11-15"
@@ -694,9 +663,7 @@ class TestInterviewEventEdgeCases:
             "scheduled_date": "2027-01-15",
             "notes": "Hawthorne campus visit scheduled well in advance",
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         data = response.json()
         assert data["scheduled_date"] == "2027-01-15"
@@ -714,9 +681,7 @@ class TestInterviewEventEdgeCases:
             "scheduled_date": "2026-04-08",
             "duration_minutes": 15,
         }
-        response = await client.post(
-            "/api/interview-events", json=event_data, headers=auth_headers
-        )
+        response = await client.post("/api/interview-events", json=event_data, headers=auth_headers)
         assert response.status_code == 201
         assert response.json()["duration_minutes"] == 15
 

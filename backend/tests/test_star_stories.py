@@ -117,12 +117,14 @@ class TestStarStoryList:
     ):
         """Test filtering stories by tag."""
         _create_star_story(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             title="Optimized API Response Times",
             tags=["performance", "backend"],
         )
         _create_star_story(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             title="Redesigned Onboarding Flow",
             tags=["frontend", "ux"],
         )
@@ -251,7 +253,8 @@ class TestStarStoryGet:
     ):
         """Test getting a specific STAR story by ID."""
         story = _create_star_story(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             title="Navigated Vendor Contract Renegotiation",
             tags=["negotiation", "vendor-management"],
         )
@@ -315,7 +318,8 @@ class TestStarStoryUpdate:
     ):
         """Test updating only a subset of fields leaves other fields unchanged."""
         story = _create_star_story(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             title="Original Title",
             situation="Original situation description",
         )
@@ -361,7 +365,8 @@ class TestStarStoryUpdate:
     ):
         """Test clearing optional fields by setting them to None."""
         story = _create_star_story(
-            db, test_profile.id,
+            db,
+            test_profile.id,
             situation="Detailed situation",
             task="Specific task",
         )
@@ -388,15 +393,11 @@ class TestStarStoryDelete:
         story = _create_star_story(db, test_profile.id)
         story_id = story.id
 
-        response = await client.delete(
-            f"/api/star-stories/{story_id}", headers=auth_headers
-        )
+        response = await client.delete(f"/api/star-stories/{story_id}", headers=auth_headers)
         assert response.status_code == 204
 
         # Verify it is deleted
-        get_response = await client.get(
-            f"/api/star-stories/{story_id}", headers=auth_headers
-        )
+        get_response = await client.get(f"/api/star-stories/{story_id}", headers=auth_headers)
         assert get_response.status_code == 404
 
     @pytest.mark.asyncio
@@ -434,9 +435,7 @@ class TestStarStoryIsolation:
             db, test_profile.id, title="Confidential Story About Performance Review"
         )
 
-        response = await client.get(
-            f"/api/star-stories/{story.id}", headers=admin_auth_headers
-        )
+        response = await client.get(f"/api/star-stories/{story.id}", headers=admin_auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -470,9 +469,7 @@ class TestStarStoryIsolation:
         """Test that a user cannot delete another user's STAR story."""
         story = _create_star_story(db, test_profile.id)
 
-        response = await client.delete(
-            f"/api/star-stories/{story.id}", headers=admin_auth_headers
-        )
+        response = await client.delete(f"/api/star-stories/{story.id}", headers=admin_auth_headers)
         assert response.status_code == 404
 
     @pytest.mark.asyncio
@@ -509,7 +506,7 @@ class TestStarStoryEdgeCases:
         """Test creating a STAR story with special characters."""
         story_data = {
             "title": "Resolved O'Brien & Partners' API <Integration> Issue",
-            "situation": "The client's API used non-standard headers: X-Custom-Auth=\"token123\"",
+            "situation": 'The client\'s API used non-standard headers: X-Custom-Auth="token123"',
             "action": "Wrote adapter layer handling edge cases: null bytes, & ampersands, 'quotes'",
         }
         response = await client.post("/api/star-stories", json=story_data, headers=auth_headers)

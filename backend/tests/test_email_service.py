@@ -28,7 +28,6 @@ if backend_dir not in sys.path:
 
 from app.services.email_service import EmailService, get_email_service
 
-
 # =============================================================================
 # Template Tests
 # =============================================================================

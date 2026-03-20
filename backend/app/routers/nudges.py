@@ -293,7 +293,7 @@ async def generate_draft(
             for i, line in enumerate(lines):
                 if line.lower().startswith("subject:"):
                     subject = line[8:].strip()
-                    content = "\n".join(lines[i + 1:]).strip()
+                    content = "\n".join(lines[i + 1 :]).strip()
                     break
 
         tips_map = {

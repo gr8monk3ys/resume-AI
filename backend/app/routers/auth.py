@@ -614,6 +614,7 @@ def resend_verification(
     if current_user.email_verified:
         return {"message": "Email already verified"}
     from app.services.email_service import get_email_service
+
     email_service = get_email_service()
     token = email_service.generate_verification_token()
     current_user.email_verification_token = token

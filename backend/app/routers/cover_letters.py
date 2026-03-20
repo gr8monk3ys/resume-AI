@@ -14,7 +14,12 @@ from app.middleware.auth import get_current_user
 from app.models.cover_letter import CoverLetter
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.cover_letter import CoverLetterCreate, CoverLetterGenerate, CoverLetterResponse, CoverLetterUpdate
+from app.schemas.cover_letter import (
+    CoverLetterCreate,
+    CoverLetterGenerate,
+    CoverLetterResponse,
+    CoverLetterUpdate,
+)
 from app.schemas.pagination import PaginatedResponse, PaginationParams
 
 router = APIRouter(prefix="/api/cover-letters", tags=["Cover Letters"])

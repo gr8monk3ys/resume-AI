@@ -904,9 +904,7 @@ class LLMService:
         self.temperature = temperature
         self.enable_cache = enable_cache
 
-    def _get_cache_key(
-        self, method_name: str, prompt: str, user_id: Optional[int] = None
-    ) -> str:
+    def _get_cache_key(self, method_name: str, prompt: str, user_id: Optional[int] = None) -> str:
         """
         Generate a cache key from method name, prompt, and user identity.
 
@@ -922,14 +920,11 @@ class LLMService:
         # cross-provider and cross-user cache hits
         user_segment = str(user_id) if user_id is not None else "anonymous"
         key_content = (
-            f"{self.provider.name}:{self.provider.model}:"
-            f"{user_segment}:{method_name}:{prompt}"
+            f"{self.provider.name}:{self.provider.model}:" f"{user_segment}:{method_name}:{prompt}"
         )
         return hashlib.sha256(key_content.encode()).hexdigest()
 
-    def _invoke_cached(
-        self, method_name: str, prompt: str, user_id: Optional[int] = None
-    ) -> str:
+    def _invoke_cached(self, method_name: str, prompt: str, user_id: Optional[int] = None) -> str:
         """
         Invoke the LLM with caching support.
 
@@ -1073,9 +1068,7 @@ Guidelines:
 Output the complete tailored resume:"""
         return self._invoke_cached("tailor_resume", prompt, user_id=user_id)
 
-    def enhance_achievement(
-        self, raw_achievement: str, user_id: Optional[int] = None
-    ) -> str:
+    def enhance_achievement(self, raw_achievement: str, user_id: Optional[int] = None) -> str:
         """
         Enhance an achievement description with impact-focused language.
 

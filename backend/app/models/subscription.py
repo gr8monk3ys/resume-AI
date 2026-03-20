@@ -44,6 +44,4 @@ class UsageRecord(Base):
     count = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    __table_args__ = (
-        Index("idx_usage_user_feature_period", "user_id", "feature", "period_start"),
-    )
+    __table_args__ = (Index("idx_usage_user_feature_period", "user_id", "feature", "period_start"),)

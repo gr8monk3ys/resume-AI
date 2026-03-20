@@ -41,7 +41,6 @@ from app.middleware.feature_gate import (
 from app.models.subscription import Subscription, UsageRecord
 from app.models.user import User
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -180,9 +179,7 @@ class TestFreeTierLimits:
         sub = get_user_subscription(db, test_user.id)
         assert is_pro_user(sub) is False
 
-    def test_free_tier_limit_enforced_when_billing_enabled(
-        self, db: Session, test_user: User
-    ):
+    def test_free_tier_limit_enforced_when_billing_enabled(self, db: Session, test_user: User):
         """When billing is enabled, exceeding the limit raises HTTP 429."""
         feature = "ai_generation"
         limit_info = FREE_TIER_LIMITS[feature]
@@ -230,13 +227,17 @@ class TestFreeTierLimits:
 class TestProTierNoLimits:
     def test_pro_monthly_active_is_pro(self, db: Session, test_user: User):
         future = datetime.now(timezone.utc) + timedelta(days=30)
-        make_subscription(db, test_user.id, plan="pro_monthly", status="active", current_period_end=future)
+        make_subscription(
+            db, test_user.id, plan="pro_monthly", status="active", current_period_end=future
+        )
         sub = get_user_subscription(db, test_user.id)
         assert is_pro_user(sub) is True
 
     def test_pro_annual_active_is_pro(self, db: Session, test_user: User):
         future = datetime.now(timezone.utc) + timedelta(days=365)
-        make_subscription(db, test_user.id, plan="pro_annual", status="active", current_period_end=future)
+        make_subscription(
+            db, test_user.id, plan="pro_annual", status="active", current_period_end=future
+        )
         sub = get_user_subscription(db, test_user.id)
         assert is_pro_user(sub) is True
 
@@ -250,7 +251,9 @@ class TestProTierNoLimits:
 
         # Give the user an active pro subscription
         future = datetime.now(timezone.utc) + timedelta(days=30)
-        make_subscription(db, test_user.id, plan="pro_monthly", status="active", current_period_end=future)
+        make_subscription(
+            db, test_user.id, plan="pro_monthly", status="active", current_period_end=future
+        )
 
         # Exceed the free limit
         make_usage_record(db, test_user.id, feature, period_start, count=limit + 100)
@@ -319,9 +322,7 @@ class TestSubscriptionEdgeCases:
         assert sub.user_id == test_user.id
         assert sub.plan == "pro_monthly"
 
-    def test_get_user_subscription_no_subscription_returns_none(
-        self, db: Session, test_user: User
-    ):
+    def test_get_user_subscription_no_subscription_returns_none(self, db: Session, test_user: User):
         sub = get_user_subscription(db, test_user.id)
         assert sub is None
 

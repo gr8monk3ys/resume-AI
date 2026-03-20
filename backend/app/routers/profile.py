@@ -16,9 +16,7 @@ router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
 
 @router.get("", response_model=ProfileResponse)
-def get_profile(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
-):
+def get_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user's profile."""
     profile = db.query(Profile).filter(Profile.user_id == current_user.id).first()
 

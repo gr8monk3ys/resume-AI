@@ -17,6 +17,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from sqlalchemy.orm import Session
+
 from app.config import get_settings
 from app.database import SessionLocal
 from app.models.interview_event import InterviewEvent
@@ -93,9 +95,13 @@ class EmailScheduler:
         logger.info("Email scheduler stopped")
 
 
-def _get_eligible_users(db, *, require_nudges: bool = False,
-                        require_digest: bool = False,
-                        require_reengagement: bool = False) -> list[User]:
+def _get_eligible_users(
+    db: "Session",
+    *,
+    require_nudges: bool = False,
+    require_digest: bool = False,
+    require_reengagement: bool = False,
+) -> list[User]:
     """Query users with master email toggle ON and the specific preference enabled."""
     query = db.query(User).filter(
         User.is_active == True,  # noqa: E712
@@ -107,7 +113,7 @@ def _get_eligible_users(db, *, require_nudges: bool = False,
         query = query.filter(User.email_weekly_digest == True)  # noqa: E712
     if require_reengagement:
         query = query.filter(User.email_reengagement == True)  # noqa: E712
-    return query.all()
+    return list(query.all())
 
 
 def check_and_send_nudge_emails() -> None:
@@ -175,7 +181,7 @@ def _send_nudge_email_for_user(db, user: User, email_service, app_url: str) -> N
             job_url=job_url,
         )
         email_service.send(
-            to=user.email,
+            to=str(user.email),
             subject=f"Follow up with {app.company} — {days} days since you applied",
             html=html,
         )
@@ -313,7 +319,7 @@ def check_inactive_users() -> None:
 </div>
 """
                 email_service.send(
-                    to=user.email,
+                    to=str(user.email),
                     subject="Your job search pipeline is waiting for you",
                     html=html,
                 )

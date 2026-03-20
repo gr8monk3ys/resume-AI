@@ -14,4 +14,4 @@ from .backup_sqlite import SQLiteBackup
 from .backup_postgres import PostgresBackup
 from .restore import BackupRestore
 
-__all__ = ['SQLiteBackup', 'PostgresBackup', 'BackupRestore']
+__all__ = ["SQLiteBackup", "PostgresBackup", "BackupRestore"]
