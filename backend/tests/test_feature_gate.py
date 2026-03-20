@@ -356,6 +356,10 @@ class TestPeriodHelpers:
         reset = get_period_reset("weekly")
         assert reset > datetime.now(timezone.utc)
 
-    def test_get_period_reset_daily_is_future(self):
+    def test_get_period_reset_daily_is_next_day(self):
+        """Daily reset is midnight UTC of the next day."""
         reset = get_period_reset("daily")
-        assert reset > datetime.now(timezone.utc)
+        today = date.today()
+        tomorrow = today + timedelta(days=1)
+        expected = datetime(tomorrow.year, tomorrow.month, tomorrow.day, tzinfo=timezone.utc)
+        assert reset == expected
