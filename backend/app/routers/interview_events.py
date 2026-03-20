@@ -31,7 +31,8 @@ def serialize_json_list(items: Optional[List[str]]) -> Optional[str]:
 
 def entry_to_response(entry: InterviewEvent) -> InterviewEventResponse:
     """Convert database entry to response schema with parsed JSON fields."""
-    return InterviewEventResponse.from_orm_with_json(entry)
+    result: InterviewEventResponse = InterviewEventResponse.from_orm_with_json(entry)
+    return result
 
 
 @router.get("", response_model=List[InterviewEventResponse])

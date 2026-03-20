@@ -40,9 +40,9 @@ def get_billing_status(
         return BillingStatusResponse(plan="free", status="active")
 
     return BillingStatusResponse(
-        plan=sub.plan,
-        status=sub.status,
-        current_period_end=sub.current_period_end,
+        plan=str(sub.plan),
+        status=str(sub.status),
+        current_period_end=sub.current_period_end,  # type: ignore[arg-type]
         usage=[],
     )
 
@@ -69,8 +69,8 @@ def create_checkout_session(
 
     try:
         checkout_url = billing_service.create_checkout_session(
-            user_id=current_user.id,
-            email=current_user.email,
+            user_id=int(current_user.id),
+            email=str(current_user.email),
             price_id=body.price_id,
             success_url=success_url,
             cancel_url=cancel_url,
@@ -118,7 +118,7 @@ def create_portal_session(
     return_url = f"{settings.app_url}/settings/billing"
 
     portal_url = billing_service.create_portal_session(
-        stripe_customer_id=sub.stripe_customer_id,
+        stripe_customer_id=str(sub.stripe_customer_id),
         return_url=return_url,
     )
 

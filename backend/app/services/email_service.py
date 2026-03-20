@@ -72,7 +72,7 @@ class EmailService:
                 "subject": subject,
                 "html": html,
             }
-            resend.Emails.send(params)
+            resend.Emails.send(params)  # type: ignore[arg-type]
             logger.info("Email sent to %s: %s", to, subject)
             return True
         except Exception as exc:

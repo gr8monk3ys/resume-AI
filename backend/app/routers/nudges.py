@@ -57,15 +57,15 @@ def list_nudges(
         .all()
     )
     for ev in overdue_events:
-        if ev.follow_up_date and ev.follow_up_date < today_str:
-            days = (today - date.fromisoformat(ev.follow_up_date)).days
+        if ev.follow_up_date and str(ev.follow_up_date) < today_str:
+            days = (today - date.fromisoformat(str(ev.follow_up_date))).days
             nudges.append(
                 NudgeItem(
                     nudge_type="overdue_followup",
                     entity_type="interview_event",
-                    entity_id=ev.id,
-                    company=ev.company,
-                    position=ev.position,
+                    entity_id=int(ev.id),
+                    company=str(ev.company),
+                    position=str(ev.position),
                     title=f"Overdue follow-up: {ev.company}",
                     description=f"Your follow-up for the {ev.position} role was due {days} day{'s' if days != 1 else ''} ago.",
                     color="#ef4444",
@@ -90,13 +90,13 @@ def list_nudges(
             NudgeItem(
                 nudge_type="interview_prep",
                 entity_type="interview_event",
-                entity_id=ev.id,
-                company=ev.company,
-                position=ev.position,
+                entity_id=int(ev.id),
+                company=str(ev.company),
+                position=str(ev.position),
                 title=f"Prep for {ev.company} interview",
                 description=f"Your {ev.event_type.replace('_', ' ')} for {ev.position} is on {ev.scheduled_date}.",
                 color="#3b82f6",
-                scheduled_date=ev.scheduled_date,
+                scheduled_date=str(ev.scheduled_date),
             )
         )
 
@@ -116,9 +116,9 @@ def list_nudges(
             NudgeItem(
                 nudge_type="thank_you",
                 entity_type="interview_event",
-                entity_id=ev.id,
-                company=ev.company,
-                position=ev.position,
+                entity_id=int(ev.id),
+                company=str(ev.company),
+                position=str(ev.position),
                 title=f"Send thank-you to {ev.company}",
                 description=f"You completed your {ev.event_type.replace('_', ' ')} for {ev.position} — send a thank-you note!",
                 color="#10b981",
@@ -144,15 +144,15 @@ def list_nudges(
             NudgeItem(
                 nudge_type="stale_followup",
                 entity_type="job",
-                entity_id=app.id,
-                company=app.company,
-                position=app.position,
+                entity_id=int(app.id),
+                company=str(app.company),
+                position=str(app.position),
                 title=f"Follow up with {app.company}",
                 description=f"Applied {days} days ago for {app.position} with no response.",
                 color="#f97316",
                 days_ago=days,
-                recruiter_name=app.recruiter_name,
-                recruiter_email=app.recruiter_email,
+                recruiter_name=str(app.recruiter_name) if app.recruiter_name else None,
+                recruiter_email=str(app.recruiter_email) if app.recruiter_email else None,
             )
         )
 
@@ -196,7 +196,7 @@ def list_nudges(
             NudgeItem(
                 nudge_type="resume_freshness",
                 entity_type="resume",
-                entity_id=resume.id,
+                entity_id=int(resume.id),
                 title=f'Update "{resume.version_name}"',
                 description=f"This resume hasn't been updated in {days} days.",
                 color="#f59e0b",
@@ -282,7 +282,7 @@ async def generate_draft(
 
     try:
         llm_service = get_llm_service()
-        result = await asyncio.to_thread(llm_service.invoke, prompt)
+        result = await asyncio.to_thread(llm_service._invoke, prompt)
 
         # Parse subject line for email-type drafts
         subject = None
@@ -329,4 +329,4 @@ async def generate_draft(
             tips=tips_map.get(request.nudge_type, []),
         )
     except Exception as e:
-        raise _handle_ai_error(e, "Failed to generate draft", current_user.id)
+        raise _handle_ai_error(e, "Failed to generate draft", int(current_user.id))

@@ -31,7 +31,8 @@ def serialize_tags(tags: Optional[List[str]]) -> Optional[str]:
 
 def entry_to_response(entry: StarStory) -> StarStoryResponse:
     """Convert database entry to response schema with parsed tags."""
-    return StarStoryResponse.from_orm_with_tags(entry)
+    result: StarStoryResponse = StarStoryResponse.from_orm_with_tags(entry)
+    return result
 
 
 @router.get("", response_model=List[StarStoryResponse])

@@ -122,7 +122,7 @@ class BillingService:
             if return_url:
                 kwargs["return_url"] = return_url
 
-            session = stripe.billing_portal.Session.create(**kwargs)
+            session = stripe.billing_portal.Session.create(**kwargs)  # type: ignore[arg-type]
             logger.info("Portal session created for customer %s", stripe_customer_id)
             return session.url
         except Exception as exc:

@@ -107,7 +107,7 @@ def get_usage_count(db: Session, user_id: int, feature: str, period_start: date)
         )
         .first()
     )
-    return record.count if record else 0
+    return int(record.count) if record else 0
 
 
 def increment_usage(db: Session, user_id: int, feature: str, period_start: date) -> int:
@@ -120,7 +120,7 @@ def increment_usage(db: Session, user_id: int, feature: str, period_start: date)
     Returns the new count.
     """
     # Detect SQLite to skip FOR UPDATE (unsupported)
-    is_sqlite = db.bind is not None and "sqlite" in str(db.bind.url).lower()
+    is_sqlite = db.bind is not None and "sqlite" in str(db.bind.url).lower()  # type: ignore[union-attr]
 
     try:
         query = db.query(UsageRecord).filter(
@@ -142,11 +142,11 @@ def increment_usage(db: Session, user_id: int, feature: str, period_start: date)
             db.add(record)
             db.flush()
         else:
-            record.count += 1
+            record.count = record.count + 1  # type: ignore[assignment]
             db.flush()
 
         db.commit()
-        return record.count
+        return int(record.count)
 
     except IntegrityError:
         # Race condition: another request inserted the record first.
@@ -162,9 +162,9 @@ def increment_usage(db: Session, user_id: int, feature: str, period_start: date)
             .first()
         )
         if record:
-            record.count += 1
+            record.count = record.count + 1  # type: ignore[assignment]
             db.commit()
-            return record.count
+            return int(record.count)
         raise  # Should never reach here
 
 
@@ -206,7 +206,7 @@ def is_pro_user(subscription: Optional[Subscription]) -> bool:
         period_end = subscription.current_period_end
         if period_end.tzinfo is None:
             period_end = period_end.replace(tzinfo=timezone.utc)
-        return now <= period_end
+        return bool(now <= period_end)
 
     if subscription.status == "past_due":
         if subscription.current_period_end is None:
@@ -215,7 +215,7 @@ def is_pro_user(subscription: Optional[Subscription]) -> bool:
         if period_end.tzinfo is None:
             period_end = period_end.replace(tzinfo=timezone.utc)
         grace_deadline = period_end + timedelta(days=7)
-        return now <= grace_deadline
+        return bool(now <= grace_deadline)
 
     return False
 
@@ -269,14 +269,14 @@ def check_usage_limit(feature: str):
             return
 
         # Check subscription tier
-        subscription = get_user_subscription(db, current_user.id)
+        subscription = get_user_subscription(db, int(current_user.id))
         if is_pro_user(subscription):
             return  # Pro users bypass all rate limits
 
         # Free tier enforcement
         limit = limit_config["limit"]
         period_start = get_period_start(period)
-        current_count = get_usage_count(db, current_user.id, feature, period_start)
+        current_count = get_usage_count(db, int(current_user.id), feature, period_start)
 
         if current_count >= limit:
             reset_dt = get_period_reset(period)
@@ -298,6 +298,6 @@ def check_usage_limit(feature: str):
             )
 
         # Under limit — increment and allow
-        increment_usage(db, current_user.id, feature, period_start)
+        increment_usage(db, int(current_user.id), feature, period_start)
 
     return dependency

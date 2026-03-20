@@ -40,7 +40,8 @@ def serialize_checklist(items) -> Optional[str]:
 
 def entry_to_response(entry: CompanyResearch) -> CompanyResearchResponse:
     """Convert database entry to response schema with parsed JSON fields."""
-    return CompanyResearchResponse.from_orm_with_json(entry)
+    result: CompanyResearchResponse = CompanyResearchResponse.from_orm_with_json(entry)
+    return result
 
 
 @router.get("", response_model=List[CompanyResearchResponse])
@@ -77,7 +78,7 @@ def create_research(
 
     settings = get_settings()
     if settings.enable_billing:
-        sub = get_user_subscription(db, current_user.id)
+        sub = get_user_subscription(db, int(current_user.id))
         if not is_pro_user(sub):
             research_count = (
                 db.query(CompanyResearch)

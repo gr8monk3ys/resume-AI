@@ -103,7 +103,7 @@ async def generate_cover_letter(
         job_description=data.job_description,
         company_name=data.company_name,
         position=data.position,
-        user_id=current_user.id,
+        user_id=int(current_user.id),
     )
 
     # Save to database

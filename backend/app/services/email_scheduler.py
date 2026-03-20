@@ -16,7 +16,6 @@ from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
