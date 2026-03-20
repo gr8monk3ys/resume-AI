@@ -24,10 +24,13 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useCallback, Suspense } from 'react'
 
-import { aiApi, resumesApi } from '@/lib/api'
+import { AIMarkdown } from '@/components/AIMarkdown'
+import { aiApi, resumesApi, careerJournalApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { cn, formatDate, generateId } from '@/lib/utils'
+import { migrateLocalStorage } from '@/lib/localStorageMigration'
+import { cn, formatDate } from '@/lib/utils'
 
+import type { CareerJournalEntry } from '@/lib/api'
 import type { Resume } from '@/types'
 
 // ============================================================================
@@ -35,7 +38,7 @@ import type { Resume } from '@/types'
 // ============================================================================
 
 interface Achievement {
-  id: string
+  id: number
   title: string
   description: string
   date: string
@@ -43,6 +46,18 @@ interface Achievement {
   enhancedDescription?: string
   createdAt: string
   updatedAt: string
+}
+
+function apiEntryToAchievement(entry: CareerJournalEntry): Achievement {
+  return {
+    id: entry.id,
+    title: entry.title,
+    description: entry.description,
+    date: entry.achievement_date ?? '',
+    tags: entry.tags ?? [],
+    createdAt: entry.created_at,
+    updatedAt: entry.updated_at,
+  }
 }
 
 interface CompensationData {
@@ -65,9 +80,9 @@ type TabType = 'journal' | 'salary' | 'qa'
 function TabLoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-8 bg-gray-200 rounded w-1/4" />
-      <div className="h-48 bg-gray-200 rounded" />
-      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-8 bg-[var(--line)] rounded w-1/4" />
+      <div className="h-48 bg-[var(--line)] rounded" />
+      <div className="h-48 bg-[var(--line)] rounded" />
     </div>
   )
 }
@@ -132,42 +147,56 @@ const MARKET_RESEARCH_LINKS = [
 ]
 
 // ============================================================================
-// Storage Utilities
+// Storage Utilities (migrated to backend API)
 // ============================================================================
 
 const ACHIEVEMENTS_STORAGE_KEY = 'career_achievements'
-
-function getStoredAchievements(): Achievement[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY)
-    return stored ? (JSON.parse(stored) as Achievement[]) : []
-  } catch {
-    return []
-  }
-}
-
-function setStoredAchievements(achievements: Achievement[]): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(achievements))
-  } catch {
-    console.error('Failed to store achievements')
-  }
-}
 
 // ============================================================================
 // Achievement Journal Tab
 // ============================================================================
 
 function AchievementJournalTab() {
-  const [achievements, setAchievements] = useState<Achievement[]>(getStoredAchievements)
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [, setIsLoadingAchievements] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingAchievement, setEditingAchievement] = useState<Achievement | null>(null)
-  const [enhancingId, setEnhancingId] = useState<string | null>(null)
+  const [enhancingId, setEnhancingId] = useState<number | null>(null)
   const [isBulkEnhancing, setIsBulkEnhancing] = useState(false)
+
+  // Load achievements from API and migrate localStorage if needed
+  useEffect(() => {
+    let mounted = true
+    async function loadAchievements() {
+      try {
+        // One-time migration from localStorage
+        await migrateLocalStorage<{ title: string; description: string; date?: string; tags?: string[] }, { title: string; description: string; achievement_date?: string; tags?: string[] }>(
+          ACHIEVEMENTS_STORAGE_KEY,
+          () => careerJournalApi.list(),
+          (item) => careerJournalApi.create(item),
+          (raw) => ({
+            title: raw.title,
+            description: raw.description,
+            achievement_date: raw.date || undefined,
+            tags: raw.tags,
+          })
+        )
+
+        const entries = await careerJournalApi.list()
+        if (mounted) {
+          setAchievements(entries.map(apiEntryToAchievement))
+        }
+      } catch (error) {
+        console.error('Failed to load achievements:', error)
+      } finally {
+        if (mounted) setIsLoadingAchievements(false)
+      }
+    }
+    void loadAchievements()
+    return () => { mounted = false }
+  }, [])
 
   // Get all unique tags
   const allTags = useMemo(() => {
@@ -199,54 +228,63 @@ function AchievementJournalTab() {
     })
   }, [achievements, searchQuery, selectedTags])
 
-  const handleAddAchievement = (data: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newAchievement: Achievement = {
-      ...data,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  const handleAddAchievement = async (data: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const entry = await careerJournalApi.create({
+        title: data.title,
+        description: data.description,
+        achievement_date: data.date || undefined,
+        tags: data.tags,
+      })
+      setAchievements((prev) => [apiEntryToAchievement(entry), ...prev])
+      setShowAddModal(false)
+    } catch (error) {
+      console.error('Failed to add achievement:', error)
+      alert('Failed to add achievement. Please try again.')
     }
-    const updated = [newAchievement, ...achievements]
-    setAchievements(updated)
-    setStoredAchievements(updated)
-    setShowAddModal(false)
   }
 
-  const handleUpdateAchievement = (data: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleUpdateAchievement = async (data: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!editingAchievement) return
-    const updated = achievements.map((a) =>
-      a.id === editingAchievement.id
-        ? { ...a, ...data, updatedAt: new Date().toISOString() }
-        : a
-    )
-    setAchievements(updated)
-    setStoredAchievements(updated)
-    setEditingAchievement(null)
+    try {
+      const entry = await careerJournalApi.update(editingAchievement.id, {
+        title: data.title,
+        description: data.description,
+        achievement_date: data.date || undefined,
+        tags: data.tags,
+      })
+      setAchievements((prev) =>
+        prev.map((a) => a.id === editingAchievement.id ? { ...apiEntryToAchievement(entry), enhancedDescription: a.enhancedDescription } : a)
+      )
+      setEditingAchievement(null)
+    } catch (error) {
+      console.error('Failed to update achievement:', error)
+      alert('Failed to update achievement. Please try again.')
+    }
   }
 
-  const handleDeleteAchievement = (id: string) => {
+  const handleDeleteAchievement = async (id: number) => {
     if (!confirm('Are you sure you want to delete this achievement?')) return
-    const updated = achievements.filter((a) => a.id !== id)
-    setAchievements(updated)
-    setStoredAchievements(updated)
+    try {
+      await careerJournalApi.delete(id)
+      setAchievements((prev) => prev.filter((a) => a.id !== id))
+    } catch (error) {
+      console.error('Failed to delete achievement:', error)
+      alert('Failed to delete achievement. Please try again.')
+    }
   }
 
   const handleEnhanceAchievement = async (achievement: Achievement) => {
     setEnhancingId(achievement.id)
     try {
-      // Use the AI API to enhance the description
-      const response = await aiApi.answerQuestion(
-        `Transform this raw achievement note into a polished, quantified resume bullet point using action verbs. Keep it concise (1-2 sentences max). Original: "${achievement.description}"`
+      const response = await careerJournalApi.enhance(achievement.id)
+      setAchievements((prev) =>
+        prev.map((a) =>
+          a.id === achievement.id
+            ? { ...a, enhancedDescription: response.enhanced }
+            : a
+        )
       )
-
-      const enhanced = (response).answer
-      const updated = achievements.map((a) =>
-        a.id === achievement.id
-          ? { ...a, enhancedDescription: enhanced, updatedAt: new Date().toISOString() }
-          : a
-      )
-      setAchievements(updated)
-      setStoredAchievements(updated)
     } catch (error) {
       console.error('Failed to enhance achievement:', error)
       alert('Failed to enhance achievement. Please try again.')
@@ -265,27 +303,22 @@ function AchievementJournalTab() {
     if (!confirm(`This will enhance ${toEnhance.length} achievement(s). Continue?`)) return
 
     setIsBulkEnhancing(true)
-    let updatedAchievements = [...achievements]
 
     for (const achievement of toEnhance) {
       try {
-        const response = await aiApi.answerQuestion(
-          `Transform this raw achievement note into a polished, quantified resume bullet point using action verbs. Keep it concise (1-2 sentences max). Original: "${achievement.description}"`
-        )
-
-        const enhanced = (response).answer
-        updatedAchievements = updatedAchievements.map((a) =>
-          a.id === achievement.id
-            ? { ...a, enhancedDescription: enhanced, updatedAt: new Date().toISOString() }
-            : a
+        const response = await careerJournalApi.enhance(achievement.id)
+        setAchievements((prev) =>
+          prev.map((a) =>
+            a.id === achievement.id
+              ? { ...a, enhancedDescription: response.enhanced }
+              : a
+          )
         )
       } catch (error) {
         console.error(`Failed to enhance achievement ${achievement.id}:`, error)
       }
     }
 
-    setAchievements(updatedAchievements)
-    setStoredAchievements(updatedAchievements)
     setIsBulkEnhancing(false)
   }
 
@@ -301,13 +334,13 @@ function AchievementJournalTab() {
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <div className="flex flex-1 gap-4">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--muted-soft)]" />
             <input
               type="text"
               placeholder="Search achievements..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 glass-input"
             />
           </div>
         </div>
@@ -316,11 +349,11 @@ function AchievementJournalTab() {
           <button
             onClick={() => { void handleBulkEnhance() }}
             disabled={isBulkEnhancing}
-            className="inline-flex items-center px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 disabled:opacity-50"
+            className="glass-button-secondary inline-flex items-center disabled:opacity-50"
           >
             {isBulkEnhancing ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2" />
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--accent)] mr-2" />
                 Enhancing...
               </>
             ) : (
@@ -332,7 +365,7 @@ function AchievementJournalTab() {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="glass-button-primary inline-flex items-center"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Achievement
@@ -343,7 +376,7 @@ function AchievementJournalTab() {
       {/* Tag Filters */}
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <span className="text-sm text-gray-500 flex items-center mr-2">
+          <span className="text-sm text-[var(--muted)] flex items-center mr-2">
             <Tag className="w-4 h-4 mr-1" />
             Filter by tag:
           </span>
@@ -355,7 +388,7 @@ function AchievementJournalTab() {
                 'px-3 py-1 text-sm rounded-full transition-colors',
                 selectedTags.includes(tag)
                   ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-[var(--surface)] text-[var(--ink-secondary)] hover:bg-[var(--surface)]'
               )}
             >
               {tag}
@@ -364,7 +397,7 @@ function AchievementJournalTab() {
           {selectedTags.length > 0 && (
             <button
               onClick={() => setSelectedTags([])}
-              className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700"
+              className="px-3 py-1 text-sm text-[var(--muted)] hover:text-[var(--ink-secondary)]"
             >
               Clear filters
             </button>
@@ -374,12 +407,12 @@ function AchievementJournalTab() {
 
       {/* Achievements List */}
       {filteredAchievements.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Award className="w-12 h-12 mx-auto text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">
+        <div className="text-center py-12 bg-[var(--surface-strong)] rounded-lg shadow">
+          <Award className="w-12 h-12 mx-auto text-[var(--muted-soft)]" />
+          <h3 className="mt-4 text-lg font-medium text-[var(--ink)]">
             {achievements.length === 0 ? 'No achievements yet' : 'No matching achievements'}
           </h3>
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-[var(--muted)]">
             {achievements.length === 0
               ? 'Start documenting your professional wins'
               : 'Try adjusting your search or filters'}
@@ -387,7 +420,7 @@ function AchievementJournalTab() {
           {achievements.length === 0 && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+              className="mt-4 glass-button-primary inline-flex items-center"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Achievement
@@ -399,15 +432,15 @@ function AchievementJournalTab() {
           {filteredAchievements.map((achievement) => (
             <div
               key={achievement.id}
-              className="bg-white rounded-lg shadow p-6"
+              className="bg-[var(--surface-strong)] rounded-lg shadow p-6"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-[var(--ink)]">
                       {achievement.title}
                     </h3>
-                    <span className="text-sm text-gray-500 flex items-center">
+                    <span className="text-sm text-[var(--muted)] flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
                       {formatDate(achievement.date)}
                     </span>
@@ -417,7 +450,7 @@ function AchievementJournalTab() {
                     {achievement.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"
+                        className="px-2 py-1 text-xs bg-[var(--surface)] text-[var(--ink-secondary)] rounded-full"
                       >
                         {tag}
                       </span>
@@ -426,8 +459,8 @@ function AchievementJournalTab() {
 
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-gray-500 font-medium mb-1">Original:</p>
-                      <p className="text-gray-700">{achievement.description}</p>
+                      <p className="text-sm text-[var(--muted)] font-medium mb-1">Original:</p>
+                      <p className="text-[var(--ink-secondary)]">{achievement.description}</p>
                     </div>
 
                     {achievement.enhancedDescription && (
@@ -461,14 +494,14 @@ function AchievementJournalTab() {
                   </button>
                   <button
                     onClick={() => setEditingAchievement(achievement)}
-                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded"
+                    className="p-2 text-[var(--muted-soft)] hover:text-primary-600 hover:bg-primary-50 rounded"
                     aria-label="Edit achievement"
                   >
                     <Edit2 className="w-5 h-5" />
                   </button>
                   <button
-                    onClick={() => handleDeleteAchievement(achievement.id)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                    onClick={() => { void handleDeleteAchievement(achievement.id) }}
+                    className="p-2 text-[var(--muted-soft)] hover:text-red-600 hover:bg-red-50 rounded"
                     aria-label="Delete achievement"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -488,7 +521,7 @@ function AchievementJournalTab() {
             setShowAddModal(false)
             setEditingAchievement(null)
           }}
-          onSave={editingAchievement ? handleUpdateAchievement : handleAddAchievement}
+          onSave={(data) => { void (editingAchievement ? handleUpdateAchievement : handleAddAchievement)(data) }}
         />
       )}
     </div>
@@ -502,7 +535,7 @@ function AchievementJournalTab() {
 interface AchievementModalProps {
   achievement?: Achievement | null
   onClose: () => void
-  onSave: (data: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt'>) => void
+  onSave: (data: Omit<Achievement, 'id' | 'createdAt' | 'updatedAt'>) => void | Promise<void>
 }
 
 function AchievementModal({ achievement, onClose, onSave }: AchievementModalProps) {
@@ -529,19 +562,19 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave({ ...formData, date: formData.date ?? '' })
+    void onSave({ ...formData, date: formData.date ?? '' })
   }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
+          <h2 className="text-xl font-bold text-[var(--ink)]">
             {achievement ? 'Edit Achievement' : 'Add Achievement'}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
             aria-label="Close modal"
           >
             <X className="w-6 h-6" />
@@ -550,7 +583,7 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label htmlFor="achievement-title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="achievement-title" className="glass-label mb-1">
               Title <span className="text-red-500">*</span>
             </label>
             <input
@@ -560,12 +593,12 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="e.g., Led migration to cloud infrastructure"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="achievement-date" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="achievement-date" className="glass-label mb-1">
               Date <span className="text-red-500">*</span>
             </label>
             <input
@@ -574,12 +607,12 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="achievement-description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="achievement-description" className="glass-label mb-1">
               Description <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -589,15 +622,15 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Describe what you did and the impact it had..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-[var(--muted)]">
               Include specific metrics and outcomes when possible
             </p>
           </div>
 
           <div>
-            <label htmlFor="achievement-tags" className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+            <label htmlFor="achievement-tags" className="glass-label mb-1">Tags</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {formData.tags.map((tag) => (
                 <span
@@ -629,18 +662,18 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
                   }
                 }}
                 placeholder="Add a tag..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="flex-1 glass-input"
               />
               <button
                 type="button"
                 onClick={() => handleAddTag(tagInput)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                className="glass-button-secondary"
               >
                 Add
               </button>
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
-              <span className="text-xs text-gray-500">Suggestions:</span>
+              <span className="text-xs text-[var(--muted)]">Suggestions:</span>
               {COMMON_TAGS.filter((t) => !formData.tags.includes(t))
                 .slice(0, 5)
                 .map((tag) => (
@@ -656,17 +689,17 @@ function AchievementModal({ achievement, onClose, onSave }: AchievementModalProp
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--line)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              className="glass-button-primary"
             >
               {achievement ? 'Save Changes' : 'Add Achievement'}
             </button>
@@ -755,19 +788,19 @@ Please provide a professional, confident, and respectful negotiation script that
     <div className="space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Compensation Calculator */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-[var(--ink)] mb-4 flex items-center">
             <Calculator className="w-5 h-5 mr-2 text-primary-600" />
             Total Compensation Calculator
           </h3>
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="base-salary" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="base-salary" className="glass-label mb-1">
                 Base Salary
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                   $
                 </span>
                 <input
@@ -781,13 +814,13 @@ Please provide a professional, confident, and respectful negotiation script that
                       baseSalary: Number(e.target.value),
                     })
                   }
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-8 glass-input"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="bonus-percentage" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="bonus-percentage" className="glass-label mb-1">
                 Bonus Percentage
               </label>
               <div className="relative">
@@ -803,23 +836,23 @@ Please provide a professional, confident, and respectful negotiation script that
                       bonusPercentage: Number(e.target.value),
                     })
                   }
-                  className="w-full pr-8 pl-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pr-8 glass-input"
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                   %
                 </span>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-[var(--muted)]">
                 Bonus: ${(compensation.baseSalary * (compensation.bonusPercentage / 100)).toLocaleString()}
               </p>
             </div>
 
             <div>
-              <label htmlFor="stock-value" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="stock-value" className="glass-label mb-1">
                 Stock/Equity Value (Annual)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                   $
                 </span>
                 <input
@@ -833,17 +866,17 @@ Please provide a professional, confident, and respectful negotiation script that
                       stockValue: Number(e.target.value),
                     })
                   }
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-8 glass-input"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="benefits-value" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="benefits-value" className="glass-label mb-1">
                 Benefits Value (Health, 401k Match, etc.)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                   $
                 </span>
                 <input
@@ -857,17 +890,17 @@ Please provide a professional, confident, and respectful negotiation script that
                       benefitsValue: Number(e.target.value),
                     })
                   }
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-8 glass-input"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="other-compensation" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="other-compensation" className="glass-label mb-1">
                 Other Compensation (Signing Bonus, Relocation, etc.)
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                   $
                 </span>
                 <input
@@ -881,22 +914,22 @@ Please provide a professional, confident, and respectful negotiation script that
                       otherCompensation: Number(e.target.value),
                     })
                   }
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full pl-8 glass-input"
                 />
               </div>
             </div>
 
             {/* Total */}
-            <div className="border-t pt-4 mt-4">
+            <div className="border-t border-[var(--line)] pt-4 mt-4">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-lg font-semibold text-[var(--ink)]">
                   Total Compensation
                 </span>
                 <span className="text-2xl font-bold text-primary-600">
                   ${totalCompensation.toLocaleString()}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[var(--muted)] mt-1">
                 Monthly: ${Math.round(totalCompensation / 12).toLocaleString()}
               </p>
             </div>
@@ -904,15 +937,15 @@ Please provide a professional, confident, and respectful negotiation script that
         </div>
 
         {/* Negotiation Scripts */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-[var(--ink)] mb-4 flex items-center">
             <MessageSquare className="w-5 h-5 mr-2 text-primary-600" />
             Negotiation Script Generator
           </h3>
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="negotiation-scenario" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="negotiation-scenario" className="glass-label mb-1">
                 Scenario
               </label>
               <select
@@ -924,7 +957,7 @@ Please provide a professional, confident, and respectful negotiation script that
                     scenario: e.target.value as NegotiationScenario,
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               >
                 {NEGOTIATION_SCENARIOS.map((scenario) => (
                   <option key={scenario.value} value={scenario.value}>
@@ -932,18 +965,18 @@ Please provide a professional, confident, and respectful negotiation script that
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-[var(--muted)]">
                 {NEGOTIATION_SCENARIOS.find((s) => s.value === negotiationData.scenario)?.description}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="current-offer" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="current-offer" className="glass-label mb-1">
                   Current Offer
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                     $
                   </span>
                   <input
@@ -958,17 +991,17 @@ Please provide a professional, confident, and respectful negotiation script that
                       })
                     }
                     placeholder="120000"
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full pl-8 glass-input"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="target-salary" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="target-salary" className="glass-label mb-1">
                   Target Salary
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--muted)]">
                     $
                   </span>
                   <input
@@ -983,7 +1016,7 @@ Please provide a professional, confident, and respectful negotiation script that
                       })
                     }
                     placeholder="140000"
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full pl-8 glass-input"
                   />
                 </div>
               </div>
@@ -991,7 +1024,7 @@ Please provide a professional, confident, and respectful negotiation script that
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="company-name" className="glass-label mb-1">
                   Company (Optional)
                 </label>
                 <input
@@ -1005,12 +1038,12 @@ Please provide a professional, confident, and respectful negotiation script that
                     })
                   }
                   placeholder="e.g., Google"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full glass-input"
                 />
               </div>
 
               <div>
-                <label htmlFor="role-level" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="role-level" className="glass-label mb-1">
                   Role Level (Optional)
                 </label>
                 <input
@@ -1024,13 +1057,13 @@ Please provide a professional, confident, and respectful negotiation script that
                     })
                   }
                   placeholder="e.g., Senior Engineer"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full glass-input"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="leverage-points" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="leverage-points" className="glass-label mb-1">
                 Leverage Points (Optional)
               </label>
               <textarea
@@ -1044,14 +1077,14 @@ Please provide a professional, confident, and respectful negotiation script that
                   })
                 }
                 placeholder="e.g., competing offer, unique skills, market data..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
 
             <button
               onClick={() => { void handleGenerateScript() }}
               disabled={isGenerating}
-              className="w-full inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="w-full glass-button-primary inline-flex items-center justify-center disabled:opacity-50"
             >
               {isGenerating ? (
                 <>
@@ -1069,26 +1102,26 @@ Please provide a professional, confident, and respectful negotiation script that
 
           {/* Generated Script */}
           {generatedScript && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="mt-4 p-4 bg-[var(--surface-thin)] rounded-lg border border-[var(--line)]">
               <div className="flex justify-between items-start mb-2">
-                <h4 className="font-medium text-gray-900">Generated Script</h4>
+                <h4 className="font-medium text-[var(--ink)]">Generated Script</h4>
                 <button
                   onClick={() => copyToClipboard(generatedScript)}
-                  className="text-gray-500 hover:text-primary-600"
+                  className="text-[var(--muted)] hover:text-primary-600"
                   title="Copy to clipboard"
                 >
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-gray-700 whitespace-pre-wrap text-sm">{generatedScript}</p>
+              <AIMarkdown content={generatedScript} />
             </div>
           )}
         </div>
       </div>
 
       {/* Market Research Links */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-[var(--ink)] mb-4 flex items-center">
           <TrendingUp className="w-5 h-5 mr-2 text-primary-600" />
           Market Research Resources
         </h3>
@@ -1099,12 +1132,12 @@ Please provide a professional, confident, and respectful negotiation script that
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-start p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+              className="flex items-start p-4 border border-[var(--line)] rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
             >
               <ExternalLink className="w-5 h-5 text-primary-600 mr-3 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium text-gray-900">{link.name}</p>
-                <p className="text-sm text-gray-500">{link.description}</p>
+                <p className="font-medium text-[var(--ink)]">{link.name}</p>
+                <p className="text-sm text-[var(--muted)]">{link.description}</p>
               </div>
             </a>
           ))}
@@ -1176,22 +1209,22 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
         {/* Input Section */}
         <div className="space-y-6">
           {/* Question Selection */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-[var(--ink)] mb-4 flex items-center">
               <FileText className="w-5 h-5 mr-2 text-primary-600" />
               Select a Question
             </h3>
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="select-question" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="select-question" className="glass-label mb-1">
                   Common Questions
                 </label>
                 <select
                   id="select-question"
                   value={selectedQuestion}
                   onChange={(e) => setSelectedQuestion(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full glass-input"
                 >
                   <option value="">Select a question...</option>
                   {COMMON_QUESTIONS.map((q) => (
@@ -1205,7 +1238,7 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
 
               {selectedQuestion === 'custom' && (
                 <div>
-                  <label htmlFor="custom-question" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="custom-question" className="glass-label mb-1">
                     Your Question
                   </label>
                   <input
@@ -1214,7 +1247,7 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
                     value={customQuestion}
                     onChange={(e) => setCustomQuestion(e.target.value)}
                     placeholder="Enter your question..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full glass-input"
                   />
                 </div>
               )}
@@ -1222,22 +1255,22 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
           </div>
 
           {/* Context Section */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-[var(--ink)] mb-4 flex items-center">
               <Briefcase className="w-5 h-5 mr-2 text-primary-600" />
               Context (Optional)
             </h3>
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="select-resume" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="select-resume" className="glass-label mb-1">
                   Select Resume
                 </label>
                 <select
                   id="select-resume"
                   value={selectedResumeId}
                   onChange={(e) => setSelectedResumeId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full glass-input"
                 >
                   <option value="">No resume (generic answer)</option>
                   {resumes.map((resume) => (
@@ -1246,13 +1279,13 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-[var(--muted)]">
                   Selecting a resume helps personalize the answer
                 </p>
               </div>
 
               <div>
-                <label htmlFor="job-description" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="job-description" className="glass-label mb-1">
                   Job Description
                 </label>
                 <textarea
@@ -1261,7 +1294,7 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   placeholder="Paste the job description for a more tailored answer..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full glass-input"
                 />
               </div>
             </div>
@@ -1270,7 +1303,7 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
           <button
             onClick={() => { void handleGenerateAnswer() }}
             disabled={isGenerating || !questionToUse}
-            className="w-full inline-flex items-center justify-center px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full glass-button-primary inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
               <>
@@ -1290,9 +1323,9 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
         <div className="space-y-6">
           {generatedAnswer ? (
             <>
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <h3 className="text-lg font-semibold text-[var(--ink)] flex items-center">
                     <MessageSquare className="w-5 h-5 mr-2 text-primary-600" />
                     Generated Answer
                   </h3>
@@ -1302,7 +1335,7 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
                       'inline-flex items-center px-3 py-1 text-sm rounded-lg transition-colors',
                       copied
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-[var(--surface)] text-[var(--ink-secondary)] hover:bg-[var(--surface)]'
                     )}
                   >
                     {copied ? (
@@ -1319,9 +1352,7 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
                   </button>
                 </div>
 
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-gray-700 whitespace-pre-wrap">{generatedAnswer}</p>
-                </div>
+                <AIMarkdown content={generatedAnswer} />
               </div>
 
               {tips.length > 0 && (
@@ -1342,12 +1373,12 @@ function ApplicationQATab({ resumes }: ApplicationQATabProps) {
               )}
             </>
           ) : (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <MessageSquare className="w-12 h-12 mx-auto text-gray-300" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">
+            <div className="bg-[var(--surface-strong)] rounded-lg shadow p-12 text-center">
+              <MessageSquare className="w-12 h-12 mx-auto text-[var(--muted-soft)]" />
+              <h3 className="mt-4 text-lg font-medium text-[var(--ink)]">
                 No Answer Generated Yet
               </h3>
-              <p className="mt-2 text-gray-500">
+              <p className="mt-2 text-[var(--muted)]">
                 Select a question and click Generate Answer to get started
               </p>
             </div>
@@ -1394,7 +1425,7 @@ export default function CareerToolsPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -1406,7 +1437,7 @@ export default function CareerToolsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -1415,14 +1446,14 @@ export default function CareerToolsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Career Tools</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-[var(--ink)] font-display tracking-[-0.02em]">Career Tools</h1>
+        <p className="text-[var(--muted)]">
           Track achievements, research compensation, and prepare application answers
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-[var(--line)] mb-6">
         <nav className="flex gap-4 -mb-px" aria-label="Tabs">
           {[
             { id: 'journal' as const, label: 'Achievement Journal', icon: BookOpen },
@@ -1436,7 +1467,7 @@ export default function CareerToolsPage() {
                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
                 activeTab === tab.id
                   ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--ink-secondary)] hover:border-[var(--line-strong)]'
               )}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >

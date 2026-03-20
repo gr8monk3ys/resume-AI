@@ -2,9 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { DashboardClient } from '@/app/DashboardClient'
+import { LandingPage } from '@/app/LandingPage'
 import { jobsApi, resumesApi, coverLettersApi } from '@/lib/api'
 import { AuthContext, AuthContextType } from '@/lib/auth'
-import MarketingHomePage from '@/pages/index'
 
 import type { User, JobApplication, Resume, CoverLetter, JobStats } from '@/types'
 
@@ -179,14 +179,17 @@ function renderHomePage(authContextOverrides: Partial<AuthContextType> = {}) {
     ...authContextOverrides,
   }
 
-  const HomePageComponent =
-    defaultContext.user && defaultContext.isAuthenticated
-      ? DashboardClient
-      : MarketingHomePage
+  const isAuth = defaultContext.user && defaultContext.isAuthenticated
 
   return render(
     <AuthContext.Provider value={defaultContext}>
-      <HomePageComponent />
+      {isAuth ? (
+        <DashboardClient />
+      ) : (
+        <main id="main-content">
+          <LandingPage />
+        </main>
+      )}
     </AuthContext.Provider>
   )
 }

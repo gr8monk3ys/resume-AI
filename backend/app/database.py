@@ -414,13 +414,34 @@ def init_db():
 
     See backend/alembic/versions/ for migration files.
     """
+    # Warn if SQLite is used in non-debug mode (likely production)
+    if _is_sqlite() and not settings.debug:
+        logger.warning(
+            "SQLite is not recommended for production. "
+            "Set DATABASE_URL to a PostgreSQL connection string."
+        )
+
+    # In non-debug mode, skip create_all() if Alembic migrations are available.
+    # Production should use `alembic upgrade head` for schema management.
+    if not settings.debug and os.path.isdir(
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic")
+    ):
+        logger.info(
+            "Alembic directory detected in non-debug mode. "
+            "Skipping Base.metadata.create_all() — use 'alembic upgrade head' to manage schema."
+        )
+        return
+
     # Import all models to register them with Base
     from app.models import (
         CareerJournalEntry,
+        CompanyResearch,
         CoverLetter,
+        InterviewEvent,
         JobApplication,
         Profile,
         Resume,
+        StarStory,
         User,
     )
     from app.models.job_alert import JobAlert

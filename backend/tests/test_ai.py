@@ -540,7 +540,7 @@ class TestOptimizeResume:
         """Test successful resume optimization."""
         response = await client.post(
             "/api/ai/optimize-resume",
-            params={
+            json={
                 "resume_content": sample_resume_content,
                 "job_description": sample_job_description,
             },
@@ -563,7 +563,7 @@ class TestOptimizeResume:
         """Test resume optimization without job description."""
         response = await client.post(
             "/api/ai/optimize-resume",
-            params={
+            json={
                 "resume_content": sample_resume_content,
             },
             headers=auth_headers,
@@ -577,6 +577,6 @@ class TestOptimizeResume:
         """Test resume optimization without authentication."""
         response = await client.post(
             "/api/ai/optimize-resume",
-            params={"resume_content": "Test resume"},
+            json={"resume_content": "Test resume"},
         )
         assert response.status_code == 401

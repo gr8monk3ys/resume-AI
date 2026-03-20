@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.middleware.auth import get_current_user
 from app.models.job_filters import (
     DEFAULT_QUESTION_TEMPLATES,
@@ -39,6 +39,9 @@ from app.schemas.job_filters import (
 
 router = APIRouter(prefix="/api/filters", tags=["Job Filters"])
 
+# Maximum allowed length for keyword/pattern values (prevents ReDoS)
+MAX_KEYWORD_LENGTH = 200
+
 
 # ============================================================================
 # Company Filter Endpoints
@@ -46,7 +49,7 @@ router = APIRouter(prefix="/api/filters", tags=["Job Filters"])
 
 
 @router.get("/companies", response_model=CompanyFilterListResponse)
-async def list_company_filters(
+def list_company_filters(
     filter_type: Optional[CompanyFilterType] = None,
     search: Optional[str] = None,
     skip: int = Query(0, ge=0),
@@ -73,7 +76,7 @@ async def list_company_filters(
 @router.post(
     "/companies", response_model=CompanyFilterResponse, status_code=status.HTTP_201_CREATED
 )
-async def create_company_filter(
+def create_company_filter(
     filter_data: CompanyFilterCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -102,14 +105,14 @@ async def create_company_filter(
         reason=filter_data.reason,
     )
     db.add(company_filter)
-    db.commit()
+    safe_commit(db, "create company filter")
     db.refresh(company_filter)
 
     return company_filter
 
 
 @router.get("/companies/{filter_id}", response_model=CompanyFilterResponse)
-async def get_company_filter(
+def get_company_filter(
     filter_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -128,7 +131,7 @@ async def get_company_filter(
 
 
 @router.delete("/companies/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_company_filter(
+def delete_company_filter(
     filter_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -144,11 +147,11 @@ async def delete_company_filter(
         raise HTTPException(status_code=404, detail="Company filter not found")
 
     db.delete(company_filter)
-    db.commit()
+    safe_commit(db, "delete company filter")
 
 
 @router.delete("/companies", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_all_company_filters(
+def delete_all_company_filters(
     filter_type: Optional[CompanyFilterType] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -160,7 +163,7 @@ async def delete_all_company_filters(
         query = query.filter(CompanyFilter.filter_type == filter_type)
 
     query.delete(synchronize_session=False)
-    db.commit()
+    safe_commit(db, "delete all company filters")
 
 
 # ============================================================================
@@ -169,7 +172,7 @@ async def delete_all_company_filters(
 
 
 @router.get("/keywords", response_model=KeywordFilterListResponse)
-async def list_keyword_filters(
+def list_keyword_filters(
     filter_type: Optional[KeywordFilterType] = None,
     applies_to: Optional[KeywordAppliesTo] = None,
     search: Optional[str] = None,
@@ -198,12 +201,19 @@ async def list_keyword_filters(
 
 
 @router.post("/keywords", response_model=KeywordFilterResponse, status_code=status.HTTP_201_CREATED)
-async def create_keyword_filter(
+def create_keyword_filter(
     filter_data: KeywordFilterCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a new keyword filter."""
+    # Validate keyword length to prevent ReDoS
+    if len(filter_data.keyword) > MAX_KEYWORD_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Keyword must be {MAX_KEYWORD_LENGTH} characters or fewer",
+        )
+
     # Check for duplicate
     existing = (
         db.query(KeywordFilter)
@@ -227,14 +237,14 @@ async def create_keyword_filter(
         applies_to=filter_data.applies_to,
     )
     db.add(keyword_filter)
-    db.commit()
+    safe_commit(db, "create keyword filter")
     db.refresh(keyword_filter)
 
     return keyword_filter
 
 
 @router.get("/keywords/{filter_id}", response_model=KeywordFilterResponse)
-async def get_keyword_filter(
+def get_keyword_filter(
     filter_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -253,7 +263,7 @@ async def get_keyword_filter(
 
 
 @router.delete("/keywords/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_keyword_filter(
+def delete_keyword_filter(
     filter_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -269,11 +279,11 @@ async def delete_keyword_filter(
         raise HTTPException(status_code=404, detail="Keyword filter not found")
 
     db.delete(keyword_filter)
-    db.commit()
+    safe_commit(db, "delete keyword filter")
 
 
 @router.delete("/keywords", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_all_keyword_filters(
+def delete_all_keyword_filters(
     filter_type: Optional[KeywordFilterType] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -285,7 +295,7 @@ async def delete_all_keyword_filters(
         query = query.filter(KeywordFilter.filter_type == filter_type)
 
     query.delete(synchronize_session=False)
-    db.commit()
+    safe_commit(db, "delete all keyword filters")
 
 
 # ============================================================================
@@ -294,7 +304,7 @@ async def delete_all_keyword_filters(
 
 
 @router.get("/questions", response_model=ApplicationQuestionListResponse)
-async def list_application_questions(
+def list_application_questions(
     category: Optional[str] = None,
     question_type: Optional[str] = None,
     search: Optional[str] = None,
@@ -333,7 +343,7 @@ async def list_application_questions(
 @router.post(
     "/questions", response_model=ApplicationQuestionResponse, status_code=status.HTTP_201_CREATED
 )
-async def create_application_question(
+def create_application_question(
     question_data: ApplicationQuestionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -347,14 +357,14 @@ async def create_application_question(
         category=question_data.category,
     )
     db.add(question)
-    db.commit()
+    safe_commit(db, "create application question")
     db.refresh(question)
 
     return question
 
 
 @router.get("/questions/{question_id}", response_model=ApplicationQuestionResponse)
-async def get_application_question(
+def get_application_question(
     question_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -375,7 +385,7 @@ async def get_application_question(
 
 
 @router.put("/questions/{question_id}", response_model=ApplicationQuestionResponse)
-async def update_application_question(
+def update_application_question(
     question_id: int,
     question_data: ApplicationQuestionUpdate,
     current_user: User = Depends(get_current_user),
@@ -397,14 +407,14 @@ async def update_application_question(
     for field, value in update_data.items():
         setattr(question, field, value)
 
-    db.commit()
+    safe_commit(db, "update application question")
     db.refresh(question)
 
     return question
 
 
 @router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_application_question(
+def delete_application_question(
     question_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -422,11 +432,11 @@ async def delete_application_question(
         raise HTTPException(status_code=404, detail="Application question not found")
 
     db.delete(question)
-    db.commit()
+    safe_commit(db, "delete application question")
 
 
 @router.delete("/questions", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_all_application_questions(
+def delete_all_application_questions(
     category: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -438,7 +448,7 @@ async def delete_all_application_questions(
         query = query.filter(ApplicationQuestion.category == category)
 
     query.delete(synchronize_session=False)
-    db.commit()
+    safe_commit(db, "delete all application questions")
 
 
 # ============================================================================
@@ -447,7 +457,7 @@ async def delete_all_application_questions(
 
 
 @router.get("/check-job", response_model=JobCheckResponse)
-async def check_job_filters(
+def check_job_filters(
     title: str,
     company: str,
     description: Optional[str] = None,
@@ -497,13 +507,9 @@ async def check_job_filters(
         else:  # BOTH
             text_to_check = f"{title} {description or ''}".lower()
 
-        # Use regex for pattern matching (supports | for OR)
-        try:
-            pattern = re.compile(kf.keyword.lower())
-            match = pattern.search(text_to_check)
-        except re.error:
-            # If not a valid regex, do simple substring match
-            match = kf.keyword.lower() in text_to_check
+        # Use escaped literal matching to prevent ReDoS attacks
+        escaped_keyword = re.escape(kf.keyword.lower())
+        match = re.search(escaped_keyword, text_to_check)
 
         if match:
             action = "block" if kf.filter_type == KeywordFilterType.EXCLUDE else "require"
@@ -542,11 +548,9 @@ async def check_job_filters(
         else:  # BOTH
             text_to_check = f"{title} {description or ''}".lower()
 
-        try:
-            pattern = re.compile(rk.keyword.lower())
-            match = pattern.search(text_to_check)
-        except re.error:
-            match = rk.keyword.lower() in text_to_check
+        # Use escaped literal matching to prevent ReDoS attacks
+        escaped_keyword = re.escape(rk.keyword.lower())
+        match = re.search(escaped_keyword, text_to_check)
 
         if not match:
             passes_filters = False
@@ -559,13 +563,10 @@ async def check_job_filters(
 
     full_text = f"{title} {description or ''}".lower()
     for q in questions:
-        try:
-            pattern = re.compile(q.question_pattern.lower())
-            if pattern.search(full_text):
-                matching_questions.append(q)
-        except re.error:
-            if q.question_pattern.lower() in full_text:
-                matching_questions.append(q)
+        # Use escaped literal matching to prevent ReDoS attacks
+        escaped_pattern = re.escape(q.question_pattern.lower())
+        if re.search(escaped_pattern, full_text):
+            matching_questions.append(q)
 
     # Generate summary
     if passes_filters:
@@ -587,7 +588,7 @@ async def check_job_filters(
 
 
 @router.post("/check-job", response_model=JobCheckResponse)
-async def check_job_filters_post(
+def check_job_filters_post(
     request: JobCheckRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -597,7 +598,7 @@ async def check_job_filters_post(
 
     Returns whether the job passes all filters and details about any matches.
     """
-    return await check_job_filters(
+    return check_job_filters(
         title=request.title,
         company=request.company,
         description=request.description,
@@ -612,7 +613,7 @@ async def check_job_filters_post(
 
 
 @router.post("/import-defaults", response_model=ImportDefaultsResponse)
-async def import_default_questions(
+def import_default_questions(
     overwrite: bool = Query(False, description="Overwrite existing questions with same pattern"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -663,7 +664,7 @@ async def import_default_questions(
             db.add(question)
             imported_count += 1
 
-    db.commit()
+    safe_commit(db, "import default question templates")
 
     return ImportDefaultsResponse(
         success=True,
@@ -680,7 +681,7 @@ async def import_default_questions(
 
 
 @router.get("/questions/categories")
-async def get_question_categories(
+def get_question_categories(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

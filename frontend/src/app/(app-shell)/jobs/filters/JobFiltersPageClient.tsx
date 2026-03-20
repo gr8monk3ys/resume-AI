@@ -146,20 +146,20 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-4 items-center flex-1">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--muted-soft)]" />
             <input
               type="text"
               placeholder="Search companies..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 glass-input"
             />
           </div>
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as CompanyFilterType | '')}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="glass-select"
             aria-label="Filter by type"
           >
             <option value="">All Types</option>
@@ -171,14 +171,14 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
         <div className="flex gap-2">
           <button
             onClick={() => setShowImportModal(true)}
-            className="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="inline-flex items-center glass-button-secondary"
           >
             <Upload className="w-4 h-4 mr-2" />
             Import
           </button>
           <button
             onClick={() => setShowAddForm(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="inline-flex items-center glass-button-primary"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Company
@@ -188,10 +188,10 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
 
       {/* Add Form */}
       {showAddForm && (
-        <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 rounded-lg p-4 space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="bg-[var(--surface-thin)] rounded-lg p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company-name" className="glass-label mb-1">
                 Company Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -201,25 +201,25 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
                 value={newCompany}
                 onChange={(e) => setNewCompany(e.target.value)}
                 placeholder="e.g., Acme Corp"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
             <div>
-              <label htmlFor="company-filter-type" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company-filter-type" className="glass-label mb-1">
                 Filter Type
               </label>
               <select
                 id="company-filter-type"
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as CompanyFilterType)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-select"
               >
                 <option value="blacklist">Blacklist (Block)</option>
                 <option value="whitelist">Whitelist (Prefer)</option>
               </select>
             </div>
             <div>
-              <label htmlFor="company-reason" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company-reason" className="glass-label mb-1">
                 Reason (Optional)
               </label>
               <input
@@ -228,7 +228,7 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
                 value={newReason}
                 onChange={(e) => setNewReason(e.target.value)}
                 placeholder="e.g., Poor reviews"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
           </div>
@@ -236,14 +236,14 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !newCompany.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="glass-button-primary disabled:opacity-50"
             >
               {isSubmitting ? 'Adding...' : 'Add Filter'}
             </button>
@@ -252,31 +252,31 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-[var(--surface-thin)]">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Company
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Type
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Reason
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Added
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-20">
+              <th className="px-4 py-3 text-right text-sm font-medium text-[var(--ink-secondary)] w-20">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-[var(--line)]">
             {filteredFilters.map((filter) => (
-              <tr key={filter.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">
+              <tr key={filter.id} className="hover:bg-[var(--surface)]">
+                <td className="px-4 py-3 font-medium text-[var(--ink)]">
                   {filter.company_name}
                 </td>
                 <td className="px-4 py-3">
@@ -291,16 +291,16 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
                     {filter.filter_type === 'blacklist' ? 'Blacklist' : 'Whitelist'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-sm">
+                <td className="px-4 py-3 text-[var(--muted)] text-sm">
                   {filter.reason || '-'}
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-sm">
+                <td className="px-4 py-3 text-[var(--muted)] text-sm">
                   {formatDate(filter.created_at, 'short')}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => void onDelete(filter.id)}
-                    className="p-1 text-gray-400 hover:text-red-600"
+                    className="p-1 text-[var(--muted-soft)] hover:text-red-600"
                     aria-label="Delete filter"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -312,7 +312,7 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
         </table>
 
         {filteredFilters.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-[var(--muted)]">
             {filters.length === 0
               ? 'No company filters yet. Add your first filter above.'
               : 'No companies match your search criteria.'}
@@ -321,7 +321,7 @@ function CompanyFiltersTab({ filters, onAdd, onDelete, onImport }: CompanyFilter
       </div>
 
       {/* Stats */}
-      <div className="flex gap-4 text-sm text-gray-500">
+      <div className="flex gap-4 text-sm text-[var(--muted)]">
         <span>
           Total: {filters.length} filters
         </span>
@@ -381,12 +381,12 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Import Companies</h2>
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
+          <h2 className="text-xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Import Companies</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
             aria-label="Close modal"
           >
             <X className="w-6 h-6" />
@@ -395,7 +395,7 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
 
         <form onSubmit={(e) => void handleSubmit(e)} className="p-4 space-y-4">
           <div>
-            <label htmlFor="import-company-names" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="import-company-names" className="glass-label mb-1">
               Company Names
             </label>
             <textarea
@@ -404,22 +404,22 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Enter company names separated by commas or new lines:&#10;&#10;Acme Corp&#10;Evil Inc&#10;BadCompany LLC"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-textarea"
             />
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-[var(--muted)]">
               {companies.length} companies detected
             </p>
           </div>
 
           <div>
-            <label htmlFor="import-filter-type" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="import-filter-type" className="glass-label mb-1">
               Filter Type
             </label>
             <select
               id="import-filter-type"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as CompanyFilterType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-select"
             >
               <option value="blacklist">Blacklist (Block)</option>
               <option value="whitelist">Whitelist (Prefer)</option>
@@ -427,7 +427,7 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
           </div>
 
           <div>
-            <label htmlFor="import-reason" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="import-reason" className="glass-label mb-1">
               Reason (Optional)
             </label>
             <input
@@ -436,22 +436,22 @@ function ImportCompaniesModal({ onClose, onImport }: ImportCompaniesModalProps) 
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="e.g., Imported from list"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--line)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || companies.length === 0}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="glass-button-primary disabled:opacity-50"
             >
               {isSubmitting ? 'Importing...' : `Import ${companies.length} Companies`}
             </button>
@@ -529,20 +529,20 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-4 items-center flex-1">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--muted-soft)]" />
             <input
               type="text"
               placeholder="Search keywords..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 glass-input"
             />
           </div>
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as KeywordFilterType | '')}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="glass-select"
             aria-label="Filter by type"
           >
             <option value="">All Types</option>
@@ -553,7 +553,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
 
         <button
           onClick={() => setShowAddForm(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="inline-flex items-center glass-button-primary"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Keyword
@@ -562,7 +562,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
 
       {/* Quick Add Buttons */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-700">Quick Add - Exclude Keywords:</h3>
+        <h3 className="text-sm font-medium text-[var(--ink-secondary)]">Quick Add - Exclude Keywords:</h3>
         <div className="flex flex-wrap gap-2">
           {COMMON_EXCLUDE_KEYWORDS.filter(
             (kw) => !filters.some((f) => f.keyword.toLowerCase() === kw.toLowerCase())
@@ -578,7 +578,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
           ))}
         </div>
 
-        <h3 className="text-sm font-medium text-gray-700">Quick Add - Require Keywords:</h3>
+        <h3 className="text-sm font-medium text-[var(--ink-secondary)]">Quick Add - Require Keywords:</h3>
         <div className="flex flex-wrap gap-2">
           {COMMON_REQUIRE_KEYWORDS.filter(
             (kw) => !filters.some((f) => f.keyword.toLowerCase() === kw.toLowerCase())
@@ -597,10 +597,10 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
 
       {/* Add Form */}
       {showAddForm && (
-        <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 rounded-lg p-4 space-y-4">
+        <form onSubmit={(e) => void handleSubmit(e)} className="bg-[var(--surface-thin)] rounded-lg p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label htmlFor="keyword-text" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="keyword-text" className="glass-label mb-1">
                 Keyword <span className="text-red-500">*</span>
               </label>
               <input
@@ -610,32 +610,32 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
                 placeholder="e.g., Security Clearance"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
             <div>
-              <label htmlFor="keyword-filter-type" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="keyword-filter-type" className="glass-label mb-1">
                 Filter Type
               </label>
               <select
                 id="keyword-filter-type"
                 value={newType}
                 onChange={(e) => setNewType(e.target.value as KeywordFilterType)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-select"
               >
                 <option value="exclude">Exclude (Block)</option>
                 <option value="require">Require (Prefer)</option>
               </select>
             </div>
             <div>
-              <label htmlFor="keyword-applies-to" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="keyword-applies-to" className="glass-label mb-1">
                 Applies To
               </label>
               <select
                 id="keyword-applies-to"
                 value={newAppliesTo}
                 onChange={(e) => setNewAppliesTo(e.target.value as KeywordAppliesTo)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-select"
               >
                 <option value="both">Title and Description</option>
                 <option value="title">Title Only</option>
@@ -647,14 +647,14 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !newKeyword.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="glass-button-primary disabled:opacity-50"
             >
               {isSubmitting ? 'Adding...' : 'Add Filter'}
             </button>
@@ -663,31 +663,31 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-[var(--surface-thin)]">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Keyword
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Type
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Applies To
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Added
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-20">
+              <th className="px-4 py-3 text-right text-sm font-medium text-[var(--ink-secondary)] w-20">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-[var(--line)]">
             {filteredFilters.map((filter) => (
-              <tr key={filter.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">
+              <tr key={filter.id} className="hover:bg-[var(--surface)]">
+                <td className="px-4 py-3 font-medium text-[var(--ink)]">
                   {filter.keyword}
                 </td>
                 <td className="px-4 py-3">
@@ -702,16 +702,16 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
                     {filter.filter_type === 'exclude' ? 'Exclude' : 'Require'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-sm capitalize">
+                <td className="px-4 py-3 text-[var(--muted)] text-sm capitalize">
                   {filter.applies_to === 'both' ? 'Title & Desc' : filter.applies_to}
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-sm">
+                <td className="px-4 py-3 text-[var(--muted)] text-sm">
                   {formatDate(filter.created_at, 'short')}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
                     onClick={() => void onDelete(filter.id)}
-                    className="p-1 text-gray-400 hover:text-red-600"
+                    className="p-1 text-[var(--muted-soft)] hover:text-red-600"
                     aria-label="Delete filter"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -723,7 +723,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
         </table>
 
         {filteredFilters.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-[var(--muted)]">
             {filters.length === 0
               ? 'No keyword filters yet. Add your first filter above.'
               : 'No keywords match your search criteria.'}
@@ -732,7 +732,7 @@ function KeywordFiltersTab({ filters, onAdd, onDelete }: KeywordFiltersTabProps)
       </div>
 
       {/* Stats */}
-      <div className="flex gap-4 text-sm text-gray-500">
+      <div className="flex gap-4 text-sm text-[var(--muted)]">
         <span>
           Total: {filters.length} filters
         </span>
@@ -851,7 +851,7 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
       availability: 'bg-purple-100 text-purple-800',
       authorization: 'bg-amber-100 text-amber-800',
       personal: 'bg-pink-100 text-pink-800',
-      demographics: 'bg-gray-100 text-gray-800',
+      demographics: 'bg-[var(--surface)] text-[var(--ink)]',
     }
     return colors[category]
   }
@@ -862,20 +862,20 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex flex-wrap gap-4 items-center flex-1">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--muted-soft)]" />
             <input
               type="text"
               placeholder="Search templates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 glass-input"
             />
           </div>
 
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as QuestionTemplateCategory | '')}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="glass-select"
             aria-label="Filter by category"
           >
             <option value="">All Categories</option>
@@ -890,14 +890,14 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
         <div className="flex gap-2">
           <button
             onClick={() => void onImportDefaults()}
-            className="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="inline-flex items-center glass-button-secondary"
           >
             <Download className="w-4 h-4 mr-2" />
             Import Defaults
           </button>
           <button
             onClick={() => setShowAddForm(true)}
-            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="inline-flex items-center glass-button-primary"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Template
@@ -907,14 +907,14 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <form onSubmit={(e) => void handleSubmit(e)} className="bg-gray-50 rounded-lg p-4 space-y-4">
-          <h3 className="font-medium text-gray-900">
+        <form onSubmit={(e) => void handleSubmit(e)} className="bg-[var(--surface-thin)] rounded-lg p-4 space-y-4">
+          <h3 className="font-medium text-[var(--ink)]">
             {editingTemplate ? 'Edit Template' : 'Add New Template'}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="template-question-pattern" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-question-pattern" className="glass-label mb-1">
                 Question Pattern <span className="text-red-500">*</span>
               </label>
               <input
@@ -924,14 +924,14 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
                 value={formData.question_pattern}
                 onChange={(e) => setFormData({ ...formData, question_pattern: e.target.value })}
                 placeholder="e.g., years of experience"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-[var(--muted)]">
                 Use | for multiple patterns: salary|compensation|pay
               </p>
             </div>
             <div>
-              <label htmlFor="template-answer" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-answer" className="glass-label mb-1">
                 Answer <span className="text-red-500">*</span>
               </label>
               <input
@@ -941,18 +941,18 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
                 value={formData.answer}
                 onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
                 placeholder="e.g., 5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
             <div>
-              <label htmlFor="template-answer-type" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-answer-type" className="glass-label mb-1">
                 Answer Type
               </label>
               <select
                 id="template-answer-type"
                 value={formData.answer_type}
                 onChange={(e) => setFormData({ ...formData, answer_type: e.target.value as QuestionTemplateType })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-select"
               >
                 {TEMPLATE_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -962,14 +962,14 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
               </select>
             </div>
             <div>
-              <label htmlFor="template-category" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="template-category" className="glass-label mb-1">
                 Category
               </label>
               <select
                 id="template-category"
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value as QuestionTemplateCategory })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-select"
               >
                 {TEMPLATE_CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -984,14 +984,14 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
             <button
               type="button"
               onClick={handleCancelEdit}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !formData.question_pattern.trim() || !formData.answer.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+              className="glass-button-primary disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : editingTemplate ? 'Update Template' : 'Add Template'}
             </button>
@@ -1000,40 +1000,40 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-[var(--surface-thin)]">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Question Pattern
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Answer
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Type
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Category
               </th>
-              <th className="px-4 py-3 text-right text-sm font-medium text-gray-700 w-28">
+              <th className="px-4 py-3 text-right text-sm font-medium text-[var(--ink-secondary)] w-28">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-[var(--line)]">
             {filteredTemplates.map((template) => (
-              <tr key={template.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  <code className="text-sm bg-gray-100 px-1 py-0.5 rounded">
+              <tr key={template.id} className="hover:bg-[var(--surface)]">
+                <td className="px-4 py-3 font-medium text-[var(--ink)]">
+                  <code className="text-sm bg-[var(--surface)] px-1 py-0.5 rounded">
                     {template.question_pattern}
                   </code>
                 </td>
-                <td className="px-4 py-3 text-gray-700 max-w-xs truncate">
+                <td className="px-4 py-3 text-[var(--ink-secondary)] max-w-xs truncate">
                   {template.answer}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-xs text-gray-500 capitalize">
+                  <span className="text-xs text-[var(--muted)] capitalize">
                     {template.answer_type}
                   </span>
                 </td>
@@ -1051,21 +1051,21 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
                   <div className="flex items-center justify-end gap-1">
                     <button
                       onClick={() => setPreviewTemplate(template)}
-                      className="p-1 text-gray-400 hover:text-primary-600"
+                      className="p-1 text-[var(--muted-soft)] hover:text-primary-600"
                       aria-label="Preview template"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleEdit(template)}
-                      className="p-1 text-gray-400 hover:text-primary-600"
+                      className="p-1 text-[var(--muted-soft)] hover:text-primary-600"
                       aria-label="Edit template"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => void onDelete(template.id)}
-                      className="p-1 text-gray-400 hover:text-red-600"
+                      className="p-1 text-[var(--muted-soft)] hover:text-red-600"
                       aria-label="Delete template"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1078,7 +1078,7 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
         </table>
 
         {filteredTemplates.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-[var(--muted)]">
             {templates.length === 0 ? (
               <div>
                 <p>No answer templates yet.</p>
@@ -1097,7 +1097,7 @@ function AnswerTemplatesTab({ templates, onAdd, onUpdate, onDelete, onImportDefa
       </div>
 
       {/* Stats by Category */}
-      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+      <div className="flex flex-wrap gap-4 text-sm text-[var(--muted)]">
         <span>Total: {templates.length} templates</span>
         {TEMPLATE_CATEGORIES.map((cat) => {
           const count = templates.filter((t) => t.category === cat.value).length
@@ -1150,12 +1150,12 @@ function PreviewTemplateModal({ template, onClose }: PreviewTemplateModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Template Preview</h2>
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-lg w-full">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
+          <h2 className="text-xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Template Preview</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
             aria-label="Close modal"
           >
             <X className="w-6 h-6" />
@@ -1164,14 +1164,14 @@ function PreviewTemplateModal({ template, onClose }: PreviewTemplateModalProps) 
 
         <div className="p-4 space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Pattern</h3>
-            <code className="block bg-gray-100 px-3 py-2 rounded text-sm">
+            <h3 className="text-sm font-medium text-[var(--muted)] mb-1">Pattern</h3>
+            <code className="block bg-[var(--surface)] px-3 py-2 rounded text-sm">
               {template.question_pattern}
             </code>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Answer</h3>
+            <h3 className="text-sm font-medium text-[var(--muted)] mb-1">Answer</h3>
             <div className="bg-primary-50 border border-primary-200 px-3 py-2 rounded">
               <p className="text-primary-800 font-medium">{template.answer}</p>
               <p className="text-xs text-primary-600 mt-1">
@@ -1181,22 +1181,22 @@ function PreviewTemplateModal({ template, onClose }: PreviewTemplateModalProps) 
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">Example Questions This Matches:</h3>
+            <h3 className="text-sm font-medium text-[var(--muted)] mb-2">Example Questions This Matches:</h3>
             <ul className="space-y-2">
               {exampleQuestions.map((question) => (
                 <li key={question} className="flex items-start gap-2 text-sm">
                   <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-gray-700">{question}</span>
+                  <span className="text-[var(--ink-secondary)]">{question}</span>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="flex justify-end p-4 border-t">
+        <div className="flex justify-end p-4 border-t border-[var(--line)]">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="glass-button-primary"
           >
             Close
           </button>
@@ -1309,10 +1309,17 @@ export default function JobFiltersPage() {
     setQuestionTemplates(questionTemplates.filter((t) => t.id !== id))
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   const handleImportDefaults = async () => {
-    // This feature needs to be implemented differently - either add to API or handle locally
-    alert('Import defaults feature requires additional backend implementation.')
+    try {
+      const result = await filtersApi.importDefaults()
+      // Refresh the templates list from the API
+      const updatedTemplates = await filtersApi.listQuestionTemplates()
+      setQuestionTemplates(updatedTemplates)
+      alert(`${result.message} (Imported: ${result.imported_count}, Skipped: ${result.skipped_count})`)
+    } catch (error) {
+      console.error('Failed to import defaults:', error)
+      alert('Failed to import default templates. Please try again.')
+    }
   }
 
   // Loading state
@@ -1342,21 +1349,21 @@ export default function JobFiltersPage() {
       <div className="flex items-center gap-4 mb-6">
         <Link
           href="/jobs"
-          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+          className="p-2 text-[var(--muted-soft)] hover:text-[var(--muted)] rounded-lg hover:bg-[var(--surface)]"
           aria-label="Back to jobs"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Job Filters</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Job Filters</h1>
+          <p className="text-[var(--muted)]">
             Manage company filters, keyword filters, and answer templates
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-[var(--line)] mb-6">
         <nav className="flex gap-4 -mb-px" aria-label="Tabs">
           {[
             { id: 'companies' as const, label: 'Company Filters', icon: Building2, count: companyFilters.length },
@@ -1370,7 +1377,7 @@ export default function JobFiltersPage() {
                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
                 activeTab === tab.id
                   ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--ink-secondary)] hover:border-[var(--line-strong)]'
               )}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
@@ -1381,7 +1388,7 @@ export default function JobFiltersPage() {
                   'ml-1 px-2 py-0.5 text-xs rounded-full',
                   activeTab === tab.id
                     ? 'bg-primary-100 text-primary-700'
-                    : 'bg-gray-100 text-gray-600'
+                    : 'bg-[var(--surface)] text-[var(--muted)]'
                 )}
               >
                 {tab.count}

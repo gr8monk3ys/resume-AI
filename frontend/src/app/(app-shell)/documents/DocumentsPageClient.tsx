@@ -45,9 +45,9 @@ const TABS: Tab[] = [
 function TabLoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-8 bg-gray-200 rounded w-1/4" />
-      <div className="h-48 bg-gray-200 rounded" />
-      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-8 bg-[var(--line)] rounded w-1/4" />
+      <div className="h-48 bg-[var(--line)] rounded" />
+      <div className="h-48 bg-[var(--line)] rounded" />
     </div>
   )
 }
@@ -210,7 +210,7 @@ export default function DocumentsPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -222,12 +222,12 @@ export default function DocumentsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Document Generator</h1>
-        <p className="text-gray-500">Create cover letters, emails, and professional documents</p>
+        <h1 className="text-2xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Document Generator</h1>
+        <p className="text-[var(--muted)]">Create cover letters, emails, and professional documents</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-[var(--line)] mb-6">
         <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
           {TABS.map((tab) => (
             <button
@@ -237,7 +237,7 @@ export default function DocumentsPage() {
                 'flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap',
                 activeTab === tab.id
                   ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--ink-secondary)] hover:border-[var(--line-strong)]'
               )}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
@@ -326,7 +326,7 @@ function CoverLettersTab() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -349,7 +349,7 @@ function CoverLettersTab() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <p className="text-gray-600">{coverLetters.length} cover letter(s) saved</p>
+        <p className="text-[var(--muted)]">{coverLetters.length} cover letter(s) saved</p>
         <button
           onClick={() => setShowGenerator(true)}
           className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -360,10 +360,10 @@ function CoverLettersTab() {
       </div>
 
       {coverLetters.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Mail className="w-12 h-12 mx-auto text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">No cover letters yet</h3>
-          <p className="mt-2 text-gray-500">Generate your first cover letter with AI</p>
+        <div className="text-center py-12 bg-[var(--surface-strong)] rounded-lg shadow">
+          <Mail className="w-12 h-12 mx-auto text-[var(--muted-soft)]" />
+          <h3 className="mt-4 text-lg font-medium text-[var(--ink)]">No cover letters yet</h3>
+          <p className="mt-2 text-[var(--muted)]">Generate your first cover letter with AI</p>
           <button
             onClick={() => setShowGenerator(true)}
             className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -377,7 +377,7 @@ function CoverLettersTab() {
           {coverLetters.map((letter) => {
             const linkedJob = getJobForLetter(letter.job_application_id)
             return (
-              <div key={letter.id} className="bg-white rounded-lg shadow p-6">
+              <div key={letter.id} className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     {linkedJob && (
@@ -388,7 +388,7 @@ function CoverLettersTab() {
                         </span>
                       </div>
                     )}
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-[var(--muted)]">
                       Created: {formatDate(letter.created_at)}
                       {letter.updated_at !== letter.created_at && (
                         <span className="ml-2">| Updated: {formatDate(letter.updated_at)}</span>
@@ -398,7 +398,7 @@ function CoverLettersTab() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => void copyToClipboard(letter.content, letter.id)}
-                      className="p-2 text-gray-400 hover:text-primary-600 rounded-md hover:bg-gray-100"
+                      className="p-2 text-[var(--muted-soft)] hover:text-primary-600 rounded-md hover:bg-[var(--surface)]"
                       title="Copy to clipboard"
                       aria-label="Copy to clipboard"
                     >
@@ -410,7 +410,7 @@ function CoverLettersTab() {
                     </button>
                     <button
                       onClick={() => setEditingLetter(letter)}
-                      className="p-2 text-gray-400 hover:text-primary-600 rounded-md hover:bg-gray-100"
+                      className="p-2 text-[var(--muted-soft)] hover:text-primary-600 rounded-md hover:bg-[var(--surface)]"
                       title="Edit"
                       aria-label="Edit cover letter"
                     >
@@ -418,7 +418,7 @@ function CoverLettersTab() {
                     </button>
                     <button
                       onClick={() => void deleteCoverLetter(letter.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
+                      className="p-2 text-[var(--muted-soft)] hover:text-red-600 rounded-md hover:bg-[var(--surface)]"
                       title="Delete"
                       aria-label="Delete cover letter"
                     >
@@ -426,8 +426,8 @@ function CoverLettersTab() {
                     </button>
                   </div>
                 </div>
-                <div className="bg-gray-50 rounded-md p-4">
-                  <p className="text-sm text-gray-700 whitespace-pre-line line-clamp-6">
+                <div className="bg-[var(--surface-thin)] rounded-md p-4">
+                  <p className="text-sm text-[var(--ink-secondary)] whitespace-pre-line line-clamp-6">
                     {letter.content}
                   </p>
                 </div>
@@ -522,7 +522,7 @@ function CoverLetterGeneratorModal({
         formData.job_description,
         formData.company_name
       )
-      setGeneratedContent(result.cover_letter)
+      setGeneratedContent(result.content)
     } catch (err) {
       console.error('Failed to generate cover letter:', err)
       setError('Failed to generate cover letter. Please try again.')
@@ -559,18 +559,18 @@ function CoverLetterGeneratorModal({
       aria-label="Close dialog"
       tabIndex={0}
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
         <h2 className="text-xl font-bold mb-4">Generate Cover Letter</h2>
 
         {!generatedContent ? (
           <form onSubmit={(e) => void handleGenerate(e)} className="space-y-4">
             <div>
-              <label htmlFor="job-application-link" className="block text-sm font-medium text-gray-700">Link to Job Application (Optional)</label>
+              <label htmlFor="job-application-link" className="glass-label">Link to Job Application (Optional)</label>
               <select
                 id="job-application-link"
                 value={formData.job_application_id}
                 onChange={(e) => handleJobSelect(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="glass-select mt-1 block w-full"
               >
                 <option value="">Select a job application...</option>
                 {jobs.map((job) => (
@@ -582,13 +582,13 @@ function CoverLetterGeneratorModal({
             </div>
 
             <div>
-              <label htmlFor="select-resume-cover" className="block text-sm font-medium text-gray-700">Select Resume</label>
+              <label htmlFor="select-resume-cover" className="glass-label">Select Resume</label>
               <select
                 id="select-resume-cover"
                 required
                 value={formData.resume_id}
                 onChange={(e) => setFormData({ ...formData, resume_id: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="glass-select mt-1 block w-full"
               >
                 <option value="">Select a resume...</option>
                 {resumes.map((resume) => (
@@ -601,46 +601,46 @@ function CoverLetterGeneratorModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="company-name-cover" className="block text-sm font-medium text-gray-700">Company Name</label>
+                <label htmlFor="company-name-cover" className="glass-label">Company Name</label>
                 <input
                   id="company-name-cover"
                   type="text"
                   required
                   value={formData.company_name}
                   onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="glass-input mt-1 block w-full"
                   placeholder="Acme Inc."
                 />
               </div>
               <div>
-                <label htmlFor="position-cover" className="block text-sm font-medium text-gray-700">Position</label>
+                <label htmlFor="position-cover" className="glass-label">Position</label>
                 <input
                   id="position-cover"
                   type="text"
                   required
                   value={formData.position}
                   onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="glass-input mt-1 block w-full"
                   placeholder="Software Engineer"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="job-description-cover" className="block text-sm font-medium text-gray-700">Job Description</label>
+              <label htmlFor="job-description-cover" className="glass-label">Job Description</label>
               <textarea
                 id="job-description-cover"
                 required
                 rows={6}
                 value={formData.job_description}
                 onChange={(e) => setFormData({ ...formData, job_description: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="glass-textarea mt-1 block w-full"
                 placeholder="Paste the job description here..."
               />
             </div>
 
             <div>
-              <div className="block text-sm font-medium text-gray-700" role="group" aria-label="Tone">Tone</div>
+              <div className="glass-label" role="group" aria-label="Tone">Tone</div>
               <div className="mt-2 flex gap-4">
                 {(['professional', 'enthusiastic', 'formal'] as const).map((tone) => (
                   <label key={tone} className="flex items-center">
@@ -654,15 +654,15 @@ function CoverLetterGeneratorModal({
                       }
                       className="mr-2"
                     />
-                    <span className="text-sm text-gray-700 capitalize">{tone}</span>
+                    <span className="text-sm text-[var(--ink-secondary)] capitalize">{tone}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-sm">{error}</p>
+              <div className="glass-alert glass-alert-error">
+                <p className="text-sm">{error}</p>
               </div>
             )}
 
@@ -670,14 +670,14 @@ function CoverLetterGeneratorModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                className="glass-button-secondary"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isGenerating}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center"
+                className="glass-button-primary disabled:opacity-50 flex items-center"
               >
                 {isGenerating ? (
                   <>
@@ -696,19 +696,19 @@ function CoverLetterGeneratorModal({
         ) : (
           <div className="space-y-4">
             <div>
-              <label htmlFor="generated-cover-letter" className="block text-sm font-medium text-gray-700 mb-2">Generated Cover Letter</label>
+              <label htmlFor="generated-cover-letter" className="glass-label mb-2">Generated Cover Letter</label>
               <textarea
                 id="generated-cover-letter"
                 value={generatedContent}
                 onChange={(e) => setGeneratedContent(e.target.value)}
                 rows={16}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-primary-500 focus:border-primary-500"
+                className="glass-textarea w-full font-mono"
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-sm">{error}</p>
+              <div className="glass-alert glass-alert-error">
+                <p className="text-sm">{error}</p>
               </div>
             )}
 
@@ -716,7 +716,7 @@ function CoverLetterGeneratorModal({
               <button
                 type="button"
                 onClick={() => setGeneratedContent(null)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md flex items-center"
+                className="glass-button-secondary flex items-center"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Regenerate
@@ -725,14 +725,14 @@ function CoverLetterGeneratorModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                  className="glass-button-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleSave()}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center"
+                  className="glass-button-primary flex items-center"
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Save Cover Letter
@@ -796,17 +796,17 @@ function CoverLetterEditModal({
       aria-label="Close dialog"
       tabIndex={0}
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
         <h2 className="text-xl font-bold mb-4">Edit Cover Letter</h2>
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="edit-job-application-link" className="block text-sm font-medium text-gray-700">Link to Job Application</label>
+            <label htmlFor="edit-job-application-link" className="glass-label">Link to Job Application</label>
             <select
               id="edit-job-application-link"
               value={jobApplicationId}
               onChange={(e) => setJobApplicationId(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              className="glass-select mt-1 block w-full"
             >
               <option value="">None</option>
               {jobs.map((job) => (
@@ -818,13 +818,13 @@ function CoverLetterEditModal({
           </div>
 
           <div>
-            <label htmlFor="edit-cover-letter-content" className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+            <label htmlFor="edit-cover-letter-content" className="glass-label mb-2">Content</label>
             <textarea
               id="edit-cover-letter-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={16}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-primary-500 focus:border-primary-500"
+              className="glass-textarea w-full font-mono"
             />
           </div>
 
@@ -838,7 +838,7 @@ function CoverLetterEditModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
@@ -846,7 +846,7 @@ function CoverLetterEditModal({
               type="button"
               onClick={() => void handleSave()}
               disabled={isSaving}
-              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center"
+              className="glass-button-primary disabled:opacity-50 flex items-center"
             >
               {isSaving ? (
                 <>
@@ -954,8 +954,8 @@ BODY:
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Input Section */}
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Email Type</h3>
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-[var(--ink)] mb-4">Email Type</h3>
           <div className="grid grid-cols-2 gap-3">
             {NETWORKING_EMAIL_TYPES.map((type) => (
               <button
@@ -965,67 +965,67 @@ BODY:
                   'p-4 rounded-lg border-2 text-left transition-all',
                   emailType === type.id
                     ? 'border-primary-600 bg-primary-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-[var(--line)] hover:border-[var(--line-strong)]'
                 )}
               >
-                <span className="font-medium text-gray-900 block">{type.label}</span>
-                <span className="text-xs text-gray-500">{type.description}</span>
+                <span className="font-medium text-[var(--ink)] block">{type.label}</span>
+                <span className="text-xs text-[var(--muted)]">{type.description}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <form onSubmit={(e) => void handleGenerate(e)} className="bg-white rounded-lg shadow p-6 space-y-4">
-          <h3 className="text-lg font-medium text-gray-900">Email Details</h3>
+        <form onSubmit={(e) => void handleGenerate(e)} className="bg-[var(--surface-strong)] rounded-lg shadow p-6 space-y-4">
+          <h3 className="text-lg font-medium text-[var(--ink)]">Email Details</h3>
 
           <div>
-            <label htmlFor="networking-recipient-name" className="block text-sm font-medium text-gray-700">Recipient Name</label>
+            <label htmlFor="networking-recipient-name" className="glass-label">Recipient Name</label>
             <input
               id="networking-recipient-name"
               type="text"
               required
               value={formData.recipientName}
               onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              className="glass-input mt-1 block w-full"
               placeholder="Jane Smith"
             />
           </div>
 
           <div>
-            <label htmlFor="networking-company" className="block text-sm font-medium text-gray-700">Company</label>
+            <label htmlFor="networking-company" className="glass-label">Company</label>
             <input
               id="networking-company"
               type="text"
               required
               value={formData.company}
               onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              className="glass-input mt-1 block w-full"
               placeholder="Acme Inc."
             />
           </div>
 
           <div>
-            <label htmlFor="networking-purpose" className="block text-sm font-medium text-gray-700">Purpose</label>
+            <label htmlFor="networking-purpose" className="glass-label">Purpose</label>
             <textarea
               id="networking-purpose"
               required
               rows={3}
               value={formData.purpose}
               onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              className="glass-textarea mt-1 block w-full"
               placeholder="What is the goal of this email? What are you hoping to achieve?"
             />
           </div>
 
           <div>
-            <label htmlFor="networking-background" className="block text-sm font-medium text-gray-700">Your Background</label>
+            <label htmlFor="networking-background" className="glass-label">Your Background</label>
             <textarea
               id="networking-background"
               required
               rows={3}
               value={formData.yourBackground}
               onChange={(e) => setFormData({ ...formData, yourBackground: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              className="glass-textarea mt-1 block w-full"
               placeholder="Brief description of your experience and what you're looking for"
             />
           </div>
@@ -1059,14 +1059,14 @@ BODY:
       {/* Preview Section */}
       <div className="space-y-6">
         {generatedEmail ? (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Generated Email</h3>
+              <h3 className="text-lg font-medium text-[var(--ink)]">Generated Email</h3>
               <button
                 onClick={() =>
                   void copyToClipboard(`Subject: ${generatedEmail.subject}\n\n${generatedEmail.body}`, 'all')
                 }
-                className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                className="glass-button-secondary inline-flex items-center"
               >
                 {copied === 'all' ? (
                   <>
@@ -1085,7 +1085,7 @@ BODY:
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="block text-sm font-medium text-gray-700">Subject</span>
+                  <span className="glass-label">Subject</span>
                   <button
                     onClick={() => void copyToClipboard(generatedEmail.subject, 'subject')}
                     className="text-xs text-primary-600 hover:text-primary-700"
@@ -1093,14 +1093,14 @@ BODY:
                     {copied === 'subject' ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
-                <div className="bg-gray-50 rounded-md p-3">
-                  <p className="text-sm text-gray-900">{generatedEmail.subject}</p>
+                <div className="bg-[var(--surface-thin)] rounded-md p-3">
+                  <p className="text-sm text-[var(--ink)]">{generatedEmail.subject}</p>
                 </div>
               </div>
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="block text-sm font-medium text-gray-700">Body</span>
+                  <span className="glass-label">Body</span>
                   <button
                     onClick={() => void copyToClipboard(generatedEmail.body, 'body')}
                     className="text-xs text-primary-600 hover:text-primary-700"
@@ -1108,17 +1108,17 @@ BODY:
                     {copied === 'body' ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
-                <div className="bg-gray-50 rounded-md p-4">
-                  <p className="text-sm text-gray-900 whitespace-pre-line">{generatedEmail.body}</p>
+                <div className="bg-[var(--surface-thin)] rounded-md p-4">
+                  <p className="text-sm text-[var(--ink)] whitespace-pre-line">{generatedEmail.body}</p>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <MessageSquare className="w-16 h-16 mx-auto text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-500">No Email Generated</h3>
-            <p className="mt-2 text-sm text-gray-400">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-12 text-center">
+            <MessageSquare className="w-16 h-16 mx-auto text-[var(--muted-soft)]" />
+            <h3 className="mt-4 text-lg font-medium text-[var(--muted)]">No Email Generated</h3>
+            <p className="mt-2 text-sm text-[var(--muted-soft)]">
               Fill out the form and click "Generate Email" to create a networking email.
             </p>
           </div>
@@ -1207,8 +1207,8 @@ BODY:
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Template Selection */}
       <div className="lg:col-span-1 space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Select Template</h3>
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-[var(--ink)] mb-4">Select Template</h3>
           <div className="space-y-3">
             {PROFESSIONAL_TEMPLATES.map((t) => (
               <button
@@ -1222,11 +1222,11 @@ BODY:
                   'w-full text-left p-4 rounded-lg border-2 transition-all',
                   selectedTemplate === t.id
                     ? 'border-primary-600 bg-primary-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    : 'border-[var(--line)] hover:border-[var(--line-strong)]'
                 )}
               >
-                <span className="font-medium text-gray-900 block">{t.name}</span>
-                <span className="text-xs text-gray-500">{t.description}</span>
+                <span className="font-medium text-[var(--ink)] block">{t.name}</span>
+                <span className="text-xs text-[var(--muted)]">{t.description}</span>
               </button>
             ))}
           </div>
@@ -1235,12 +1235,12 @@ BODY:
 
       {/* Placeholder Form */}
       <div className="lg:col-span-1 space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Fill in Details</h3>
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-medium text-[var(--ink)] mb-4">Fill in Details</h3>
           <div className="space-y-4">
             {template.placeholders.map((placeholder) => (
               <div key={placeholder}>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="glass-label">
                   {placeholder.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                 </label>
                 <input
@@ -1249,7 +1249,7 @@ BODY:
                   onChange={(e) =>
                     setPlaceholderValues({ ...placeholderValues, [placeholder]: e.target.value })
                   }
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-primary-500 focus:border-primary-500"
+                  className="glass-input mt-1 block w-full"
                   placeholder={`Enter ${placeholder.toLowerCase().replace(/_/g, ' ')}`}
                 />
               </div>
@@ -1275,8 +1275,8 @@ BODY:
           </button>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="glass-alert glass-alert-error mt-4">
+              <p className="text-sm">{error}</p>
             </div>
           )}
         </div>
@@ -1284,12 +1284,12 @@ BODY:
 
       {/* Preview */}
       <div className="lg:col-span-1 space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Preview</h3>
+            <h3 className="text-lg font-medium text-[var(--ink)]">Preview</h3>
             <button
               onClick={() => void copyToClipboard(`Subject: ${displaySubject}\n\n${displayBody}`, 'all')}
-              className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              className="glass-button-secondary inline-flex items-center"
             >
               {copied === 'all' ? (
                 <>
@@ -1308,7 +1308,7 @@ BODY:
           <div className="space-y-4">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="block text-sm font-medium text-gray-700">Subject</span>
+                <span className="glass-label">Subject</span>
                 <button
                   onClick={() => void copyToClipboard(displaySubject, 'subject')}
                   className="text-xs text-primary-600 hover:text-primary-700"
@@ -1316,14 +1316,14 @@ BODY:
                   {copied === 'subject' ? 'Copied!' : 'Copy'}
                 </button>
               </div>
-              <div className="bg-gray-50 rounded-md p-3">
-                <p className="text-sm text-gray-900">{displaySubject}</p>
+              <div className="bg-[var(--surface-thin)] rounded-md p-3">
+                <p className="text-sm text-[var(--ink)]">{displaySubject}</p>
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="block text-sm font-medium text-gray-700">Body</span>
+                <span className="glass-label">Body</span>
                 <button
                   onClick={() => void copyToClipboard(displayBody, 'body')}
                   className="text-xs text-primary-600 hover:text-primary-700"
@@ -1331,8 +1331,8 @@ BODY:
                   {copied === 'body' ? 'Copied!' : 'Copy'}
                 </button>
               </div>
-              <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-y-auto">
-                <p className="text-sm text-gray-900 whitespace-pre-line">{displayBody}</p>
+              <div className="bg-[var(--surface-thin)] rounded-md p-4 max-h-96 overflow-y-auto">
+                <p className="text-sm text-[var(--ink)] whitespace-pre-line">{displayBody}</p>
               </div>
             </div>
           </div>
@@ -1340,7 +1340,7 @@ BODY:
           {customizedContent && (
             <button
               onClick={() => setCustomizedContent(null)}
-              className="mt-4 w-full text-sm text-gray-500 hover:text-gray-700"
+              className="mt-4 w-full text-sm text-[var(--muted)] hover:text-[var(--ink-secondary)]"
             >
               Reset to original template
             </button>
@@ -1490,14 +1490,14 @@ ${content}`
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Editor Section */}
       <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Compose</h3>
+            <h3 className="text-lg font-medium text-[var(--ink)]">Compose</h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void copyToClipboard(content)}
                 disabled={!content.trim()}
-                className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="glass-button-secondary inline-flex items-center disabled:opacity-50"
               >
                 {copied ? (
                   <>
@@ -1514,7 +1514,7 @@ ${content}`
               <button
                 onClick={() => setShowSaveDialog(true)}
                 disabled={!content.trim()}
-                className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="glass-button-secondary inline-flex items-center disabled:opacity-50"
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Save Template
@@ -1526,7 +1526,7 @@ ${content}`
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={16}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-primary-500 focus:border-primary-500"
+            className="glass-textarea w-full"
             placeholder="Write your email or document here..."
           />
 
@@ -1549,9 +1549,9 @@ ${content}`
               )}
             </button>
 
-            <div className="border-l border-gray-300 mx-2" />
+            <div className="border-l border-[var(--line-strong)] mx-2" />
 
-            <span className="self-center text-sm text-gray-500">Adjust Tone:</span>
+            <span className="self-center text-sm text-[var(--muted)]">Adjust Tone:</span>
             {TONE_OPTIONS.map((tone) => (
               <button
                 key={tone.id}
@@ -1560,13 +1560,13 @@ ${content}`
                 className={cn(
                   'px-3 py-2 text-sm rounded-md transition-colors disabled:opacity-50',
                   selectedTone === tone.id && isProcessing
-                    ? 'bg-gray-200 text-gray-700'
-                    : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'bg-[var(--line)] text-[var(--ink-secondary)]'
+                    : 'border border-[var(--line-strong)] text-[var(--ink-secondary)] hover:bg-[var(--surface)]'
                 )}
                 title={tone.description}
               >
                 {selectedTone === tone.id && isProcessing ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--ink-secondary)]" />
                 ) : (
                   tone.label
                 )}
@@ -1575,31 +1575,31 @@ ${content}`
           </div>
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="glass-alert glass-alert-error mt-4">
+              <p className="text-sm">{error}</p>
             </div>
           )}
         </div>
 
         {/* Saved Templates */}
         {savedTemplates.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Saved Templates</h3>
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium text-[var(--ink)] mb-4">Saved Templates</h3>
             <div className="space-y-2">
               {savedTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+                  className="flex items-center justify-between p-3 bg-[var(--surface-thin)] rounded-md"
                 >
                   <button
                     onClick={() => loadTemplate(template)}
-                    className="text-sm font-medium text-gray-900 hover:text-primary-600"
+                    className="text-sm font-medium text-[var(--ink)] hover:text-primary-600"
                   >
                     {template.name}
                   </button>
                   <button
                     onClick={() => deleteTemplate(template.id)}
-                    className="text-gray-400 hover:text-red-600"
+                    className="text-[var(--muted-soft)] hover:text-red-600"
                     aria-label="Delete template"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1614,15 +1614,15 @@ ${content}`
       {/* Results Section */}
       <div className="space-y-6">
         {processedContent ? (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
+              <h3 className="text-lg font-medium text-[var(--ink)]">
                 {corrections.length > 0 ? 'Grammar Corrections' : 'Adjusted Text'}
               </h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => void copyToClipboard(processedContent)}
-                  className="inline-flex items-center px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="glass-button-secondary inline-flex items-center"
                 >
                   <Copy className="w-4 h-4 mr-1" />
                   Copy
@@ -1653,15 +1653,15 @@ ${content}`
               </div>
             )}
 
-            <div className="bg-gray-50 rounded-md p-4 max-h-96 overflow-y-auto">
-              <p className="text-sm text-gray-900 whitespace-pre-line">{processedContent}</p>
+            <div className="bg-[var(--surface-thin)] rounded-md p-4 max-h-96 overflow-y-auto">
+              <p className="text-sm text-[var(--ink)] whitespace-pre-line">{processedContent}</p>
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <FileEdit className="w-16 h-16 mx-auto text-gray-300" />
-            <h3 className="mt-4 text-lg font-medium text-gray-500">Write Your Content</h3>
-            <p className="mt-2 text-sm text-gray-400">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-12 text-center">
+            <FileEdit className="w-16 h-16 mx-auto text-[var(--muted-soft)]" />
+            <h3 className="mt-4 text-lg font-medium text-[var(--muted)]">Write Your Content</h3>
+            <p className="mt-2 text-sm text-[var(--muted-soft)]">
               Type your email or document in the editor, then use the grammar check or tone
               adjustment buttons to improve it.
             </p>
@@ -1683,17 +1683,17 @@ ${content}`
           aria-label="Close dialog"
           tabIndex={0}
         >
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-md w-full p-6">
             <h2 className="text-xl font-bold mb-4">Save as Template</h2>
 
             <div>
-              <label htmlFor="template-name-input" className="block text-sm font-medium text-gray-700">Template Name</label>
+              <label htmlFor="template-name-input" className="glass-label">Template Name</label>
               <input
                 id="template-name-input"
                 type="text"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="glass-input mt-1 block w-full"
                 placeholder="My Email Template"
               />
             </div>
@@ -1702,7 +1702,7 @@ ${content}`
               <button
                 type="button"
                 onClick={() => setShowSaveDialog(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                className="glass-button-secondary"
               >
                 Cancel
               </button>
@@ -1710,7 +1710,7 @@ ${content}`
                 type="button"
                 onClick={saveTemplate}
                 disabled={!templateName.trim()}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                className="glass-button-primary disabled:opacity-50"
               >
                 Save Template
               </button>

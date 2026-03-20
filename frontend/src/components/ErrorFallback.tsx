@@ -55,7 +55,7 @@ export function ErrorFallback({
       role="alert"
       aria-live="assertive"
     >
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg border border-gray-200 p-8">
+      <div className="max-w-md w-full bg-[var(--surface-strong)] rounded-xl shadow-lg border border-[var(--line)] p-8">
         {/* Error Icon */}
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
@@ -68,10 +68,10 @@ export function ErrorFallback({
 
         {/* Error Message */}
         <div className="text-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-[var(--ink)] mb-2 font-display tracking-[-0.02em]">
             {title}
           </h2>
-          <p className="text-gray-500 text-sm">
+          <p className="text-[var(--muted)] text-sm">
             {description}
           </p>
         </div>
@@ -82,10 +82,7 @@ export function ErrorFallback({
             type="button"
             onClick={resetErrorBoundary}
             className={cn(
-              'flex-1 inline-flex items-center justify-center px-4 py-2.5',
-              'text-sm font-medium text-white bg-primary-600',
-              'rounded-lg hover:bg-primary-700 transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
+              'flex-1 glass-button-primary inline-flex items-center justify-center'
             )}
           >
             <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
@@ -94,10 +91,7 @@ export function ErrorFallback({
           <Link
             href="/"
             className={cn(
-              'flex-1 inline-flex items-center justify-center px-4 py-2.5',
-              'text-sm font-medium text-gray-700 bg-gray-100',
-              'rounded-lg hover:bg-gray-200 transition-colors',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500'
+              'flex-1 glass-button-secondary inline-flex items-center justify-center'
             )}
           >
             <Home className="w-4 h-4 mr-2" aria-hidden="true" />
@@ -107,15 +101,15 @@ export function ErrorFallback({
 
         {/* Development-only Error Details */}
         {showDevDetails && (
-          <div className="border-t border-gray-200 pt-4">
+          <div className="border-t border-[var(--line)] pt-4">
             <button
               type="button"
               onClick={() => setShowDetails(!showDetails)}
               className={cn(
                 'w-full flex items-center justify-between px-3 py-2',
-                'text-sm text-gray-600 hover:text-gray-900',
-                'bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-primary-500'
+                'text-sm text-[var(--muted)] hover:text-[var(--ink)]',
+                'bg-[var(--surface-thin)] rounded-lg hover:bg-[var(--surface)] transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-[var(--accent)]'
               )}
               aria-expanded={showDetails}
               aria-controls="error-details"

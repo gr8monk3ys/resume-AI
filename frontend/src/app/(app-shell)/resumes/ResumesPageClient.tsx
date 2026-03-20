@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef, Suspense, memo } from 'react'
 
+import { AIMarkdown } from '@/components/AIMarkdown'
 import { resumesApi, aiApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn, formatDate } from '@/lib/utils'
@@ -34,10 +35,10 @@ const RESUME_ROW_HEIGHT = 64
 function TabLoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-8 bg-gray-200 rounded w-1/4" />
-      <div className="h-32 bg-gray-200 rounded" />
-      <div className="h-32 bg-gray-200 rounded" />
-      <div className="h-32 bg-gray-200 rounded" />
+      <div className="h-8 bg-[var(--line)] rounded w-1/4" />
+      <div className="h-32 bg-[var(--line)] rounded" />
+      <div className="h-32 bg-[var(--line)] rounded" />
+      <div className="h-32 bg-[var(--line)] rounded" />
     </div>
   )
 }
@@ -131,7 +132,7 @@ export function ResumesPageClient() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -143,12 +144,12 @@ export function ResumesPageClient() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Resume Hub</h1>
-        <p className="text-gray-500">Manage, analyze, and optimize your resumes</p>
+        <h1 className="text-2xl font-bold text-[var(--ink)] font-display tracking-[-0.02em]">Resume Hub</h1>
+        <p className="text-[var(--muted)]">Manage, analyze, and optimize your resumes</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-[var(--line)] mb-6">
         <nav className="-mb-px flex space-x-8" aria-label="Tabs">
           {TABS.map((tab) => (
             <button
@@ -158,7 +159,7 @@ export function ResumesPageClient() {
                 'flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap',
                 activeTab === tab.id
                   ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-[var(--muted)] hover:text-[var(--ink-secondary)] hover:border-[var(--line-strong)]'
               )}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
@@ -206,11 +207,11 @@ const ResumeRow = memo(function ResumeRow({
   }, [onDelete, resume.id])
 
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className="hover:bg-[var(--surface)]">
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center">
-          <FileText className="w-5 h-5 text-gray-400 mr-3" />
-          <span className="font-medium text-gray-900">{resume.version_name}</span>
+          <FileText className="w-5 h-5 text-[var(--muted-soft)] mr-3" />
+          <span className="font-medium text-[var(--ink)]">{resume.version_name}</span>
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -219,20 +220,20 @@ const ResumeRow = memo(function ResumeRow({
             <ScoreBadge score={resume.ats_score} />
           </div>
         ) : (
-          <span className="text-gray-400 text-sm">Not analyzed</span>
+          <span className="text-[var(--muted-soft)] text-sm">Not analyzed</span>
         )}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--muted)]">
         {formatDate(resume.created_at)}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--muted)]">
         {formatDate(resume.updated_at)}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex justify-end gap-2">
           <button
             onClick={handleEdit}
-            className="p-2 text-gray-400 hover:text-primary-600 rounded-md hover:bg-gray-100"
+            className="p-2 text-[var(--muted-soft)] hover:text-primary-600 rounded-md hover:bg-[var(--surface)]"
             title="Edit resume"
             aria-label="Edit resume"
           >
@@ -240,7 +241,7 @@ const ResumeRow = memo(function ResumeRow({
           </button>
           <button
             onClick={handleDelete}
-            className="p-2 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
+            className="p-2 text-[var(--muted-soft)] hover:text-red-600 rounded-md hover:bg-[var(--surface)]"
             title="Delete resume"
             aria-label="Delete resume"
           >
@@ -333,10 +334,10 @@ function ResumeListToolbar({
 }) {
   return (
     <div className="mb-6 flex items-center justify-between">
-      <p className="text-gray-600">{resumeCount} resume(s) saved</p>
+      <p className="text-[var(--muted)]">{resumeCount} resume(s) saved</p>
       <button
         onClick={onCreateResume}
-        className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
+        className="glass-button-primary inline-flex items-center"
       >
         <Plus className="mr-2 h-4 w-4" />
         Create New Resume
@@ -351,13 +352,13 @@ function ResumeListEmptyState({
   onCreateResume: () => void
 }) {
   return (
-    <div className="rounded-lg bg-white py-12 text-center shadow">
-      <FileText className="mx-auto h-12 w-12 text-gray-400" />
-      <h3 className="mt-4 text-lg font-medium text-gray-900">No resumes yet</h3>
-      <p className="mt-2 text-gray-500">Create your first resume to get started</p>
+    <div className="rounded-lg bg-[var(--surface-strong)] py-12 text-center shadow">
+      <FileText className="mx-auto h-12 w-12 text-[var(--muted-soft)]" />
+      <h3 className="mt-4 text-lg font-medium text-[var(--ink)]">No resumes yet</h3>
+      <p className="mt-2 text-[var(--muted)]">Create your first resume to get started</p>
       <button
         onClick={onCreateResume}
-        className="mt-4 inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
+        className="mt-4 glass-button-primary inline-flex items-center"
       >
         <Plus className="mr-2 h-4 w-4" />
         Create Resume
@@ -379,7 +380,7 @@ function ResumeListErrorState({
       <p className="mt-4 text-red-600">{error}</p>
       <button
         onClick={() => void onRetry()}
-        className="mt-4 rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
+        className="mt-4 glass-button-primary"
       >
         Try Again
       </button>
@@ -416,30 +417,30 @@ function ResumeListTable({
   return (
     <div
       ref={tableContainerRef}
-      className="overflow-auto rounded-lg bg-white shadow"
+      className="overflow-auto rounded-lg bg-[var(--surface-strong)] shadow"
       style={{ maxHeight: 'calc(100vh - 320px)', minHeight: '300px' }}
     >
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="sticky top-0 z-10 bg-gray-50">
+      <table className="min-w-full divide-y divide-[var(--line)]">
+        <thead className="sticky top-0 z-10 bg-[var(--surface-thin)]">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
               Version Name
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
               ATS Score
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
               Created
             </th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
               Last Updated
             </th>
-            <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+            <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
               Actions
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
+        <tbody className="divide-y divide-[var(--line)] bg-[var(--surface-strong)]">
           {paddingTop > 0 && (
             <tr>
               <td colSpan={5} style={{ height: paddingTop, padding: 0, border: 0 }} />
@@ -650,8 +651,8 @@ function ATSAnalysisInputSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-medium text-gray-900">Resume Content</h3>
+      <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+        <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Resume Content</h3>
         <div className="space-y-4">
           <UploadResumeButton
             fileInputRef={fileInputRef}
@@ -663,19 +664,19 @@ function ATSAnalysisInputSection({
             onChange={(event) => onResumeTextChange(event.target.value)}
             placeholder="Paste your resume content here..."
             rows={12}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-primary-500 focus:ring-primary-500"
+            className="w-full glass-textarea font-mono"
           />
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-medium text-gray-900">Job Description (Optional)</h3>
+      <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+        <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Job Description (Optional)</h3>
         <textarea
           value={jobDescription}
           onChange={(event) => onJobDescriptionChange(event.target.value)}
           placeholder="Paste the job description for job-specific analysis..."
           rows={8}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
+          className="w-full glass-textarea"
         />
       </div>
 
@@ -689,8 +690,8 @@ function ATSAnalysisInputSection({
       />
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="glass-alert glass-alert-error">
+          <p className="text-sm">{error}</p>
         </div>
       )}
     </div>
@@ -717,7 +718,7 @@ function ATSAnalysisActions({
       <button
         onClick={() => void onAnalyze()}
         disabled={isAnalyzing || !canAnalyze}
-        className="flex-1 inline-flex items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex-1 glass-button-primary inline-flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isAnalyzing ? (
           <>
@@ -782,8 +783,8 @@ function ATSScoreCard({
   score: number
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 text-lg font-medium text-gray-900">ATS Score</h3>
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">ATS Score</h3>
       <div className="flex items-center justify-center">
         <ScoreGauge score={score} />
       </div>
@@ -797,8 +798,8 @@ function ATSScoreBreakdownCard({
   analysis: ATSAnalysis
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 text-lg font-medium text-gray-900">Score Breakdown</h3>
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Score Breakdown</h3>
       <div className="space-y-4">
         {SCORE_CATEGORIES.map((category) => {
           const score = analysis.score_breakdown?.[category.key] ?? 0
@@ -806,10 +807,10 @@ function ATSScoreBreakdownCard({
           return (
             <div key={category.key}>
               <div className="mb-1 flex justify-between text-sm">
-                <span className="font-medium text-gray-700">{category.label}</span>
-                <span className="text-gray-500">{score}%</span>
+                <span className="font-medium text-[var(--ink-secondary)]">{category.label}</span>
+                <span className="text-[var(--muted)]">{score}%</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-gray-200">
+              <div className="h-2 w-full rounded-full bg-[var(--line)]">
                 <div
                   className={cn(
                     'h-2 rounded-full transition-all duration-300',
@@ -818,7 +819,7 @@ function ATSScoreBreakdownCard({
                   style={{ width: `${score}%` }}
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-400">{category.description}</p>
+              <p className="mt-1 text-xs text-[var(--muted-soft)]">{category.description}</p>
             </div>
           )
         })}
@@ -833,19 +834,19 @@ function ATSImprovementSuggestionsCard({
   suggestions: string[]
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 text-lg font-medium text-gray-900">Improvement Suggestions</h3>
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Improvement Suggestions</h3>
       {suggestions.length > 0 ? (
         <ul className="space-y-3">
           {suggestions.map((suggestion) => (
             <li key={suggestion} className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
-              <span className="text-sm text-gray-700">{suggestion}</span>
+              <span className="text-sm text-[var(--ink-secondary)]">{suggestion}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-gray-500">Your resume looks great! No major improvements needed.</p>
+        <p className="text-sm text-[var(--muted)]">Your resume looks great! No major improvements needed.</p>
       )}
     </div>
   )
@@ -853,10 +854,10 @@ function ATSImprovementSuggestionsCard({
 
 function ATSAnalysisEmptyState() {
   return (
-    <div className="rounded-lg bg-white p-12 text-center shadow">
-      <BarChart3 className="mx-auto h-16 w-16 text-gray-300" />
-      <h3 className="mt-4 text-lg font-medium text-gray-500">No Analysis Yet</h3>
-      <p className="mt-2 text-sm text-gray-400">
+    <div className="rounded-lg bg-[var(--surface-strong)] p-12 text-center shadow">
+      <BarChart3 className="mx-auto h-16 w-16 text-[var(--muted-soft)]" />
+      <h3 className="mt-4 text-lg font-medium text-[var(--muted)]">No Analysis Yet</h3>
+      <p className="mt-2 text-sm text-[var(--muted-soft)]">
         Upload or paste your resume, then click &quot;Analyze Resume&quot; to see your ATS score and suggestions.
       </p>
     </div>
@@ -869,21 +870,21 @@ function OptimizedResumeCard({
   optimizedResume: string
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">AI Optimized Resume</h3>
+        <h3 className="text-lg font-medium text-[var(--ink)]">AI Optimized Resume</h3>
         <button
           onClick={() => {
             void navigator.clipboard.writeText(optimizedResume)
           }}
-          className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+          className="inline-flex items-center rounded-md border border-[var(--line-strong)] px-3 py-1.5 text-sm hover:bg-[var(--surface)]"
         >
           <Copy className="mr-1 h-4 w-4" />
           Copy
         </button>
       </div>
-      <div className="max-h-96 overflow-y-auto rounded-md bg-gray-50 p-4">
-        <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">{optimizedResume}</pre>
+      <div className="max-h-96 overflow-y-auto rounded-md bg-[var(--surface-thin)] p-4">
+        <AIMarkdown content={optimizedResume} />
       </div>
     </div>
   )
@@ -1100,8 +1101,8 @@ function KeywordGapInputSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-medium text-gray-900">Resume Content</h3>
+      <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+        <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Resume Content</h3>
         <div className="space-y-4">
           <UploadResumeButton fileInputRef={fileInputRef} onChange={onFileUpload} />
           <textarea
@@ -1109,26 +1110,26 @@ function KeywordGapInputSection({
             onChange={(event) => onResumeTextChange(event.target.value)}
             placeholder="Paste your resume content here..."
             rows={10}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-primary-500 focus:ring-primary-500"
+            className="w-full glass-textarea font-mono"
           />
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-medium text-gray-900">Job Description</h3>
+      <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+        <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Job Description</h3>
         <textarea
           value={jobDescription}
           onChange={(event) => onJobDescriptionChange(event.target.value)}
           placeholder="Paste the job description here..."
           rows={10}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-500"
+          className="w-full glass-textarea"
         />
       </div>
 
       <button
         onClick={() => void onAnalyze()}
         disabled={isAnalyzing || !resumeText.trim() || !jobDescription.trim()}
-        className="inline-flex w-full items-center justify-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full glass-button-primary inline-flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isAnalyzing ? (
           <>
@@ -1144,8 +1145,8 @@ function KeywordGapInputSection({
       </button>
 
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="glass-alert glass-alert-error">
+          <p className="text-sm">{error}</p>
         </div>
       )}
     </div>
@@ -1203,8 +1204,8 @@ function KeywordMatchCard({
     : '#ef4444'
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 text-lg font-medium text-gray-900">Keyword Match</h3>
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Keyword Match</h3>
       <div className="flex items-center justify-center">
         <div className="relative h-32 w-32">
           <svg className="h-full w-full -rotate-90 transform">
@@ -1221,11 +1222,11 @@ function KeywordMatchCard({
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-3xl font-bold text-gray-900">{analysis.matchPercentage}%</span>
+            <span className="text-3xl font-bold text-[var(--ink)]">{analysis.matchPercentage}%</span>
           </div>
         </div>
       </div>
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-4 text-center text-sm text-[var(--muted)]">
         {analysis.foundKeywords.length} of {analysis.foundKeywords.length + analysis.missingKeywords.length} keywords
         found
       </p>
@@ -1251,8 +1252,8 @@ function KeywordCollectionCard({
     : 'bg-red-100 text-red-800'
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 flex items-center text-lg font-medium text-gray-900">
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 flex items-center text-lg font-medium text-[var(--ink)]">
         {icon}
         {title} ({keywords.length})
       </h3>
@@ -1267,7 +1268,7 @@ function KeywordCollectionCard({
             </span>
           ))
         ) : (
-          <p className="text-sm text-gray-500">{emptyMessage}</p>
+          <p className="text-sm text-[var(--muted)]">{emptyMessage}</p>
         )}
       </div>
     </div>
@@ -1286,7 +1287,7 @@ function MissingKeywordsCard({
   onGetSuggestions: () => Promise<void>
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
       <KeywordCollectionCard
         title="Missing Keywords"
         icon={<XCircle className="mr-2 h-5 w-5 text-red-500" />}
@@ -1326,13 +1327,13 @@ function PlacementRecommendationsCard({
   placements: Record<string, string>
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 text-lg font-medium text-gray-900">Placement Recommendations</h3>
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Placement Recommendations</h3>
       <ul className="space-y-3">
         {Object.entries(placements).map(([keyword, placement]) => (
           <li key={keyword} className="flex items-start gap-3 text-sm">
-            <span className="min-w-[120px] font-medium text-gray-900">{keyword}:</span>
-            <span className="text-gray-600">{placement}</span>
+            <span className="min-w-[120px] font-medium text-[var(--ink)]">{keyword}:</span>
+            <span className="text-[var(--muted)]">{placement}</span>
           </li>
         ))}
       </ul>
@@ -1346,9 +1347,9 @@ function KeywordSuggestionsCard({
   suggestions: string[]
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h3 className="mb-4 text-lg font-medium text-gray-900">AI Optimization Suggestions</h3>
-      <ul className="space-y-3 rounded-md bg-emerald-50 p-4 text-sm text-gray-700">
+    <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+      <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">AI Optimization Suggestions</h3>
+      <ul className="space-y-3 rounded-md bg-emerald-50 p-4 text-sm text-[var(--ink-secondary)]">
         {suggestions.map((suggestion) => (
           <li key={suggestion} className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
@@ -1362,10 +1363,10 @@ function KeywordSuggestionsCard({
 
 function KeywordGapEmptyState() {
   return (
-    <div className="rounded-lg bg-white p-12 text-center shadow">
-      <FileSearch className="mx-auto h-16 w-16 text-gray-300" />
-      <h3 className="mt-4 text-lg font-medium text-gray-500">No Analysis Yet</h3>
-      <p className="mt-2 text-sm text-gray-400">
+    <div className="rounded-lg bg-[var(--surface-strong)] p-12 text-center shadow">
+      <FileSearch className="mx-auto h-16 w-16 text-[var(--muted-soft)]" />
+      <h3 className="mt-4 text-lg font-medium text-[var(--muted)]">No Analysis Yet</h3>
+      <p className="mt-2 text-sm text-[var(--muted-soft)]">
         Provide your resume and job description, then click &quot;Analyze Keyword Gap&quot; to see which keywords you
         are missing.
       </p>
@@ -1819,8 +1820,8 @@ function TemplateSelectionPanel({
 }) {
   return (
     <div className="space-y-6 xl:col-span-1">
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-medium text-gray-900">Select Template</h3>
+      <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
+        <h3 className="mb-4 text-lg font-medium text-[var(--ink)]">Select Template</h3>
         <div className="space-y-3">
           {TEMPLATES.map((template) => (
             <button
@@ -1830,19 +1831,19 @@ function TemplateSelectionPanel({
                 'w-full rounded-lg border-2 p-4 text-left transition-all',
                 selectedTemplate === template.id
                   ? 'border-primary-600 bg-primary-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-[var(--line)] hover:border-[var(--line-strong)]'
               )}
             >
               <div className="flex items-center gap-3">
                 <div className={cn('h-3 w-3 rounded-full', template.color)} />
-                <span className="font-medium text-gray-900">{template.name}</span>
+                <span className="font-medium text-[var(--ink)]">{template.name}</span>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{template.description}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{template.description}</p>
               <div className="mt-2 flex flex-wrap gap-1">
                 {template.features.map((feature) => (
                   <span
                     key={feature}
-                    className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                    className="rounded bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--muted)]"
                   >
                     {feature}
                   </span>
@@ -1899,7 +1900,7 @@ function TemplateBuilderPanel({
 }) {
   return (
     <div className="space-y-6 xl:col-span-1">
-      <div className="rounded-lg bg-white shadow">
+      <div className="rounded-lg bg-[var(--surface-strong)] shadow">
         <TemplateSectionTabs
           activeSection={activeSection}
           onActiveSectionChange={onActiveSectionChange}
@@ -1935,7 +1936,7 @@ function TemplateSectionTabs({
   onActiveSectionChange: (section: TemplateSectionId) => void
 }) {
   return (
-    <div className="border-b border-gray-200">
+    <div className="border-b border-[var(--line)]">
       <nav className="-mb-px flex overflow-x-auto">
         {TEMPLATE_SECTIONS.map((section) => (
           <button
@@ -1945,7 +1946,7 @@ function TemplateSectionTabs({
               'whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium',
               activeSection === section
                 ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-[var(--muted)] hover:text-[var(--ink-secondary)]'
             )}
           >
             {section.charAt(0).toUpperCase() + section.slice(1)}
@@ -2132,7 +2133,7 @@ function SummaryFormSection({
         placeholder="Write a brief professional summary highlighting your key qualifications, experience, and career goals..."
         onChange={onSummaryChange}
       />
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-xs text-[var(--muted)]">
         Aim for 3-5 sentences that highlight your value proposition.
       </p>
     </div>
@@ -2176,7 +2177,7 @@ function ExperienceFormSection({
       ))}
       <button
         onClick={onAddExperience}
-        className="w-full rounded-lg border-2 border-dashed border-gray-300 py-2 text-gray-500 hover:border-primary-400 hover:text-primary-600"
+        className="w-full rounded-lg border-2 border-dashed border-[var(--line-strong)] py-2 text-[var(--muted)] hover:border-primary-400 hover:text-primary-600"
       >
         <Plus className="mr-1 inline h-4 w-4" />
         Add Experience
@@ -2207,9 +2208,9 @@ function ExperienceEditorCard({
   onRemoveBullet: (experienceId: string, bulletId: string) => void
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-lg border border-[var(--line)] p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h4 className="font-medium text-gray-900">Experience {index + 1}</h4>
+        <h4 className="font-medium text-[var(--ink)]">Experience {index + 1}</h4>
         <button
           onClick={() => onRemove(experience.id)}
           className="text-red-500 hover:text-red-700"
@@ -2271,14 +2272,14 @@ function ExperienceEditorCard({
             type="checkbox"
             checked={experience.current}
             onChange={(event) => onFieldChange(experience.id, 'current', event.target.checked)}
-            className="rounded border-gray-300"
+            className="rounded border-[var(--line-strong)]"
           />
-          <label htmlFor={`exp-current-${experience.id}`} className="text-sm text-gray-600">
+          <label htmlFor={`exp-current-${experience.id}`} className="text-sm text-[var(--muted)]">
             Currently working here
           </label>
         </div>
         <div>
-          <div className="mb-1 block text-xs font-medium text-gray-600">Bullet Points</div>
+          <div className="mb-1 block text-xs font-medium text-[var(--muted)]">Bullet Points</div>
           <div className="space-y-2">
             {experience.bullets.map((bullet) => (
               <div key={bullet.id} className="flex gap-2">
@@ -2286,12 +2287,12 @@ function ExperienceEditorCard({
                   type="text"
                   value={bullet.text}
                   onChange={(event) => onBulletChange(experience.id, bullet.id, event.target.value)}
-                  className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  className="flex-1 glass-input"
                   placeholder="Describe your achievement..."
                 />
                 <button
                   onClick={() => onRemoveBullet(experience.id, bullet.id)}
-                  className="text-gray-400 hover:text-red-500"
+                  className="text-[var(--muted-soft)] hover:text-red-500"
                   aria-label="Remove bullet point"
                 >
                   <XCircle className="h-4 w-4" />
@@ -2339,7 +2340,7 @@ function EducationFormSection({
       ))}
       <button
         onClick={onAddEducation}
-        className="w-full rounded-lg border-2 border-dashed border-gray-300 py-2 text-gray-500 hover:border-primary-400 hover:text-primary-600"
+        className="w-full rounded-lg border-2 border-dashed border-[var(--line-strong)] py-2 text-[var(--muted)] hover:border-primary-400 hover:text-primary-600"
       >
         <Plus className="mr-1 inline h-4 w-4" />
         Add Education
@@ -2364,9 +2365,9 @@ function EducationEditorCard({
   onRemove: (id: string) => void
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-lg border border-[var(--line)] p-4">
       <div className="mb-4 flex items-center justify-between">
-        <h4 className="font-medium text-gray-900">Education {index + 1}</h4>
+        <h4 className="font-medium text-[var(--ink)]">Education {index + 1}</h4>
         <button
           onClick={() => onRemove(education.id)}
           className="text-red-500 hover:text-red-700"
@@ -2435,7 +2436,7 @@ function SkillsFormSection({
   return (
     <div className="space-y-6">
       <div>
-        <div className="mb-2 block text-sm font-medium text-gray-700">Technical Skills</div>
+        <div className="mb-2 block glass-label">Technical Skills</div>
         <SkillInput
           skills={skills.technical}
           onChange={(nextSkills) => onSkillsChange('technical', nextSkills)}
@@ -2443,7 +2444,7 @@ function SkillsFormSection({
         />
       </div>
       <div>
-        <div className="mb-2 block text-sm font-medium text-gray-700">Soft Skills</div>
+        <div className="mb-2 block glass-label">Soft Skills</div>
         <SkillInput
           skills={skills.soft}
           onChange={(nextSkills) => onSkillsChange('soft', nextSkills)}
@@ -2451,7 +2452,7 @@ function SkillsFormSection({
         />
       </div>
       <div>
-        <div className="mb-2 block text-sm font-medium text-gray-700">Languages</div>
+        <div className="mb-2 block glass-label">Languages</div>
         <SkillInput
           skills={skills.languages}
           onChange={(nextSkills) => onSkillsChange('languages', nextSkills)}
@@ -2459,7 +2460,7 @@ function SkillsFormSection({
         />
       </div>
       <div>
-        <div className="mb-2 block text-sm font-medium text-gray-700">Certifications</div>
+        <div className="mb-2 block glass-label">Certifications</div>
         <SkillInput
           skills={skills.certifications}
           onChange={(nextSkills) => onSkillsChange('certifications', nextSkills)}
@@ -2489,20 +2490,20 @@ function TemplatePreviewPanel({
 }) {
   return (
     <div className="space-y-6 xl:col-span-1">
-      <div className="rounded-lg bg-white p-6 shadow">
+      <div className="rounded-lg bg-[var(--surface-strong)] p-6 shadow">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-gray-900">Preview</h3>
+          <h3 className="text-lg font-medium text-[var(--ink)]">Preview</h3>
           <div className="flex gap-2">
             <button
               onClick={onCopy}
-              className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+              className="inline-flex items-center rounded-md border border-[var(--line-strong)] px-3 py-1.5 text-sm hover:bg-[var(--surface)]"
               title="Copy to clipboard"
             >
               <Copy className="h-4 w-4" />
             </button>
             <button
               onClick={onDownload}
-              className="inline-flex items-center rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50"
+              className="inline-flex items-center rounded-md border border-[var(--line-strong)] px-3 py-1.5 text-sm hover:bg-[var(--surface)]"
               title="Download as text"
             >
               <Download className="h-4 w-4" />
@@ -2518,7 +2519,7 @@ function TemplatePreviewPanel({
       <button
         onClick={() => void onSave()}
         disabled={isSaving}
-        className="inline-flex w-full items-center justify-center rounded-md bg-primary-600 px-4 py-3 text-white hover:bg-primary-700 disabled:opacity-50"
+        className="w-full glass-button-primary inline-flex items-center justify-center disabled:opacity-50"
       >
         {isSaving ? (
           <>
@@ -2556,7 +2557,7 @@ function TemplatePreviewSurface({
         selectedTemplate === 'creative' && 'border-pink-200 bg-pink-50'
       )}
     >
-      <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">
+      <pre className="whitespace-pre-wrap font-mono text-sm text-[var(--ink-secondary)]">
         {previewContent || 'Fill in the form to see your resume preview...'}
       </pre>
     </div>
@@ -2604,7 +2605,7 @@ function TemplateTextField({
       <label
         htmlFor={id}
         className={cn(
-          compact ? 'text-xs text-gray-600' : 'text-sm text-gray-700',
+          compact ? 'text-xs text-[var(--muted)]' : 'text-sm text-[var(--ink-secondary)]',
           'block font-medium'
         )}
       >
@@ -2617,9 +2618,9 @@ function TemplateTextField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         className={cn(
-          'mt-1 w-full rounded-md border border-gray-300',
+          'mt-1 w-full rounded-md border border-[var(--line-strong)]',
           compact ? 'px-2 py-1.5 text-sm' : 'px-3 py-2',
-          disabled && 'bg-gray-100'
+          disabled && 'bg-[var(--surface)]'
         )}
         placeholder={placeholder}
       />
@@ -2644,7 +2645,7 @@ function TemplateTextArea({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-medium text-gray-700">
+      <label htmlFor={id} className="mb-2 block glass-label">
         {label}
       </label>
       <textarea
@@ -2652,7 +2653,7 @@ function TemplateTextArea({
         rows={rows}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-gray-300 px-3 py-2"
+        className="w-full glass-textarea"
         placeholder={placeholder}
       />
     </div>
@@ -2878,7 +2879,7 @@ function useTemplatesTabController() {
 function TabSpinner() {
   return (
     <div className="flex items-center justify-center py-12">
-      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
+      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--accent)]" />
     </div>
   )
 }
@@ -2900,7 +2901,7 @@ function UploadResumeButton({
     <div className="flex gap-2">
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        className="glass-button-secondary inline-flex items-center"
       >
         <Upload className="mr-2 h-4 w-4" />
         Upload File
@@ -2913,7 +2914,7 @@ function UploadResumeButton({
         className="hidden"
       />
       {helperText && (
-        <span className="self-center text-xs text-gray-500">{helperText}</span>
+        <span className="self-center text-xs text-[var(--muted)]">{helperText}</span>
       )}
     </div>
   )
@@ -2961,8 +2962,8 @@ function ScoreGauge({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-4xl font-bold text-gray-900">{score}</span>
-        <span className="text-sm text-gray-500">ATS Score</span>
+        <span className="text-4xl font-bold text-[var(--ink)]">{score}</span>
+        <span className="text-sm text-[var(--muted)]">ATS Score</span>
       </div>
     </div>
   )
@@ -3038,14 +3039,14 @@ function ResumeFormModal({
       tabIndex={0}
       aria-label="Close modal"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-2xl w-full p-6">
         <h2 id="modal-title" className="text-xl font-bold mb-4">
           {resume ? 'Edit Resume' : 'Add Resume'}
         </h2>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div>
-            <label htmlFor="version_name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="version_name" className="block glass-label">
               Version Name
             </label>
             <input
@@ -3054,20 +3055,20 @@ function ResumeFormModal({
               required
               value={formData.version_name}
               onChange={(e) => setFormData({ ...formData, version_name: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              className="mt-1 block w-full glass-input"
               placeholder="e.g., Software Engineer - Google"
             />
           </div>
 
           <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="content" className="block glass-label">
               Resume Content
             </label>
             <div className="mt-1 mb-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                className="glass-button-secondary inline-flex items-center"
               >
                 <Upload className="w-4 h-4 mr-2" />
                 Upload File
@@ -3079,7 +3080,7 @@ function ResumeFormModal({
                 onChange={handleFileUpload}
                 className="hidden"
               />
-              <span className="ml-2 text-xs text-gray-500">Supports .txt, .pdf, .docx</span>
+              <span className="ml-2 text-xs text-[var(--muted)]">Supports .txt, .pdf, .docx</span>
             </div>
             <textarea
               id="content"
@@ -3087,14 +3088,14 @@ function ResumeFormModal({
               rows={12}
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-primary-500 focus:border-primary-500"
+              className="block w-full glass-textarea font-mono"
               placeholder="Paste your resume content here..."
             />
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="glass-alert glass-alert-error">
+              <p className="text-sm">{error}</p>
             </div>
           )}
 
@@ -3102,14 +3103,14 @@ function ResumeFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+              className="glass-button-primary disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : resume ? 'Update Resume' : 'Save Resume'}
             </button>
@@ -3156,13 +3157,13 @@ function SkillInput({
               addSkill()
             }
           }}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+          className="flex-1 glass-input"
           placeholder={placeholder}
         />
         <button
           type="button"
           onClick={addSkill}
-          className="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
+          className="glass-button-primary"
         >
           Add
         </button>
@@ -3171,13 +3172,13 @@ function SkillInput({
         {skills.map((skill, index) => (
           <span
             key={skill}
-            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800"
+            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-[var(--surface)] text-[var(--ink)]"
           >
             {skill}
             <button
               type="button"
               onClick={() => removeSkill(index)}
-              className="ml-2 text-gray-500 hover:text-red-500"
+              className="ml-2 text-[var(--muted)] hover:text-red-500"
               aria-label={`Remove ${skill}`}
             >
               <XCircle className="w-4 h-4" />

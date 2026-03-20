@@ -8,6 +8,7 @@ import {
   Database,
   Server,
   AlertTriangle,
+  Bell,
   CreditCard,
   Download,
   Trash2,
@@ -32,10 +33,12 @@ import {
   authApi,
   billingApi,
   coverLettersApi,
+  emailPreferencesApi,
   healthApi,
   jobsApi,
   profileApi,
   resumesApi,
+  type EmailPreferences,
 } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -43,7 +46,7 @@ import { cn } from '@/lib/utils'
 import type { BillingStatus, CoverLetter, JobApplication, JobStats, Profile, UsageInfo, User as AuthUser } from '@/types'
 import type { Resume } from '@/types'
 
-type SettingsTabId = 'profile' | 'statistics' | 'security' | 'billing' | 'data' | 'system'
+type SettingsTabId = 'profile' | 'statistics' | 'security' | 'notifications' | 'billing' | 'data' | 'system'
 
 interface TabConfig {
   id: SettingsTabId
@@ -119,6 +122,7 @@ const TABS: TabConfig[] = [
   { id: 'profile', name: 'Profile', icon: User },
   { id: 'statistics', name: 'Statistics', icon: BarChart3 },
   { id: 'security', name: 'Security', icon: Shield },
+  { id: 'notifications', name: 'Notifications', icon: Bell },
   { id: 'billing', name: 'Billing', icon: CreditCard },
   { id: 'data', name: 'Data Management', icon: Database },
   { id: 'system', name: 'System', icon: Server },
@@ -1179,6 +1183,201 @@ function SystemSettingsSection({
   )
 }
 
+function NotificationToggle({
+  id,
+  label,
+  description,
+  checked,
+  disabled,
+  onChange,
+}: {
+  id: string
+  label: string
+  description: string
+  checked: boolean
+  disabled?: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between py-4">
+      <div className="flex-1 pr-4">
+        <label htmlFor={id} className="font-medium text-[var(--ink)]">
+          {label}
+        </label>
+        <p className="text-sm text-[var(--muted)]">{description}</p>
+      </div>
+      <button
+        id={id}
+        role="switch"
+        type="button"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200',
+          checked ? 'bg-[var(--accent)]' : 'bg-[var(--line)]',
+          disabled && 'cursor-not-allowed opacity-50'
+        )}
+      >
+        <span
+          className={cn(
+            'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition duration-200',
+            checked ? 'translate-x-5' : 'translate-x-0'
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+
+function NotificationSettingsSection(): React.ReactElement {
+  const [prefs, setPrefs] = useState<EmailPreferences | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function fetchPrefs(): Promise<void> {
+      try {
+        const data = await emailPreferencesApi.get()
+        if (isMounted) {
+          setPrefs(data)
+        }
+      } catch {
+        if (isMounted) {
+          setError('Unable to load notification preferences')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void fetchPrefs()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!successMsg) return undefined
+    const timer = setTimeout(() => setSuccessMsg(null), 3000)
+    return () => clearTimeout(timer)
+  }, [successMsg])
+
+  const handleToggle = async (
+    field: keyof EmailPreferences,
+    value: boolean
+  ): Promise<void> => {
+    if (!prefs) return
+
+    const previous = { ...prefs }
+    setPrefs({ ...prefs, [field]: value })
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      const updated = await emailPreferencesApi.update({ [field]: value })
+      setPrefs(updated)
+      setSuccessMsg('Preferences saved')
+    } catch {
+      setPrefs(previous)
+      setError('Failed to update preference')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="surface-card p-6">
+        <div className="flex min-h-[200px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--accent)]" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !prefs) {
+    return (
+      <div className="surface-card p-6">
+        <p className="text-sm text-[var(--status-error-text)]">{error}</p>
+      </div>
+    )
+  }
+
+  const masterEnabled = prefs?.email_notifications ?? true
+
+  return (
+    <div className="space-y-6">
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-2 text-lg font-semibold text-[var(--ink)]">
+          Email Notifications
+        </h3>
+        <p className="mb-4 text-sm text-[var(--muted)]">
+          Control which emails you receive from ResuBoost.
+        </p>
+
+        {successMsg && (
+          <div className="glass-alert glass-alert-success mb-4" role="status">
+            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm">{successMsg}</span>
+          </div>
+        )}
+
+        {error && prefs && (
+          <div className="glass-alert glass-alert-error mb-4" role="alert">
+            <XCircle className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
+
+        <div className="divide-y divide-[var(--line)]">
+          <NotificationToggle
+            id="email_notifications"
+            label="Master toggle"
+            description="Enable or disable all email notifications"
+            checked={masterEnabled}
+            onChange={(v) => void handleToggle('email_notifications', v)}
+          />
+
+          <NotificationToggle
+            id="email_nudges"
+            label="Nudge emails"
+            description="Follow-up reminders, interview prep tips, and application updates"
+            checked={prefs?.email_nudges ?? true}
+            disabled={!masterEnabled || isSaving}
+            onChange={(v) => void handleToggle('email_nudges', v)}
+          />
+
+          <NotificationToggle
+            id="email_weekly_digest"
+            label="Weekly digest"
+            description="A summary of your job search activity every Sunday"
+            checked={prefs?.email_weekly_digest ?? true}
+            disabled={!masterEnabled || isSaving}
+            onChange={(v) => void handleToggle('email_weekly_digest', v)}
+          />
+
+          <NotificationToggle
+            id="email_reengagement"
+            label="Re-engagement emails"
+            description="Gentle reminders when you haven't logged in for a few days"
+            checked={prefs?.email_reengagement ?? true}
+            disabled={!masterEnabled || isSaving}
+            onChange={(v) => void handleToggle('email_reengagement', v)}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BillingSettingsSection(): React.ReactElement {
   const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -1909,6 +2108,10 @@ export default function SettingsPage() {
               onSubmit={controller.handleChangePassword}
               onSignOutAllDevices={controller.handleSignOutAllDevices}
             />
+          )}
+
+          {controller.activeTab === 'notifications' && (
+            <NotificationSettingsSection />
           )}
 
           {controller.activeTab === 'billing' && (

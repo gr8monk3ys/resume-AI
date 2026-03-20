@@ -15,7 +15,7 @@ interface AddEventModalProps {
 
 export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
   const [formData, setFormData] = useState({
-    job_id: 0,
+    job_application_id: 0,
     event_type: 'phone_screen' as InterviewEventType,
     scheduled_date: '',
     scheduled_time: '',
@@ -27,13 +27,13 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
     follow_up_date: '',
   })
 
-  const selectedJob = jobs.find((j) => j.id === formData.job_id)
+  const selectedJob = jobs.find((j) => j.id === formData.job_application_id)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
     const event: Omit<InterviewEvent, 'id' | 'created_at'> = {
-      job_id: formData.job_id,
+      job_application_id: formData.job_application_id || null,
       company: selectedJob?.company || '',
       position: selectedJob?.position || '',
       event_type: formData.event_type,
@@ -56,12 +56,12 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Add Interview Event</h2>
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
+          <h2 className="text-xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Add Interview Event</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
             aria-label="Close modal"
           >
             <X className="w-6 h-6" />
@@ -70,17 +70,17 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label htmlFor="job_id" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="job_application_id" className="glass-label mb-1">
               Job Application
             </label>
             <select
-              id="job_id"
+              id="job_application_id"
               required
-              value={formData.job_id}
+              value={formData.job_application_id}
               onChange={(e) =>
-                setFormData({ ...formData, job_id: parseInt(e.target.value) })
+                setFormData({ ...formData, job_application_id: parseInt(e.target.value) })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-select"
             >
               <option value={0}>Select a job...</option>
               {jobs.map((job) => (
@@ -92,7 +92,7 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
           </div>
 
           <div>
-            <label htmlFor="event_type" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="event_type" className="glass-label mb-1">
               Event Type
             </label>
             <select
@@ -104,7 +104,7 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
                   event_type: e.target.value as InterviewEventType,
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-select"
             >
               {EVENT_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -116,7 +116,7 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="scheduled_date" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="scheduled_date" className="glass-label mb-1">
                 Date
               </label>
               <input
@@ -127,11 +127,11 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, scheduled_date: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
             <div>
-              <label htmlFor="scheduled_time" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="scheduled_time" className="glass-label mb-1">
                 Time
               </label>
               <input
@@ -141,13 +141,13 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, scheduled_time: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="duration_minutes" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="duration_minutes" className="glass-label mb-1">
               Duration (minutes)
             </label>
             <input
@@ -165,12 +165,12 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
                     : nextDuration,
                 })
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="event_location" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="event_location" className="glass-label mb-1">
               Location
             </label>
             <input
@@ -181,12 +181,12 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
               onChange={(e) =>
                 setFormData({ ...formData, location: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="meeting_link" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="meeting_link" className="glass-label mb-1">
               Meeting Link
             </label>
             <input
@@ -197,12 +197,12 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
               onChange={(e) =>
                 setFormData({ ...formData, meeting_link: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="interviewer_names" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="interviewer_names" className="glass-label mb-1">
               Interviewer Names
             </label>
             <input
@@ -213,12 +213,12 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
               onChange={(e) =>
                 setFormData({ ...formData, interviewer_names: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="follow_up_date" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="follow_up_date" className="glass-label mb-1">
               Follow-up Date
             </label>
             <input
@@ -228,12 +228,12 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
               onChange={(e) =>
                 setFormData({ ...formData, follow_up_date: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
             />
           </div>
 
           <div>
-            <label htmlFor="event_notes" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="event_notes" className="glass-label mb-1">
               Notes
             </label>
             <textarea
@@ -244,22 +244,22 @@ export function AddEventModal({ jobs, onClose, onAdd }: AddEventModalProps) {
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-textarea"
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--line)]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!formData.job_id || !formData.scheduled_date}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!formData.job_application_id || !formData.scheduled_date}
+              className="glass-button-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Event
             </button>

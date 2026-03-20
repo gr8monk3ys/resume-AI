@@ -65,7 +65,7 @@ function PageLoadingState() {
       role="status"
       aria-label="Loading"
     >
-      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
+      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--accent)]" />
     </div>
   )
 }
@@ -79,36 +79,34 @@ function DemoCredentialsNotice({
 }) {
   return (
     <div
-      className="rounded-lg border border-blue-200 bg-blue-50 p-4"
+      className="glass-alert glass-alert-info"
       role="note"
       aria-label="Demo account information"
     >
-      <div className="flex items-start">
-        <Info
-          className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500"
-          aria-hidden="true"
-        />
-        <div className="ml-3">
-          <h2 className="text-sm font-medium text-blue-800">Demo Account Available</h2>
-          <p className="mt-1 text-sm text-blue-700">
-            Try the app with our demo account:
+      <Info
+        className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--status-info-text)]"
+        aria-hidden="true"
+      />
+      <div>
+        <h2 className="text-sm font-medium text-[var(--status-info-text)]">Demo Account Available</h2>
+        <p className="mt-1 text-sm text-[var(--status-info-text)]">
+          Try the app with our demo account:
+        </p>
+        <div className="mt-2 text-sm text-[var(--status-info-text)]">
+          <p>
+            <strong>Username:</strong> {demoCredentials.username}
           </p>
-          <div className="mt-2 text-sm text-blue-700">
-            <p>
-              <strong>Username:</strong> {demoCredentials.username}
-            </p>
-            <p>
-              <strong>Password:</strong> {demoCredentials.password}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onUseDemoCredentials}
-            className="mt-3 inline-flex items-center rounded-md bg-blue-100 px-3 py-1.5 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Use Demo Credentials
-          </button>
+          <p>
+            <strong>Password:</strong> {demoCredentials.password}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={onUseDemoCredentials}
+          className="glass-button-secondary mt-3 px-3 py-1.5 text-sm"
+        >
+          Use Demo Credentials
+        </button>
       </div>
     </div>
   )
@@ -232,14 +230,14 @@ export function LoginPageClient() {
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
+      <div className="surface-card-strong w-full max-w-[28rem] space-y-8 p-8 sm:p-10">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Sign in to your account</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="font-display text-3xl font-bold tracking-[-0.03em] text-[var(--ink)]">Sign in to your account</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Or{' '}
             <Link
               href="/register"
-              className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+              className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)] focus:outline-none focus:underline"
             >
               create a new account
             </Link>
@@ -262,15 +260,15 @@ export function LoginPageClient() {
         >
           {controller.error && (
             <div
-              className="flex items-start rounded-lg border border-red-200 bg-red-50 p-4"
+              className="glass-alert glass-alert-error"
               role="alert"
               aria-live="polite"
             >
               <AlertCircle
-                className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500"
+                className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--status-error-text)]"
                 aria-hidden="true"
               />
-              <p id="login-error" className="ml-3 text-sm text-red-700">
+              <p id="login-error" className="text-sm text-[var(--status-error-text)]">
                 {controller.error}
               </p>
             </div>
@@ -278,7 +276,7 @@ export function LoginPageClient() {
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="username" className="glass-label">
                 Username
               </label>
               <input
@@ -290,14 +288,14 @@ export function LoginPageClient() {
                 value={controller.username}
                 onChange={(event) => controller.setFieldValue('username', event.target.value)}
                 disabled={controller.isSubmitting}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                className="mt-1 glass-input"
                 placeholder="Enter your username"
                 aria-describedby={controller.error ? 'login-error' : undefined}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="glass-label">
                 Password
               </label>
               <div className="relative mt-1">
@@ -310,14 +308,14 @@ export function LoginPageClient() {
                   value={controller.password}
                   onChange={(event) => controller.setFieldValue('password', event.target.value)}
                   disabled={controller.isSubmitting}
-                  className="block w-full rounded-md border border-gray-300 px-3 py-2 pr-10 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                  className="glass-input pr-10"
                   placeholder="Enter your password"
                   aria-describedby={controller.error ? 'login-error' : undefined}
                 />
                 <button
                   type="button"
                   onClick={controller.togglePasswordVisibility}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--muted-soft)] hover:text-[var(--muted)] focus:outline-none"
                   aria-label={controller.showPassword ? 'Hide password' : 'Show password'}
                 >
                   {controller.showPassword ? (
@@ -333,12 +331,12 @@ export function LoginPageClient() {
           <button
             type="submit"
             disabled={controller.isSubmitting}
-            className="flex w-full items-center justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="glass-button-primary w-full"
           >
             {controller.isSubmitting ? (
               <>
                 <span
-                  className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"
+                  className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-[var(--accent)]"
                   aria-hidden="true"
                 />
                 Signing in...
@@ -352,19 +350,19 @@ export function LoginPageClient() {
           </button>
         </form>
 
-        <div className="text-center text-sm text-gray-500">
+        <div className="text-center text-sm text-[var(--muted)]">
           <p>
             By signing in, you agree to our{' '}
             <Link
               href="/terms"
-              className="text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+              className="text-[var(--accent)] hover:text-[var(--accent-strong)] focus:outline-none focus:underline"
             >
               Terms of Service
             </Link>{' '}
             and{' '}
             <Link
               href="/privacy"
-              className="text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+              className="text-[var(--accent)] hover:text-[var(--accent-strong)] focus:outline-none focus:underline"
             >
               Privacy Policy
             </Link>

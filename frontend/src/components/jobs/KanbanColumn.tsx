@@ -63,7 +63,7 @@ export const KanbanColumn = memo(function KanbanColumn({
   const totalSize = virtualizer.getTotalSize()
 
   return (
-    <div className="flex-shrink-0 w-80 bg-gray-50 rounded-lg flex flex-col max-h-[calc(100vh-280px)]">
+    <div className="flex-shrink-0 w-80 bg-[var(--surface-thin)] rounded-lg flex flex-col max-h-[calc(100vh-280px)]">
       <div className={cn('p-4 rounded-t-lg', statusColors.bg)}>
         <div className="flex items-center justify-between">
           <h3 className={cn('font-semibold', statusColors.text)}>{status}</h3>
@@ -149,7 +149,7 @@ export const KanbanColumn = memo(function KanbanColumn({
         </SortableContext>
 
         {jobs.length === 0 && (
-          <div className="text-center py-8 text-gray-400 text-sm">
+          <div className="text-center py-8 text-[var(--muted-soft)] text-sm">
             No jobs in this stage
           </div>
         )}

@@ -1515,6 +1515,32 @@ export const billingApi = {
 }
 
 /**
+ * Email Preferences API
+ */
+export interface EmailPreferences {
+  email_notifications: boolean
+  email_nudges: boolean
+  email_weekly_digest: boolean
+  email_reengagement: boolean
+}
+
+export const emailPreferencesApi = {
+  get: async (token?: string): Promise<EmailPreferences> => {
+    return authenticatedRequest<EmailPreferences>('/api/email-preferences', token)
+  },
+
+  update: async (
+    data: Partial<EmailPreferences>,
+    token?: string
+  ): Promise<EmailPreferences> => {
+    return authenticatedRequest<EmailPreferences>('/api/email-preferences', token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+}
+
+/**
  * Onboarding API
  */
 export const onboardingApi = {

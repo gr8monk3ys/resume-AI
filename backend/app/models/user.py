@@ -33,6 +33,11 @@ class User(Base):
     email_notifications = Column(Boolean, default=True)
     email_verification_token = Column(String, nullable=True)
 
+    # Granular email preferences (supplement the master toggle above)
+    email_nudges = Column(Boolean, default=True)
+    email_weekly_digest = Column(Boolean, default=True)
+    email_reengagement = Column(Boolean, default=True)
+
     # Activity tracking
     last_active_at = Column(DateTime, nullable=True)
 

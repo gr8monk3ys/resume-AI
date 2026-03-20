@@ -64,12 +64,12 @@ function MetricRow({ metric }: MetricRowProps) {
   const formattedValue = formatMetricValue(metric.name, metric.value)
 
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
+    <div className="flex items-center justify-between py-1.5 border-b border-[var(--line)] last:border-0">
       <div className="flex items-center gap-2">
         <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
         <div>
-          <span className="font-medium text-gray-900">{metric.name}</span>
-          <p className="text-xs text-gray-500">{METRIC_DESCRIPTIONS[metric.name]}</p>
+          <span className="font-medium text-[var(--ink)]">{metric.name}</span>
+          <p className="text-xs text-[var(--muted)]">{METRIC_DESCRIPTIONS[metric.name]}</p>
         </div>
       </div>
       <div className="text-right">
@@ -150,7 +150,7 @@ export function WebVitalsDebug({
       aria-label="Web Vitals Debug Panel"
     >
       {isExpanded ? (
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-72 overflow-hidden">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow-lg border border-[var(--line)] w-72 overflow-hidden">
           {/* Header */}
           <div className={`${overallColor.bg} ${overallColor.text} px-4 py-3 flex items-center justify-between`}>
             <div className="flex items-center gap-2">
@@ -202,13 +202,13 @@ export function WebVitalsDebug({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-[var(--muted)] text-center py-4">
                 Collecting metrics...
               </p>
             )}
 
             {/* Status indicator */}
-            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <div className="mt-3 pt-3 border-t border-[var(--line)] flex items-center justify-between text-xs text-[var(--muted)]">
               <span>
                 {isComplete ? 'All metrics collected' : `${metricList.length}/5 metrics`}
               </span>

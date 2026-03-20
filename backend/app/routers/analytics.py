@@ -340,7 +340,7 @@ def aggregate_by_time_period(jobs: List[JobApplication], period: str) -> List[Ti
 
 
 @router.get("/overview", response_model=OverviewStats)
-async def get_overview_stats(
+def get_overview_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -406,7 +406,7 @@ async def get_overview_stats(
 
 
 @router.get("/timeline", response_model=TimelineResponse)
-async def get_timeline(
+def get_timeline(
     period: str = Query("weekly", pattern="^(daily|weekly|monthly)$"),
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -440,7 +440,7 @@ async def get_timeline(
 
 
 @router.get("/conversion-funnel", response_model=ConversionFunnelResponse)
-async def get_conversion_funnel(
+def get_conversion_funnel(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -477,7 +477,7 @@ async def get_conversion_funnel(
 
 
 @router.get("/source-performance", response_model=SourcePerformanceResponse)
-async def get_source_performance(
+def get_source_performance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -546,7 +546,7 @@ async def get_source_performance(
 
 
 @router.get("/company-stats", response_model=CompanyStatsResponse)
-async def get_company_stats(
+def get_company_stats(
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -597,7 +597,7 @@ async def get_company_stats(
 
 
 @router.get("/response-time", response_model=ResponseTimeResponse)
-async def get_response_time_stats(
+def get_response_time_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -674,7 +674,7 @@ async def get_response_time_stats(
 
 
 @router.get("/resume-performance", response_model=ResumePerformanceResponse)
-async def get_resume_performance(
+def get_resume_performance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -748,7 +748,7 @@ async def get_resume_performance(
 
 
 @router.post("/export")
-async def export_data(
+def export_data(
     export_request: ExportRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

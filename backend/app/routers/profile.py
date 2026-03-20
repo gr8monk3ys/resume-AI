@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
 
 @router.get("", response_model=ProfileResponse)
-async def get_profile(
+def get_profile(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get current user's profile."""
@@ -37,7 +37,7 @@ async def get_profile(
 
 
 @router.put("", response_model=ProfileResponse)
-async def update_profile(
+def update_profile(
     profile_data: ProfileUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -60,7 +60,7 @@ async def update_profile(
 
 
 @router.get("/stats")
-async def get_profile_stats(
+def get_profile_stats(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get profile statistics."""

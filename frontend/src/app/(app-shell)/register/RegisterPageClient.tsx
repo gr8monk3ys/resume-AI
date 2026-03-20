@@ -122,7 +122,7 @@ function PageLoadingState() {
       role="status"
       aria-label="Loading"
     >
-      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
+      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--accent)]" />
     </div>
   )
 }
@@ -139,7 +139,7 @@ function FieldErrorMessage({
   }
 
   return (
-    <p id={id} className="mt-1 text-sm text-red-600" role="alert">
+    <p id={id} className="mt-1 text-sm text-[var(--status-error-text)]" role="alert">
       {message}
     </p>
   )
@@ -152,15 +152,15 @@ function PasswordRequirementsList({
 }) {
   return (
     <div id="password-requirements" className="mt-3 space-y-1">
-      <p className="mb-2 text-xs text-gray-500">Password requirements:</p>
+      <p className="mb-2 text-xs text-[var(--muted)]">Password requirements:</p>
       {requirementsMet.map((requirement) => (
         <div key={requirement.label} className="flex items-center text-xs">
           {requirement.met ? (
             <Check className="mr-2 h-3.5 w-3.5 flex-shrink-0 text-green-500" />
           ) : (
-            <X className="mr-2 h-3.5 w-3.5 flex-shrink-0 text-gray-300" />
+            <X className="mr-2 h-3.5 w-3.5 flex-shrink-0 text-[var(--muted-soft)]" />
           )}
-          <span className={requirement.met ? 'text-green-600' : 'text-gray-500'}>
+          <span className={requirement.met ? 'text-green-600' : 'text-[var(--muted)]'}>
             {requirement.label}
           </span>
         </div>
@@ -177,7 +177,7 @@ function PasswordStrengthIndicator({
   return (
     <div className="mt-2" aria-live="polite">
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs text-gray-500">Password strength</span>
+        <span className="text-xs text-[var(--muted)]">Password strength</span>
         <span
           className={cn(
             'text-xs font-medium',
@@ -187,7 +187,7 @@ function PasswordStrengthIndicator({
           {capitalize(passwordStrength)}
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]">
         <div
           className={cn(
             'h-full transition-all duration-300',
@@ -404,14 +404,14 @@ export function RegisterPageClient() {
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
+      <div className="surface-card-strong w-full max-w-[28rem] space-y-8 p-8 sm:p-10">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Create your account</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="font-display text-3xl font-bold tracking-[-0.03em] text-[var(--ink)]">Create your account</h1>
+          <p className="mt-2 text-sm text-[var(--muted)]">
             Already have an account?{' '}
             <Link
               href="/login"
-              className="font-medium text-primary-600 hover:text-primary-500 focus:outline-none focus:underline"
+              className="font-medium text-[var(--accent)] hover:text-[var(--accent-strong)] focus:outline-none focus:underline"
             >
               Sign in
             </Link>
@@ -427,22 +427,22 @@ export function RegisterPageClient() {
         >
           {controller.error && (
             <div
-              className="flex items-start rounded-lg border border-red-200 bg-red-50 p-4"
+              className="glass-alert glass-alert-error"
               role="alert"
               aria-live="polite"
             >
               <AlertCircle
-                className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500"
+                className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--status-error-text)]"
                 aria-hidden="true"
               />
-              <p className="ml-3 text-sm text-red-700">{controller.error}</p>
+              <p className="text-sm text-[var(--status-error-text)]">{controller.error}</p>
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-                Full Name <span className="font-normal text-gray-400">(optional)</span>
+              <label htmlFor="full_name" className="glass-label">
+                Full Name <span className="glass-label-hint">(optional)</span>
               </label>
               <input
                 id="full_name"
@@ -452,13 +452,13 @@ export function RegisterPageClient() {
                 value={controller.formData.full_name}
                 onChange={(event) => controller.setFormField('full_name', event.target.value)}
                 disabled={controller.isSubmitting}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+                className="mt-1 glass-input"
                 placeholder="John Doe"
               />
             </div>
 
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="username" className="glass-label">
                 Username
               </label>
               <input
@@ -475,10 +475,8 @@ export function RegisterPageClient() {
                   controller.fieldErrors.username ? 'username-error' : undefined
                 }
                 className={cn(
-                  'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100',
-                  controller.fieldErrors.username
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300'
+                  'mt-1 glass-input',
+                  controller.fieldErrors.username && 'glass-input-error'
                 )}
                 placeholder="johndoe"
               />
@@ -489,7 +487,7 @@ export function RegisterPageClient() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="glass-label">
                 Email
               </label>
               <input
@@ -504,10 +502,8 @@ export function RegisterPageClient() {
                 aria-invalid={Boolean(controller.fieldErrors.email)}
                 aria-describedby={controller.fieldErrors.email ? 'email-error' : undefined}
                 className={cn(
-                  'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100',
-                  controller.fieldErrors.email
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300'
+                  'mt-1 glass-input',
+                  controller.fieldErrors.email && 'glass-input-error'
                 )}
                 placeholder="john@example.com"
               />
@@ -518,7 +514,7 @@ export function RegisterPageClient() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="glass-label">
                 Password
               </label>
               <div className="relative mt-1">
@@ -539,17 +535,15 @@ export function RegisterPageClient() {
                       : 'password-requirements'
                   }
                   className={cn(
-                    'block w-full rounded-md border px-3 py-2 pr-10 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100',
-                    controller.fieldErrors.password
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-300'
+                    'glass-input pr-10',
+                    controller.fieldErrors.password && 'glass-input-error'
                   )}
                   placeholder="Create a strong password"
                 />
                 <button
                   type="button"
                   onClick={() => controller.setPasswordVisibility('showPassword')}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--muted-soft)] hover:text-[var(--muted)] focus:outline-none"
                   aria-label={controller.showPassword ? 'Hide password' : 'Show password'}
                 >
                   {controller.showPassword ? (
@@ -579,7 +573,7 @@ export function RegisterPageClient() {
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700"
+                className="glass-label"
               >
                 Confirm Password
               </label>
@@ -602,10 +596,8 @@ export function RegisterPageClient() {
                       : undefined
                   }
                   className={cn(
-                    'block w-full rounded-md border px-3 py-2 pr-10 shadow-sm transition-colors placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-gray-100',
-                    controller.fieldErrors.confirmPassword
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                      : 'border-gray-300'
+                    'glass-input pr-10',
+                    controller.fieldErrors.confirmPassword && 'glass-input-error'
                   )}
                   placeholder="Repeat your password"
                 />
@@ -614,7 +606,7 @@ export function RegisterPageClient() {
                   onClick={() =>
                     controller.setPasswordVisibility('showConfirmPassword')
                   }
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--muted-soft)] hover:text-[var(--muted)] focus:outline-none"
                   aria-label={
                     controller.showConfirmPassword ? 'Hide password' : 'Show password'
                   }
@@ -655,12 +647,12 @@ export function RegisterPageClient() {
           <button
             type="submit"
             disabled={controller.isSubmitting}
-            className="flex w-full items-center justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="glass-button-primary w-full"
           >
             {controller.isSubmitting ? (
               <>
                 <span
-                  className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"
+                  className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-[var(--accent)]"
                   aria-hidden="true"
                 />
                 Creating account...

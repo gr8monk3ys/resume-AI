@@ -22,14 +22,18 @@ import {
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useCallback } from 'react'
 
-import { jobsApi, resumesApi } from '@/lib/api'
+import {
+  jobsApi,
+  analyticsApi,
+  type SourcePerformance as ApiSourcePerformance,
+  type ResumePerformance as ApiResumePerformance,
+} from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn, formatDate } from '@/lib/utils'
 
 import type {
   JobApplication,
   JobStatus,
-  Resume,
   DateRangeOption,
   TimelinePeriod,
   AnalyticsFilters,
@@ -297,28 +301,6 @@ function calculateConversionFunnel(jobs: JobApplication[]): ConversionFunnelStag
   })
 }
 
-function calculateSourcePerformance(jobs: JobApplication[]): SourcePerformance[] {
-  // Distribute jobs more realistically for demo
-  const totalJobs = jobs.length
-  const distribution = [0.35, 0.25, 0.15, 0.1, 0.1, 0.05] // LinkedIn, Indeed, etc.
-
-  return APPLICATION_SOURCES.map((source, index) => {
-    const count = Math.round(totalJobs * (distribution[index] ?? 0))
-    const responses = Math.round(count * (0.2 + Math.random() * 0.15))
-    const interviews = Math.round(responses * (0.3 + Math.random() * 0.2))
-    const offers = Math.round(interviews * (0.1 + Math.random() * 0.1))
-
-    return {
-      source,
-      applications: count,
-      responses,
-      interviews,
-      offers,
-      response_rate: count > 0 ? (responses / count) * 100 : 0,
-    }
-  }).sort((a, b) => b.response_rate - a.response_rate)
-}
-
 function calculateCompanyStats(jobs: JobApplication[]): CompanyStats[] {
   const companyMap = new Map<string, JobApplication[]>()
 
@@ -366,32 +348,6 @@ function calculateCompanyStats(jobs: JobApplication[]): CompanyStats[] {
   })
 
   return stats.sort((a, b) => b.response_rate - a.response_rate).slice(0, 10)
-}
-
-function calculateResumePerformance(
-  jobs: JobApplication[],
-  resumes: Resume[]
-): ResumePerformance[] {
-  // Mock resume assignment for demo purposes
-  // In a real app, jobs would have a resume_id field
-  return resumes.map((resume, index) => {
-    const assignedJobs = jobs.filter((_, i) => i % resumes.length === index)
-    const interviews = assignedJobs.filter((j) =>
-      ['Interview', 'Offer'].includes(j.status)
-    ).length
-    const offers = assignedJobs.filter((j) => j.status === 'Offer').length
-
-    return {
-      resume_id: resume.id,
-      version_name: resume.version_name,
-      applications: assignedJobs.length,
-      interviews,
-      offers,
-      interview_rate:
-        assignedJobs.length > 0 ? (interviews / assignedJobs.length) * 100 : 0,
-      ats_score: resume.ats_score,
-    }
-  }).sort((a, b) => b.interview_rate - a.interview_rate)
 }
 
 function generateActivityLog(jobs: JobApplication[]): ActivityLogEntry[] {
@@ -520,13 +476,13 @@ function MetricCard({
   subtitle,
 }: MetricCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm font-medium text-[var(--muted)]">{title}</p>
+          <p className="mt-2 text-3xl font-bold text-[var(--ink)]">{value}</p>
           {subtitle && (
-            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">{subtitle}</p>
           )}
           {trend !== undefined && (
             <div className="mt-2 flex items-center gap-1">
@@ -544,7 +500,7 @@ function MetricCard({
                 {trend >= 0 ? '+' : ''}
                 {trend.toFixed(1)}%
               </span>
-              <span className="text-sm text-gray-400">vs previous</span>
+              <span className="text-sm text-[var(--muted-soft)]">vs previous</span>
             </div>
           )}
         </div>
@@ -568,9 +524,9 @@ function LineChartComponent({ data, period, onPeriodChange }: LineChartComponent
   const maxCount = Math.max(...data.map((d) => d.count), 1)
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-[var(--ink)] flex items-center gap-2">
           <LineChart className="w-5 h-5 text-primary-600" aria-hidden="true" />
           Application Timeline
         </h3>
@@ -583,7 +539,7 @@ function LineChartComponent({ data, period, onPeriodChange }: LineChartComponent
                 'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
                 period === option.value
                   ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-500 hover:bg-gray-100'
+                  : 'text-[var(--muted)] hover:bg-[var(--surface)]'
               )}
             >
               {option.label}
@@ -593,13 +549,13 @@ function LineChartComponent({ data, period, onPeriodChange }: LineChartComponent
       </div>
 
       {data.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-gray-400">
+        <div className="h-48 flex items-center justify-center text-[var(--muted-soft)]">
           No data available for the selected period
         </div>
       ) : (
         <div className="relative">
           {/* Y-axis labels */}
-          <div className="absolute left-0 top-0 bottom-8 w-8 flex flex-col justify-between text-xs text-gray-400">
+          <div className="absolute left-0 top-0 bottom-8 w-8 flex flex-col justify-between text-xs text-[var(--muted-soft)]">
             <span>{maxCount}</span>
             <span>{Math.round(maxCount / 2)}</span>
             <span>0</span>
@@ -616,7 +572,7 @@ function LineChartComponent({ data, period, onPeriodChange }: LineChartComponent
                   <div className="relative w-full flex justify-center">
                     {/* Tooltip */}
                     <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                      <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                      <div className="bg-[var(--ink)] text-white text-xs rounded px-2 py-1 whitespace-nowrap">
                         {point.count} applications
                       </div>
                     </div>
@@ -651,7 +607,7 @@ function LineChartComponent({ data, period, onPeriodChange }: LineChartComponent
                   key={point.date}
                   className="flex-1 text-center"
                 >
-                  <span className="text-xs text-gray-400 transform -rotate-45 inline-block origin-top-left">
+                  <span className="text-xs text-[var(--muted-soft)] transform -rotate-45 inline-block origin-top-left">
                     {point.label}
                   </span>
                 </div>
@@ -690,8 +646,8 @@ function DonutChart({ data, title }: DonutChartProps) {
   })
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
+      <h3 className="text-lg font-semibold text-[var(--ink)] mb-6 flex items-center gap-2">
         <PieChart className="w-5 h-5 text-primary-600" aria-hidden="true" />
         {title}
       </h3>
@@ -727,8 +683,8 @@ function DonutChart({ data, title }: DonutChartProps) {
             ))}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-bold text-gray-900">{total}</span>
-            <span className="text-xs text-gray-500">Total</span>
+            <span className="text-2xl font-bold text-[var(--ink)]">{total}</span>
+            <span className="text-xs text-[var(--muted)]">Total</span>
           </div>
         </div>
 
@@ -741,11 +697,11 @@ function DonutChart({ data, title }: DonutChartProps) {
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: segment.color }}
                 />
-                <span className="text-sm text-gray-600">{segment.label}</span>
+                <span className="text-sm text-[var(--muted)]">{segment.label}</span>
               </div>
               <div className="text-sm">
-                <span className="font-medium text-gray-900">{segment.value}</span>
-                <span className="text-gray-400 ml-1">
+                <span className="font-medium text-[var(--ink)]">{segment.value}</span>
+                <span className="text-[var(--muted-soft)] ml-1">
                   ({segment.percentage.toFixed(0)}%)
                 </span>
               </div>
@@ -765,8 +721,8 @@ function FunnelChart({ data }: FunnelChartProps) {
   const colors = ['bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-green-500']
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
+      <h3 className="text-lg font-semibold text-[var(--ink)] mb-6 flex items-center gap-2">
         <Target className="w-5 h-5 text-primary-600" aria-hidden="true" />
         Conversion Funnel
       </h3>
@@ -775,10 +731,10 @@ function FunnelChart({ data }: FunnelChartProps) {
         {data.map((stage, index) => (
           <div key={stage.stage}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-gray-700">{stage.stage}</span>
+              <span className="text-sm font-medium text-[var(--ink-secondary)]">{stage.stage}</span>
               <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-gray-900">{stage.count}</span>
-                <span className="text-gray-400">({stage.percentage}%)</span>
+                <span className="font-medium text-[var(--ink)]">{stage.count}</span>
+                <span className="text-[var(--muted-soft)]">({stage.percentage}%)</span>
                 {index > 0 && stage.dropoff_rate > 0 && (
                   <span className="text-red-500 text-xs">
                     -{stage.dropoff_rate}% drop
@@ -787,7 +743,7 @@ function FunnelChart({ data }: FunnelChartProps) {
               </div>
             </div>
             <div className="relative">
-              <div className="w-full bg-gray-100 rounded-full h-8 overflow-hidden">
+              <div className="w-full bg-[var(--surface)] rounded-full h-8 overflow-hidden">
                 <div
                   className={cn(
                     'h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2',
@@ -803,7 +759,7 @@ function FunnelChart({ data }: FunnelChartProps) {
                 </div>
               </div>
               {index < data.length - 1 && (
-                <ArrowRight className="absolute -right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                <ArrowRight className="absolute -right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted-soft)]" />
               )}
             </div>
           </div>
@@ -821,25 +777,30 @@ function SourceBarChart({ data }: SourceBarChartProps) {
   const maxRate = Math.max(...data.map((d) => d.response_rate), 1)
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
+      <h3 className="text-lg font-semibold text-[var(--ink)] mb-6 flex items-center gap-2">
         <BarChart3 className="w-5 h-5 text-primary-600" aria-hidden="true" />
         Source Performance
       </h3>
 
+      {data.length === 0 ? (
+        <p className="text-[var(--muted)] text-center py-8">
+          No source data — set the Application Source field on your jobs
+        </p>
+      ) : (
       <div className="space-y-4">
         {data.map((source) => (
           <div key={source.source}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-gray-700">{source.source}</span>
+              <span className="text-sm font-medium text-[var(--ink-secondary)]">{source.source}</span>
               <div className="flex items-center gap-4 text-sm">
-                <span className="text-gray-500">{source.applications} apps</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-[var(--muted)]">{source.applications} apps</span>
+                <span className="font-medium text-[var(--ink)]">
                   {source.response_rate.toFixed(0)}% response
                 </span>
               </div>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div className="w-full bg-[var(--surface)] rounded-full h-3 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all duration-500"
                 style={{ width: `${(source.response_rate / maxRate) * 100}%` }}
@@ -848,6 +809,7 @@ function SourceBarChart({ data }: SourceBarChartProps) {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }
@@ -861,53 +823,53 @@ function CompanyTable({ data }: CompanyTableProps) {
   const displayData = expanded ? data : data.slice(0, 5)
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
+      <h3 className="text-lg font-semibold text-[var(--ink)] mb-6 flex items-center gap-2">
         <Briefcase className="w-5 h-5 text-primary-600" aria-hidden="true" />
         Top Performing Companies
       </h3>
 
       {data.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">No company data available</p>
+        <p className="text-[var(--muted)] text-center py-8">No company data available</p>
       ) : (
         <>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                <tr className="border-b border-[var(--line)]">
+                  <th className="text-left text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                     Company
                   </th>
-                  <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                  <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                     Apps
                   </th>
-                  <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                  <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                     Responses
                   </th>
-                  <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                  <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                     Interviews
                   </th>
-                  <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                  <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                     Response Rate
                   </th>
-                  <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                  <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                     Avg Time
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-[var(--line)]">
                 {displayData.map((company) => (
-                  <tr key={company.company} className="hover:bg-gray-50">
-                    <td className="py-3 text-sm font-medium text-gray-900">
+                  <tr key={company.company} className="hover:bg-[var(--surface)]">
+                    <td className="py-3 text-sm font-medium text-[var(--ink)]">
                       {company.company}
                     </td>
-                    <td className="py-3 text-sm text-gray-500 text-right">
+                    <td className="py-3 text-sm text-[var(--muted)] text-right">
                       {company.applications}
                     </td>
-                    <td className="py-3 text-sm text-gray-500 text-right">
+                    <td className="py-3 text-sm text-[var(--muted)] text-right">
                       {company.responses}
                     </td>
-                    <td className="py-3 text-sm text-gray-500 text-right">
+                    <td className="py-3 text-sm text-[var(--muted)] text-right">
                       {company.interviews}
                     </td>
                     <td className="py-3 text-right">
@@ -918,13 +880,13 @@ function CompanyTable({ data }: CompanyTableProps) {
                             ? 'bg-green-100 text-green-700'
                             : company.response_rate >= 25
                             ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
+                            : 'bg-[var(--surface)] text-[var(--ink-secondary)]'
                         )}
                       >
                         {company.response_rate.toFixed(0)}%
                       </span>
                     </td>
-                    <td className="py-3 text-sm text-gray-500 text-right">
+                    <td className="py-3 text-sm text-[var(--muted)] text-right">
                       {company.avg_response_time_days !== null
                         ? `${company.avg_response_time_days}d`
                         : '-'}
@@ -963,40 +925,42 @@ interface ResumeTableProps {
 
 function ResumeTable({ data }: ResumeTableProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
+      <h3 className="text-lg font-semibold text-[var(--ink)] mb-6 flex items-center gap-2">
         <FileText className="w-5 h-5 text-primary-600" aria-hidden="true" />
         Resume Version Performance
       </h3>
 
       {data.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">No resume data available</p>
+        <p className="text-[var(--muted)] text-center py-8">
+          No resume tracking data — link resumes to job applications to see performance
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+              <tr className="border-b border-[var(--line)]">
+                <th className="text-left text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                   Version
                 </th>
-                <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                   ATS Score
                 </th>
-                <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                   Applications
                 </th>
-                <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                   Interviews
                 </th>
-                <th className="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">
+                <th className="text-right text-xs font-medium text-[var(--muted)] uppercase tracking-wider pb-3">
                   Interview Rate
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-[var(--line)]">
               {data.map((resume) => (
-                <tr key={resume.resume_id} className="hover:bg-gray-50">
-                  <td className="py-3 text-sm font-medium text-gray-900">
+                <tr key={resume.resume_id} className="hover:bg-[var(--surface)]">
+                  <td className="py-3 text-sm font-medium text-[var(--ink)]">
                     {resume.version_name}
                   </td>
                   <td className="py-3 text-right">
@@ -1014,13 +978,13 @@ function ResumeTable({ data }: ResumeTableProps) {
                         {resume.ats_score}
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-400">-</span>
+                      <span className="text-sm text-[var(--muted-soft)]">-</span>
                     )}
                   </td>
-                  <td className="py-3 text-sm text-gray-500 text-right">
+                  <td className="py-3 text-sm text-[var(--muted)] text-right">
                     {resume.applications}
                   </td>
-                  <td className="py-3 text-sm text-gray-500 text-right">
+                  <td className="py-3 text-sm text-[var(--muted)] text-right">
                     {resume.interviews}
                   </td>
                   <td className="py-3 text-right">
@@ -1031,7 +995,7 @@ function ResumeTable({ data }: ResumeTableProps) {
                           ? 'bg-green-100 text-green-700'
                           : resume.interview_rate >= 15
                           ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
+                          : 'bg-[var(--surface)] text-[var(--ink-secondary)]'
                       )}
                     >
                       {resume.interview_rate.toFixed(0)}%
@@ -1061,30 +1025,30 @@ function ActivityLog({ data }: ActivityLogProps) {
       case 'application':
         return <Briefcase className="w-4 h-4 text-blue-500" />
       default:
-        return <Activity className="w-4 h-4 text-gray-500" />
+        return <Activity className="w-4 h-4 text-[var(--muted)]" />
     }
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+    <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-6">
+      <h3 className="text-lg font-semibold text-[var(--ink)] mb-6 flex items-center gap-2">
         <Activity className="w-5 h-5 text-primary-600" aria-hidden="true" />
         Recent Activity
       </h3>
 
       {data.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">No recent activity</p>
+        <p className="text-[var(--muted)] text-center py-8">No recent activity</p>
       ) : (
         <div className="space-y-4 max-h-[400px] overflow-y-auto">
           {data.map((entry) => (
             <div
               key={`${entry.id}-${entry.timestamp}`}
-              className="flex items-start gap-3 pb-4 border-b border-gray-50 last:border-0"
+              className="flex items-start gap-3 pb-4 border-b border-[var(--line)] last:border-0"
             >
               <div className="mt-0.5">{getActivityIcon(entry.type)}</div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-900">{entry.description}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-sm text-[var(--ink)]">{entry.description}</p>
+                <p className="text-xs text-[var(--muted)] mt-1">
                   {entry.company} - {formatDate(entry.timestamp, 'relative')}
                 </p>
               </div>
@@ -1105,7 +1069,8 @@ export default function AnalyticsPage() {
 
   // Data state
   const [jobs, setJobs] = useState<JobApplication[]>([])
-  const [resumes, setResumes] = useState<Resume[]>([])
+  const [sourcePerf, setSourcePerf] = useState<ApiSourcePerformance[]>([])
+  const [resumePerf, setResumePerf] = useState<ApiResumePerformance[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -1123,13 +1088,15 @@ export default function AnalyticsPage() {
     if (!isAuthenticated) return
 
     try {
-      const [jobsData, resumesData] = await Promise.all([
+      const [jobsData, sourceData, resumeData] = await Promise.all([
         jobsApi.list(),
-        resumesApi.list(),
+        analyticsApi.getSourcePerformance(),
+        analyticsApi.getResumePerformance(),
       ])
 
       setJobs(jobsData)
-      setResumes(resumesData)
+      setSourcePerf(sourceData.sources)
+      setResumePerf(resumeData.resumes)
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
@@ -1222,9 +1189,17 @@ export default function AnalyticsPage() {
     [filteredJobs]
   )
 
-  const sourcePerformance = useMemo(
-    () => calculateSourcePerformance(filteredJobs),
-    [filteredJobs]
+  const sourcePerformance: SourcePerformance[] = useMemo(
+    () =>
+      sourcePerf.map((s) => ({
+        source: s.source,
+        applications: s.total_applications,
+        responses: s.response_count,
+        interviews: s.interview_count,
+        offers: s.offer_count,
+        response_rate: s.response_rate,
+      })),
+    [sourcePerf]
   )
 
   const companyStats = useMemo(
@@ -1232,9 +1207,18 @@ export default function AnalyticsPage() {
     [filteredJobs]
   )
 
-  const resumePerformance = useMemo(
-    () => calculateResumePerformance(filteredJobs, resumes),
-    [filteredJobs, resumes]
+  const resumePerformance: ResumePerformance[] = useMemo(
+    () =>
+      resumePerf.map((r) => ({
+        resume_id: r.resume_id,
+        version_name: r.version_name,
+        applications: r.total_applications,
+        interviews: r.interview_count,
+        offers: r.offer_count,
+        interview_rate: r.interview_rate,
+        ats_score: null,
+      })),
+    [resumePerf]
   )
 
   const activityLog = useMemo(
@@ -1246,7 +1230,7 @@ export default function AnalyticsPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -1258,7 +1242,7 @@ export default function AnalyticsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -1268,8 +1252,8 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Analytics Dashboard</h1>
+          <p className="text-[var(--muted)] mt-1">
             Track your job search performance and identify trends
           </p>
         </div>
@@ -1278,7 +1262,7 @@ export default function AnalyticsPage() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            className="inline-flex items-center px-3 py-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)] rounded-lg transition-colors disabled:opacity-50"
             aria-label="Refresh data"
           >
             <RefreshCw
@@ -1293,7 +1277,7 @@ export default function AnalyticsPage() {
               'inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors',
               showFilters
                 ? 'bg-primary-100 text-primary-700'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                : 'text-[var(--muted)] hover:text-[var(--ink)] hover:bg-[var(--surface)]'
             )}
           >
             <Filter className="w-4 h-4 mr-2" />
@@ -1314,14 +1298,14 @@ export default function AnalyticsPage() {
             </button>
             <div
               id="export-dropdown"
-              className="hidden absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-100 z-10"
+              className="hidden absolute right-0 mt-2 w-40 bg-[var(--surface-strong)] rounded-lg shadow-lg border border-[var(--line)] z-10"
             >
               <button
                 onClick={() => {
                   exportToCSV(jobs, filters)
                   document.getElementById('export-dropdown')?.classList.add('hidden')
                 }}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
+                className="block w-full text-left px-4 py-2 text-sm text-[var(--ink-secondary)] hover:bg-[var(--surface)] rounded-t-lg"
               >
                 Export as CSV
               </button>
@@ -1330,7 +1314,7 @@ export default function AnalyticsPage() {
                   exportToJSON(jobs, filters)
                   document.getElementById('export-dropdown')?.classList.add('hidden')
                 }}
-                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg"
+                className="block w-full text-left px-4 py-2 text-sm text-[var(--ink-secondary)] hover:bg-[var(--surface)] rounded-b-lg"
               >
                 Export as JSON
               </button>
@@ -1341,10 +1325,10 @@ export default function AnalyticsPage() {
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+        <div className="bg-[var(--surface-strong)] rounded-xl shadow-sm border border-[var(--line)] p-4 mb-6">
           <div className="flex flex-wrap items-center gap-4">
             <div>
-              <label htmlFor="filter-date-range" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="filter-date-range" className="block text-xs font-medium text-[var(--muted)] mb-1">
                 Date Range
               </label>
               <select
@@ -1353,7 +1337,7 @@ export default function AnalyticsPage() {
                 onChange={(e) =>
                   setFilters({ ...filters, dateRange: e.target.value as DateRangeOption })
                 }
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="glass-select"
               >
                 {DATE_RANGE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -1366,7 +1350,7 @@ export default function AnalyticsPage() {
             {filters.dateRange === 'custom' && (
               <>
                 <div>
-                  <label htmlFor="filter-start-date" className="block text-xs font-medium text-gray-500 mb-1">
+                  <label htmlFor="filter-start-date" className="block text-xs font-medium text-[var(--muted)] mb-1">
                     Start Date
                   </label>
                   <input
@@ -1376,11 +1360,11 @@ export default function AnalyticsPage() {
                     onChange={(e) =>
                       setFilters({ ...filters, customStartDate: e.target.value })
                     }
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="glass-input"
                   />
                 </div>
                 <div>
-                  <label htmlFor="filter-end-date" className="block text-xs font-medium text-gray-500 mb-1">
+                  <label htmlFor="filter-end-date" className="block text-xs font-medium text-[var(--muted)] mb-1">
                     End Date
                   </label>
                   <input
@@ -1390,14 +1374,14 @@ export default function AnalyticsPage() {
                     onChange={(e) =>
                       setFilters({ ...filters, customEndDate: e.target.value })
                     }
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="glass-input"
                   />
                 </div>
               </>
             )}
 
             <div>
-              <label htmlFor="filter-status" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="filter-status" className="block text-xs font-medium text-[var(--muted)] mb-1">
                 Status
               </label>
               <select
@@ -1406,7 +1390,7 @@ export default function AnalyticsPage() {
                 onChange={(e) =>
                   setFilters({ ...filters, status: e.target.value as JobStatus | '' })
                 }
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="glass-select"
               >
                 <option value="">All Statuses</option>
                 {JOB_STATUSES.map((status) => (
@@ -1418,14 +1402,14 @@ export default function AnalyticsPage() {
             </div>
 
             <div>
-              <label htmlFor="filter-source" className="block text-xs font-medium text-gray-500 mb-1">
+              <label htmlFor="filter-source" className="block text-xs font-medium text-[var(--muted)] mb-1">
                 Source
               </label>
               <select
                 id="filter-source"
                 value={filters.source || ''}
                 onChange={(e) => setFilters({ ...filters, source: e.target.value })}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="glass-select"
               >
                 <option value="">All Sources</option>
                 {APPLICATION_SOURCES.map((source) => (
@@ -1447,7 +1431,7 @@ export default function AnalyticsPage() {
                     customEndDate: undefined,
                   })
                 }
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-sm text-[var(--muted)] hover:text-[var(--ink-secondary)]"
               >
                 Reset filters
               </button>
@@ -1493,7 +1477,7 @@ export default function AnalyticsPage() {
             title="Avg Response Time"
             value={overview.avg_response_time_days > 0 ? `${overview.avg_response_time_days}d` : '-'}
             icon={Clock}
-            iconBgColor="bg-gray-500"
+            iconBgColor="bg-[var(--muted)]"
             subtitle="days to hear back"
           />
         </div>

@@ -47,14 +47,14 @@ export function JobFormModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--line)]">
+          <h2 className="text-xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">
             {job ? 'Edit Job Application' : 'Add Job Application'}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
             aria-label="Close modal"
           >
             <X className="w-6 h-6" />
@@ -64,7 +64,7 @@ export function JobFormModal({
         <form onSubmit={(e) => { void handleSubmit(e) }} className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="company" className="glass-label mb-1">
                 Company <span className="text-red-500">*</span>
               </label>
               <input
@@ -75,12 +75,12 @@ export function JobFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, company: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
 
             <div>
-              <label htmlFor="position" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="position" className="glass-label mb-1">
                 Position <span className="text-red-500">*</span>
               </label>
               <input
@@ -91,14 +91,14 @@ export function JobFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, position: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="status" className="glass-label mb-1">
                 Status
               </label>
               <select
@@ -107,7 +107,7 @@ export function JobFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, status: e.target.value as JobStatus })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-select"
               >
                 {JOB_STATUSES.map((s) => (
                   <option key={s} value={s}>
@@ -118,7 +118,7 @@ export function JobFormModal({
             </div>
 
             <div>
-              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="location" className="glass-label mb-1">
                 Location
               </label>
               <input
@@ -128,7 +128,7 @@ export function JobFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, location: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
                 placeholder="Remote, New York, etc."
               />
             </div>
@@ -136,7 +136,7 @@ export function JobFormModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="application_date" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="application_date" className="glass-label mb-1">
                 Application Date
               </label>
               <input
@@ -146,12 +146,12 @@ export function JobFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, application_date: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
 
             <div>
-              <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="deadline" className="glass-label mb-1">
                 Deadline
               </label>
               <input
@@ -161,13 +161,13 @@ export function JobFormModal({
                 onChange={(e) =>
                   setFormData({ ...formData, deadline: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full glass-input"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="job_url" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="job_url" className="glass-label mb-1">
               Job URL
             </label>
             <input
@@ -177,13 +177,13 @@ export function JobFormModal({
               onChange={(e) =>
                 setFormData({ ...formData, job_url: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-input"
               placeholder="https://..."
             />
           </div>
 
           <div>
-            <label htmlFor="job_description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="job_description" className="glass-label mb-1">
               Job Description
             </label>
             <textarea
@@ -193,13 +193,13 @@ export function JobFormModal({
               onChange={(e) =>
                 setFormData({ ...formData, job_description: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-textarea"
               placeholder="Paste the job description here for better match scoring..."
             />
           </div>
 
           <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="notes" className="glass-label mb-1">
               Notes
             </label>
             <textarea
@@ -209,12 +209,12 @@ export function JobFormModal({
               onChange={(e) =>
                 setFormData({ ...formData, notes: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full glass-textarea"
               placeholder="Any additional notes..."
             />
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center justify-between pt-4 border-t border-[var(--line)]">
             {job && onDelete ? (
               <button
                 type="button"
@@ -223,7 +223,7 @@ export function JobFormModal({
                     onDelete(job.id)
                   }
                 }}
-                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                className="glass-button-danger"
               >
                 Delete
               </button>
@@ -235,14 +235,14 @@ export function JobFormModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="glass-button-secondary"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                className="glass-button-primary disabled:opacity-50"
               >
                 {isSubmitting ? 'Saving...' : job ? 'Save Changes' : 'Add Job'}
               </button>
