@@ -8,6 +8,7 @@ import {
   Database,
   Server,
   AlertTriangle,
+  CreditCard,
   Download,
   Trash2,
   Eye,
@@ -21,12 +22,17 @@ import {
   BookOpen,
   Lock,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
   ApiError,
+  authApi,
+  billingApi,
   coverLettersApi,
+  healthApi,
   jobsApi,
   profileApi,
   resumesApi,
@@ -34,10 +40,10 @@ import {
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
-import type { CoverLetter, JobApplication, JobStats, Profile, User as AuthUser } from '@/types'
+import type { BillingStatus, CoverLetter, JobApplication, JobStats, Profile, UsageInfo, User as AuthUser } from '@/types'
 import type { Resume } from '@/types'
 
-type SettingsTabId = 'profile' | 'statistics' | 'security' | 'data' | 'system'
+type SettingsTabId = 'profile' | 'statistics' | 'security' | 'billing' | 'data' | 'system'
 
 interface TabConfig {
   id: SettingsTabId
@@ -113,17 +119,18 @@ const TABS: TabConfig[] = [
   { id: 'profile', name: 'Profile', icon: User },
   { id: 'statistics', name: 'Statistics', icon: BarChart3 },
   { id: 'security', name: 'Security', icon: Shield },
+  { id: 'billing', name: 'Billing', icon: CreditCard },
   { id: 'data', name: 'Data Management', icon: Database },
   { id: 'system', name: 'System', icon: Server },
 ]
 
 const STATUS_COLORS: Record<string, string> = {
-  Bookmarked: 'bg-gray-100 text-gray-800',
-  Applied: 'bg-blue-100 text-blue-800',
-  'Phone Screen': 'bg-yellow-100 text-yellow-800',
-  Interview: 'bg-purple-100 text-purple-800',
-  Offer: 'bg-green-100 text-green-800',
-  Rejected: 'bg-red-100 text-red-800',
+  Bookmarked: 'bg-[var(--surface)] text-[var(--muted)] border border-[var(--line)]',
+  Applied: 'bg-[var(--status-info-bg)] text-[var(--status-info-text)] border border-[var(--status-info-border)]',
+  'Phone Screen': 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border border-[var(--status-warning-border)]',
+  Interview: 'bg-purple-50/80 text-purple-700 border border-purple-200/50',
+  Offer: 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]',
+  Rejected: 'bg-[var(--status-error-bg)] text-[var(--status-error-text)] border border-[var(--status-error-border)]',
 }
 
 const INITIAL_SYSTEM_HEALTH: SystemHealth = {
@@ -320,7 +327,7 @@ function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
+        className="surface-card-strong w-full max-w-md p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
@@ -329,31 +336,31 @@ function ConfirmDialog({
           <div
             className={cn(
               'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full',
-              confirmVariant === 'danger' ? 'bg-red-100' : 'bg-yellow-100'
+              confirmVariant === 'danger' ? 'bg-[var(--status-error-bg)]' : 'bg-[var(--status-warning-bg)]'
             )}
           >
             <AlertTriangle
               className={cn(
                 'h-5 w-5',
-                confirmVariant === 'danger' ? 'text-red-600' : 'text-yellow-600'
+                confirmVariant === 'danger' ? 'text-[var(--status-error-text)]' : 'text-[var(--status-warning-text)]'
               )}
             />
           </div>
           <div className="flex-1">
-            <h3 id="dialog-title" className="text-lg font-semibold text-gray-900">
+            <h3 id="dialog-title" className="text-lg font-semibold text-[var(--ink)]">
               {title}
             </h3>
-            <p className="mt-2 text-sm text-gray-600">{message}</p>
+            <p className="mt-2 text-sm text-[var(--muted)]">{message}</p>
             {requireTyping && typingText && (
               <div className="mt-4">
-                <p className="mb-2 text-sm text-gray-700">
+                <p className="mb-2 text-sm text-[var(--ink-secondary)]">
                   Type <strong className="font-mono">{typingText}</strong> to confirm:
                 </p>
                 <input
                   type="text"
                   value={typedText}
                   onChange={(e) => setTypedText(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:border-red-500 focus:ring-red-500"
+                  className="glass-input text-sm font-mono"
                   aria-label="Confirmation text"
                 />
               </div>
@@ -363,7 +370,7 @@ function ConfirmDialog({
         <div className="mt-6 flex justify-end space-x-3">
           <button
             onClick={onCancel}
-            className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="glass-button-secondary"
           >
             Cancel
           </button>
@@ -371,10 +378,8 @@ function ConfirmDialog({
             onClick={onConfirm}
             disabled={!canConfirm}
             className={cn(
-              'rounded-md px-4 py-2 text-sm font-medium text-white focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50',
-              confirmVariant === 'danger'
-                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                : 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+              'glass-button-danger disabled:cursor-not-allowed disabled:opacity-50',
+              confirmVariant !== 'danger' && 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
             )}
           >
             {confirmText}
@@ -408,7 +413,7 @@ function PasswordInput({
 
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+      <label htmlFor={id} className="glass-label">
         {label}
       </label>
       <div className="relative mt-1">
@@ -418,8 +423,8 @@ function PasswordInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            'block w-full rounded-md border px-3 py-2 pr-10 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500',
-            error ? 'border-red-300' : 'border-gray-300'
+            'glass-input pr-10',
+            error && 'glass-input-error'
           )}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
@@ -427,7 +432,7 @@ function PasswordInput({
         <button
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
-          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+          className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--muted-soft)] hover:text-[var(--muted)]"
           aria-label={showPassword ? 'Hide password' : 'Show password'}
         >
           {showPassword ? (
@@ -438,14 +443,14 @@ function PasswordInput({
         </button>
       </div>
       {error && (
-        <p id={`${id}-error`} className="mt-1 text-sm text-red-600">
+        <p id={`${id}-error`} className="mt-1 text-sm text-[var(--status-error-text)]">
           {error}
         </p>
       )}
       {strength && (
         <div className="mt-2">
           <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="text-gray-600">Password strength:</span>
+            <span className="text-[var(--muted)]">Password strength:</span>
             <span
               className={cn(
                 'font-medium',
@@ -458,7 +463,7 @@ function PasswordInput({
               {strength.label}
             </span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--line)]">
             <div
               className={cn('h-full transition-all duration-300', strength.color)}
               style={{ width: `${(strength.score / 6) * 100}%` }}
@@ -475,7 +480,7 @@ function StatusBadge({ status, count }: { status: string; count: number }) {
     <div
       className={cn(
         'flex items-center justify-between rounded-lg px-3 py-2',
-        STATUS_COLORS[status] || 'bg-gray-100 text-gray-800'
+        STATUS_COLORS[status] || 'bg-[var(--surface)] text-[var(--ink)]'
       )}
     >
       <span className="text-sm font-medium">{status}</span>
@@ -501,10 +506,10 @@ function HealthIndicator({
   const Icon = config.icon
 
   return (
-    <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
+    <div className="surface-card-inner flex items-center justify-between p-4">
       <div className="flex items-center space-x-3">
         <Icon className={cn('h-5 w-5', config.color)} />
-        <span className="font-medium text-gray-900">{name}</span>
+        <span className="font-medium text-[var(--ink)]">{name}</span>
       </div>
       <span className={cn('text-sm font-medium', config.color)}>{config.label}</span>
     </div>
@@ -519,10 +524,10 @@ function SettingsMessageBanner({ message }: { message: SettingsMessage | null })
   return (
     <div
       className={cn(
-        'mb-6 flex items-center space-x-2 rounded-md border p-4 text-sm',
+        'glass-alert mb-6',
         message.type === 'success'
-          ? 'border-green-200 bg-green-50 text-green-700'
-          : 'border-red-200 bg-red-50 text-red-700'
+          ? 'glass-alert-success'
+          : 'glass-alert-error'
       )}
       role="alert"
     >
@@ -551,10 +556,10 @@ function SettingsNavigation({
             <button
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                'flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium transition-colors',
+                'flex w-full items-center px-4 py-3 text-sm font-medium transition-colors',
                 activeTab === tab.id
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-[#10243f] text-white rounded-[var(--radius-md)]'
+                  : 'text-[var(--muted)] hover:bg-[var(--surface)] rounded-[var(--radius-md)]'
               )}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
@@ -584,8 +589,8 @@ function ProfileSettingsSection({
   onSubmit: (event: React.FormEvent) => Promise<void>
 }) {
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h2 className="mb-6 text-lg font-semibold text-gray-900">Profile Information</h2>
+    <div className="surface-card p-6">
+      <h2 className="font-display mb-6 text-lg font-semibold text-[var(--ink)]">Profile Information</h2>
 
       <form
         onSubmit={(event) => {
@@ -593,20 +598,20 @@ function ProfileSettingsSection({
         }}
         className="space-y-6"
       >
-        <div className="flex items-center space-x-4 border-b pb-6">
+        <div className="flex items-center space-x-4 border-b border-[var(--line)] pb-6">
           <div className="rounded-full bg-primary-100 p-4">
             <User className="h-8 w-8 text-primary-600" />
           </div>
           <div>
-            <p className="font-medium text-gray-900">{user.username}</p>
-            <p className="text-sm text-gray-500">{user.email}</p>
+            <p className="font-medium text-[var(--ink)]">{user.username}</p>
+            <p className="text-sm text-[var(--muted)]">{user.email}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Full Name <span className="text-red-500">*</span>
+            <label htmlFor="name" className="glass-label">
+              Full Name <span className="text-[var(--status-error-text)]">*</span>
             </label>
             <input
               id="name"
@@ -614,12 +619,12 @@ function ProfileSettingsSection({
               required
               value={profile?.name || ''}
               onChange={(event) => onProfileFieldChange('name', event.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+              className="glass-input mt-1"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="glass-label">
               Email Address
             </label>
             <input
@@ -628,21 +633,21 @@ function ProfileSettingsSection({
               value={profile?.email || ''}
               onChange={(event) => onProfileFieldChange('email', event.target.value)}
               className={cn(
-                'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500',
-                getFieldError('email') ? 'border-red-300' : 'border-gray-300'
+                'glass-input mt-1',
+                getFieldError('email') && 'glass-input-error'
               )}
               aria-invalid={Boolean(getFieldError('email'))}
               aria-describedby={getFieldError('email') ? 'email-error' : undefined}
             />
             {getFieldError('email') && (
-              <p id="email-error" className="mt-1 text-sm text-red-600">
+              <p id="email-error" className="mt-1 text-sm text-[var(--status-error-text)]">
                 {getFieldError('email')}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="phone" className="glass-label">
               Phone Number
             </label>
             <input
@@ -651,22 +656,22 @@ function ProfileSettingsSection({
               value={profile?.phone || ''}
               onChange={(event) => onProfileFieldChange('phone', event.target.value)}
               className={cn(
-                'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500',
-                getFieldError('phone') ? 'border-red-300' : 'border-gray-300'
+                'glass-input mt-1',
+                getFieldError('phone') && 'glass-input-error'
               )}
               placeholder="+1 (555) 000-0000"
               aria-invalid={Boolean(getFieldError('phone'))}
               aria-describedby={getFieldError('phone') ? 'phone-error' : undefined}
             />
             {getFieldError('phone') && (
-              <p id="phone-error" className="mt-1 text-sm text-red-600">
+              <p id="phone-error" className="mt-1 text-sm text-[var(--status-error-text)]">
                 {getFieldError('phone')}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="linkedin" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="linkedin" className="glass-label">
               LinkedIn
             </label>
             <input
@@ -675,22 +680,22 @@ function ProfileSettingsSection({
               value={profile?.linkedin || ''}
               onChange={(event) => onProfileFieldChange('linkedin', event.target.value)}
               className={cn(
-                'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500',
-                getFieldError('linkedin') ? 'border-red-300' : 'border-gray-300'
+                'glass-input mt-1',
+                getFieldError('linkedin') && 'glass-input-error'
               )}
               placeholder="https://linkedin.com/in/username"
               aria-invalid={Boolean(getFieldError('linkedin'))}
               aria-describedby={getFieldError('linkedin') ? 'linkedin-error' : undefined}
             />
             {getFieldError('linkedin') && (
-              <p id="linkedin-error" className="mt-1 text-sm text-red-600">
+              <p id="linkedin-error" className="mt-1 text-sm text-[var(--status-error-text)]">
                 {getFieldError('linkedin')}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="github" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="github" className="glass-label">
               GitHub
             </label>
             <input
@@ -699,22 +704,22 @@ function ProfileSettingsSection({
               value={profile?.github || ''}
               onChange={(event) => onProfileFieldChange('github', event.target.value)}
               className={cn(
-                'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500',
-                getFieldError('github') ? 'border-red-300' : 'border-gray-300'
+                'glass-input mt-1',
+                getFieldError('github') && 'glass-input-error'
               )}
               placeholder="https://github.com/username"
               aria-invalid={Boolean(getFieldError('github'))}
               aria-describedby={getFieldError('github') ? 'github-error' : undefined}
             />
             {getFieldError('github') && (
-              <p id="github-error" className="mt-1 text-sm text-red-600">
+              <p id="github-error" className="mt-1 text-sm text-[var(--status-error-text)]">
                 {getFieldError('github')}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="portfolio" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="portfolio" className="glass-label">
               Portfolio Website
             </label>
             <input
@@ -723,15 +728,15 @@ function ProfileSettingsSection({
               value={profile?.portfolio || ''}
               onChange={(event) => onProfileFieldChange('portfolio', event.target.value)}
               className={cn(
-                'mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500',
-                getFieldError('portfolio') ? 'border-red-300' : 'border-gray-300'
+                'glass-input mt-1',
+                getFieldError('portfolio') && 'glass-input-error'
               )}
               placeholder="https://yourportfolio.com"
               aria-invalid={Boolean(getFieldError('portfolio'))}
               aria-describedby={getFieldError('portfolio') ? 'portfolio-error' : undefined}
             />
             {getFieldError('portfolio') && (
-              <p id="portfolio-error" className="mt-1 text-sm text-red-600">
+              <p id="portfolio-error" className="mt-1 text-sm text-[var(--status-error-text)]">
                 {getFieldError('portfolio')}
               </p>
             )}
@@ -742,7 +747,7 @@ function ProfileSettingsSection({
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="glass-button-primary disabled:cursor-not-allowed"
           >
             <Save className="mr-2 h-4 w-4" />
             {isSaving ? 'Saving...' : 'Save Profile'}
@@ -773,57 +778,57 @@ function StatisticsSettingsSection({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-lg bg-white p-4 shadow">
+        <div className="surface-card-inner p-4">
           <div className="flex items-center space-x-3">
-            <div className="rounded-full bg-blue-100 p-2">
-              <FileText className="h-5 w-5 text-blue-600" />
+            <div className="rounded-full bg-[var(--status-info-bg)] p-2">
+              <FileText className="h-5 w-5 text-[var(--status-info-text)]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{resumesCount}</p>
-              <p className="text-sm text-gray-500">Resumes</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">{resumesCount}</p>
+              <p className="text-sm text-[var(--muted)]">Resumes</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg bg-white p-4 shadow">
+        <div className="surface-card-inner p-4">
           <div className="flex items-center space-x-3">
-            <div className="rounded-full bg-green-100 p-2">
-              <Briefcase className="h-5 w-5 text-green-600" />
+            <div className="rounded-full bg-[var(--status-success-bg)] p-2">
+              <Briefcase className="h-5 w-5 text-[var(--status-success-text)]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{totalApplications}</p>
-              <p className="text-sm text-gray-500">Applications</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">{totalApplications}</p>
+              <p className="text-sm text-[var(--muted)]">Applications</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg bg-white p-4 shadow">
+        <div className="surface-card-inner p-4">
           <div className="flex items-center space-x-3">
-            <div className="rounded-full bg-purple-100 p-2">
+            <div className="rounded-full bg-purple-50/80 p-2">
               <Mail className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{coverLettersCount}</p>
-              <p className="text-sm text-gray-500">Cover Letters</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">{coverLettersCount}</p>
+              <p className="text-sm text-[var(--muted)]">Cover Letters</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-lg bg-white p-4 shadow">
+        <div className="surface-card-inner p-4">
           <div className="flex items-center space-x-3">
-            <div className="rounded-full bg-yellow-100 p-2">
-              <BookOpen className="h-5 w-5 text-yellow-600" />
+            <div className="rounded-full bg-[var(--status-warning-bg)] p-2">
+              <BookOpen className="h-5 w-5 text-[var(--status-warning-text)]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">0</p>
-              <p className="text-sm text-gray-500">Journal Entries</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">0</p>
+              <p className="text-sm text-[var(--muted)]">Journal Entries</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-4 text-lg font-semibold text-[var(--ink)]">
           Application Success Rate
         </h3>
         <div className="flex items-center space-x-6">
@@ -837,7 +842,7 @@ function StatisticsSettingsSection({
                   stroke="currentColor"
                   strokeWidth="12"
                   fill="none"
-                  className="text-gray-200"
+                  className="text-[var(--line)]"
                 />
                 <circle
                   cx="64"
@@ -852,23 +857,23 @@ function StatisticsSettingsSection({
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-gray-900">{successRate}%</span>
+                <span className="text-2xl font-bold text-[var(--ink)]">{successRate}%</span>
               </div>
             </div>
           </div>
           <div className="flex-1">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[var(--muted)]">
               {offerCount} offers out of {totalApplications} applications
             </p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-[var(--muted)]">
               Response rate: {responseRate.toFixed(1)}%
             </p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-4 text-lg font-semibold text-[var(--ink)]">
           Applications by Status
         </h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -876,7 +881,7 @@ function StatisticsSettingsSection({
             <StatusBadge key={status} status={status} count={count} />
           ))}
           {Object.keys(statusBreakdown).length === 0 && (
-            <p className="col-span-full py-4 text-center text-gray-500">
+            <p className="col-span-full py-4 text-center text-[var(--muted)]">
               No applications yet
             </p>
           )}
@@ -906,8 +911,8 @@ function SecuritySettingsSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-6 text-lg font-semibold text-gray-900">Change Password</h3>
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-6 text-lg font-semibold text-[var(--ink)]">Change Password</h3>
         <form
           onSubmit={(event) => {
             void onSubmit(event)
@@ -940,7 +945,7 @@ function SecuritySettingsSection({
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex items-center rounded-md bg-primary-600 px-4 py-2 text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="glass-button-primary disabled:cursor-not-allowed"
             >
               <Lock className="mr-2 h-4 w-4" />
               {isSaving ? 'Updating...' : 'Update Password'}
@@ -949,33 +954,33 @@ function SecuritySettingsSection({
         </form>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">Session Information</h3>
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-4 text-lg font-semibold text-[var(--ink)]">Session Information</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b py-3">
+          <div className="flex items-center justify-between border-b border-[var(--line)] py-3">
             <div>
-              <p className="font-medium text-gray-900">Last Login</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-[var(--ink)]">Last Login</p>
+              <p className="text-sm text-[var(--muted)]">
                 {user.last_login ? new Date(user.last_login).toLocaleString() : 'Not available'}
               </p>
             </div>
           </div>
-          <div className="flex items-center justify-between border-b py-3">
+          <div className="flex items-center justify-between border-b border-[var(--line)] py-3">
             <div>
-              <p className="font-medium text-gray-900">Account Created</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-[var(--ink)]">Account Created</p>
+              <p className="text-sm text-[var(--muted)]">
                 {user.created_at ? new Date(user.created_at).toLocaleString() : 'Not available'}
               </p>
             </div>
           </div>
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="font-medium text-gray-900">Active Sessions</p>
-              <p className="text-sm text-gray-500">1 active session (current)</p>
+              <p className="font-medium text-[var(--ink)]">Active Sessions</p>
+              <p className="text-sm text-[var(--muted)]">1 active session (current)</p>
             </div>
             <button
               onClick={onSignOutAllDevices}
-              className="text-sm font-medium text-red-600 hover:text-red-700"
+              className="text-sm font-medium text-[var(--status-error-text)] hover:opacity-80"
             >
               Sign out all devices
             </button>
@@ -1005,29 +1010,29 @@ function DataManagementSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">Export Your Data</h3>
-        <p className="mb-4 text-sm text-gray-600">
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-4 text-lg font-semibold text-[var(--ink)]">Export Your Data</h3>
+        <p className="mb-4 text-sm text-[var(--muted)]">
           Download your data in various formats for backup or migration.
         </p>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={onExportApplications}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            className="glass-button-secondary"
           >
             <Download className="mr-2 h-4 w-4" />
             Export Applications (CSV)
           </button>
           <button
             onClick={onExportJournal}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            className="glass-button-secondary"
           >
             <Download className="mr-2 h-4 w-4" />
             Export Journal (TXT)
           </button>
           <button
             onClick={onExportAll}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            className="glass-button-secondary"
           >
             <Download className="mr-2 h-4 w-4" />
             Export All Data (JSON)
@@ -1035,37 +1040,37 @@ function DataManagementSection({
         </div>
       </div>
 
-      <div className="rounded-lg border-2 border-red-200 bg-white p-6 shadow">
+      <div className="surface-card-inner border-[var(--status-error-border)] p-6">
         <div className="mb-4 flex items-center space-x-2">
-          <AlertTriangle className="h-5 w-5 text-red-600" />
-          <h3 className="text-lg font-semibold text-red-600">Danger Zone</h3>
+          <AlertTriangle className="h-5 w-5 text-[var(--status-error-text)]" />
+          <h3 className="font-display text-lg font-semibold text-[var(--status-error-text)]">Danger Zone</h3>
         </div>
-        <p className="mb-6 text-sm text-gray-600">
+        <p className="mb-6 text-sm text-[var(--muted)]">
           These actions are irreversible. Please be certain before proceeding.
         </p>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between border-b py-4">
+          <div className="flex items-center justify-between border-b border-[var(--line)] py-4">
             <div>
-              <p className="font-medium text-gray-900">Delete All Applications</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-[var(--ink)]">Delete All Applications</p>
+              <p className="text-sm text-[var(--muted)]">
                 Remove all {data.jobs.length} job applications
               </p>
             </div>
             <button
               onClick={onOpenDeleteAppsDialog}
               disabled={data.jobs.length === 0}
-              className="inline-flex items-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="glass-button-danger disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Applications
             </button>
           </div>
 
-          <div className="flex items-center justify-between border-b py-4">
+          <div className="flex items-center justify-between border-b border-[var(--line)] py-4">
             <div>
-              <p className="font-medium text-gray-900">Delete All Data</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-[var(--ink)]">Delete All Data</p>
+              <p className="text-sm text-[var(--muted)]">
                 Remove all resumes, applications, and cover letters
               </p>
             </div>
@@ -1076,7 +1081,7 @@ function DataManagementSection({
                 data.resumes.length === 0 &&
                 data.coverLetters.length === 0
               }
-              className="inline-flex items-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="glass-button-danger disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete All Data
@@ -1085,14 +1090,14 @@ function DataManagementSection({
 
           <div className="flex items-center justify-between py-4">
             <div>
-              <p className="font-medium text-gray-900">Delete Account</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium text-[var(--ink)]">Delete Account</p>
+              <p className="text-sm text-[var(--muted)]">
                 Permanently delete your account and all associated data
               </p>
             </div>
             <button
               onClick={onOpenDeleteAccountDialog}
-              className="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              className="glass-button-primary bg-[var(--status-error-text)] hover:bg-red-700"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Account
@@ -1119,13 +1124,13 @@ function SystemSettingsSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-lg bg-white p-6 shadow">
+      <div className="surface-card p-6">
         <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
+          <h3 className="font-display text-lg font-semibold text-[var(--ink)]">System Health</h3>
           <button
             onClick={onRefresh}
             disabled={isCheckingHealth}
-            className="inline-flex items-center rounded-md bg-primary-50 px-3 py-1.5 text-sm font-medium text-primary-600 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+            className="glass-button-secondary text-sm disabled:opacity-50"
           >
             <RefreshCw
               className={cn('mr-2 h-4 w-4', isCheckingHealth && 'animate-spin')}
@@ -1140,35 +1145,215 @@ function SystemSettingsSection({
         </div>
       </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">API Information</h3>
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-4 text-lg font-semibold text-[var(--ink)]">API Information</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-gray-600">API Version</span>
-            <span className="text-sm font-mono text-gray-900">v1.0.0</span>
+            <span className="text-sm text-[var(--muted)]">API Version</span>
+            <span className="text-sm font-mono text-[var(--ink)]">v1.0.0</span>
           </div>
           <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-gray-600">API Base URL</span>
-            <span className="text-sm font-mono text-gray-900">{apiBaseUrl}</span>
+            <span className="text-sm text-[var(--muted)]">API Base URL</span>
+            <span className="text-sm font-mono text-[var(--ink)]">{apiBaseUrl}</span>
           </div>
           <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-gray-600">Frontend Version</span>
-            <span className="text-sm font-mono text-gray-900">1.0.0</span>
+            <span className="text-sm text-[var(--muted)]">Frontend Version</span>
+            <span className="text-sm font-mono text-[var(--ink)]">1.0.0</span>
           </div>
         </div>
       </div>
 
       {isAdmin && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-          <div className="flex items-start space-x-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600" />
-            <div>
-              <p className="font-medium text-yellow-800">Administrator Account</p>
-              <p className="mt-1 text-sm text-yellow-700">
-                You have administrator privileges. Additional admin features are
-                available in the admin panel.
-              </p>
-            </div>
+        <div className="glass-alert glass-alert-warning">
+          <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="font-medium">Administrator Account</p>
+            <p className="mt-1 text-sm opacity-90">
+              You have administrator privileges. Additional admin features are
+              available in the admin panel.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BillingSettingsSection(): React.ReactElement {
+  const [billingStatus, setBillingStatus] = useState<BillingStatus | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function fetchBillingStatus(): Promise<void> {
+      try {
+        const status = await billingApi.getStatus()
+        if (isMounted) {
+          setBillingStatus(status)
+        }
+      } catch {
+        if (isMounted) {
+          setError('Unable to load billing information')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void fetchBillingStatus()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const handleManageSubscription = async (): Promise<void> => {
+    setIsRedirecting(true)
+    try {
+      const { url } = await billingApi.createPortal()
+      window.location.href = url
+    } catch {
+      setError('Failed to open billing portal')
+      setIsRedirecting(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="surface-card p-6">
+        <div className="flex min-h-[200px] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--accent)]" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !billingStatus) {
+    return (
+      <div className="surface-card p-6">
+        <p className="text-sm text-[var(--status-error-text)]">{error}</p>
+      </div>
+    )
+  }
+
+  const planLabel =
+    billingStatus?.plan === 'pro_monthly'
+      ? 'Pro (Monthly)'
+      : billingStatus?.plan === 'pro_annual'
+        ? 'Pro (Annual)'
+        : 'Free'
+
+  const isPro =
+    billingStatus?.plan === 'pro_monthly' || billingStatus?.plan === 'pro_annual'
+
+  return (
+    <div className="space-y-6">
+      <div className="surface-card p-6">
+        <h3 className="font-display mb-6 text-lg font-semibold text-[var(--ink)]">
+          Current Plan
+        </h3>
+
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] bg-opacity-10">
+            {isPro ? (
+              <Sparkles className="h-6 w-6 text-[var(--accent)]" />
+            ) : (
+              <CreditCard className="h-6 w-6 text-[var(--muted)]" />
+            )}
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-[var(--ink)]">{planLabel}</p>
+            <p className="text-sm text-[var(--muted)]">
+              {billingStatus?.status === 'active'
+                ? 'Active'
+                : billingStatus?.status === 'past_due'
+                  ? 'Past due'
+                  : billingStatus?.status === 'canceled'
+                    ? 'Canceled'
+                    : 'Active'}
+            </p>
+          </div>
+          {isPro && (
+            <span className="ml-auto rounded-full bg-[var(--accent)] bg-opacity-10 px-3 py-1 text-xs font-semibold text-[var(--accent)]">
+              Pro
+            </span>
+          )}
+        </div>
+
+        {billingStatus?.current_period_end && (
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            Current period ends:{' '}
+            {new Date(billingStatus.current_period_end).toLocaleDateString(
+              undefined,
+              { year: 'numeric', month: 'long', day: 'numeric' }
+            )}
+          </p>
+        )}
+
+        {error && (
+          <p className="mt-4 text-sm text-[var(--status-error-text)]">{error}</p>
+        )}
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          {isPro ? (
+            <button
+              type="button"
+              onClick={() => void handleManageSubscription()}
+              disabled={isRedirecting}
+              className="glass-button-secondary disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isRedirecting ? 'Redirecting...' : 'Manage Subscription'}
+            </button>
+          ) : (
+            <Link href="/pricing" className="glass-button-primary flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Upgrade to Pro
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {billingStatus?.usage && billingStatus.usage.length > 0 && (
+        <div className="surface-card p-6">
+          <h3 className="font-display mb-4 text-lg font-semibold text-[var(--ink)]">
+            Usage
+          </h3>
+          <div className="space-y-4">
+            {billingStatus.usage.map((usage: UsageInfo) => (
+              <div key={usage.feature}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-[var(--ink)]">{usage.feature}</span>
+                  <span className="text-[var(--muted)]">
+                    {usage.used}
+                    {usage.limit !== null ? ` / ${usage.limit}` : ''}
+                  </span>
+                </div>
+                {usage.limit !== null && (
+                  <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-[var(--line)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)] transition-all"
+                      style={{
+                        width: `${Math.min((usage.used / usage.limit) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                )}
+                {usage.reset_at && (
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    Resets{' '}
+                    {new Date(usage.reset_at).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1442,7 +1627,7 @@ function useSettingsPageController() {
       }))
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await authApi.changePassword(passwords.currentPassword, passwords.newPassword)
         setPageState((prev) => ({
           ...prev,
           isSaving: false,
@@ -1455,7 +1640,7 @@ function useSettingsPageController() {
           },
         }))
       } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
+        if (error instanceof ApiError && error.status === 400) {
           setPageState((prev) => ({
             ...prev,
             isSaving: false,
@@ -1585,11 +1770,15 @@ function useSettingsPageController() {
     setPageState((prev) => ({ ...prev, isCheckingHealth: true }))
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const result = await healthApi.check()
       setPageState((prev) => ({
         ...prev,
         isCheckingHealth: false,
-        systemHealth: INITIAL_SYSTEM_HEALTH,
+        systemHealth: {
+          api: result.status === 'healthy' ? 'healthy' : 'down',
+          database: result.database.status === 'healthy' ? 'healthy' : 'down',
+          llm: 'healthy',
+        },
         message: {
           type: 'success',
           text: 'System health check completed',
@@ -1601,9 +1790,9 @@ function useSettingsPageController() {
         ...prev,
         isCheckingHealth: false,
         systemHealth: {
-          database: 'degraded',
+          database: 'down',
           llm: 'down',
-          api: 'healthy',
+          api: 'down',
         },
       }))
     }
@@ -1673,8 +1862,8 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Account & Settings</h1>
-        <p className="text-gray-500">
+        <h1 className="font-display text-2xl font-bold tracking-[-0.02em] text-[var(--ink)]">Account & Settings</h1>
+        <p className="text-[var(--muted)]">
           Manage your profile, security settings, and account data
         </p>
       </div>
@@ -1720,6 +1909,10 @@ export default function SettingsPage() {
               onSubmit={controller.handleChangePassword}
               onSignOutAllDevices={controller.handleSignOutAllDevices}
             />
+          )}
+
+          {controller.activeTab === 'billing' && (
+            <BillingSettingsSection />
           )}
 
           {controller.activeTab === 'data' && (
