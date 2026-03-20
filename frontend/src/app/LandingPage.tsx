@@ -10,6 +10,7 @@ import {
 import Link from 'next/link'
 
 import { BrandMark } from '@/components/BrandMark'
+import { PricingComparison } from '@/components/PricingComparison'
 
 const landingStats = [
   { label: 'Role briefs', value: 'Target roles, locations, and exclusions' },
@@ -301,6 +302,24 @@ export function LandingPage() {
                 </ul>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="shell-width py-6 sm:py-10">
+        <div className="mx-auto max-w-5xl px-4">
+          <h2 className="text-center font-display text-4xl font-semibold tracking-[-0.06em] text-slate-950 sm:text-5xl">
+            Simple, transparent pricing
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base leading-7 text-slate-600">
+            Start free and upgrade when you need more power.
+          </p>
+          <div className="mt-10">
+            <PricingComparison
+              onUpgrade={() => {
+                window.location.href = '/register'
+              }}
+            />
           </div>
         </div>
       </section>

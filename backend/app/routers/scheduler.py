@@ -11,6 +11,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from app.config import get_settings
 from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.schemas.scheduler import (
@@ -26,7 +27,7 @@ router = APIRouter(prefix="/api/scheduler", tags=["Scheduler"])
 
 
 @router.get("/status", response_model=SchedulerStatusResponse)
-async def get_scheduler_status(
+def get_scheduler_status(
     current_user: User = Depends(get_current_user),
 ) -> SchedulerStatusResponse:
     """
@@ -43,7 +44,7 @@ async def get_scheduler_status(
 
 
 @router.get("/jobs", response_model=List[ScheduledJobResponse])
-async def list_scheduled_jobs(
+def list_scheduled_jobs(
     current_user: User = Depends(get_current_user),
 ) -> List[ScheduledJobResponse]:
     """
@@ -63,7 +64,7 @@ async def list_scheduled_jobs(
     response_model=ScheduledJobResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_scheduled_job(
+def create_scheduled_job(
     job_data: ScheduledJobCreate,
     current_user: User = Depends(get_current_user),
 ) -> ScheduledJobResponse:
@@ -98,14 +99,20 @@ async def create_scheduled_job(
         )
         return job
     except Exception as e:
+        settings = get_settings()
+        detail = (
+            f"Failed to create scheduled job: {str(e)}"
+            if settings.debug
+            else "Failed to create scheduled job. Please try again."
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create scheduled job: {str(e)}",
+            detail=detail,
         )
 
 
 @router.get("/jobs/{job_id}", response_model=ScheduledJobResponse)
-async def get_scheduled_job(
+def get_scheduled_job(
     job_id: str,
     current_user: User = Depends(get_current_user),
 ) -> ScheduledJobResponse:
@@ -127,7 +134,7 @@ async def get_scheduled_job(
 
 
 @router.put("/jobs/{job_id}", response_model=ScheduledJobResponse)
-async def update_scheduled_job(
+def update_scheduled_job(
     job_id: str,
     update_data: ScheduledJobUpdate,
     current_user: User = Depends(get_current_user),
@@ -162,7 +169,7 @@ async def update_scheduled_job(
 
 
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_scheduled_job(
+def delete_scheduled_job(
     job_id: str,
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -215,7 +222,7 @@ async def trigger_scheduled_job(
 
 
 @router.post("/jobs/{job_id}/pause", response_model=ScheduledJobResponse)
-async def pause_scheduled_job(
+def pause_scheduled_job(
     job_id: str,
     current_user: User = Depends(get_current_user),
 ) -> ScheduledJobResponse:
@@ -242,7 +249,7 @@ async def pause_scheduled_job(
 
 
 @router.post("/jobs/{job_id}/resume", response_model=ScheduledJobResponse)
-async def resume_scheduled_job(
+def resume_scheduled_job(
     job_id: str,
     current_user: User = Depends(get_current_user),
 ) -> ScheduledJobResponse:

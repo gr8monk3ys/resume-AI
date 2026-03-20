@@ -24,7 +24,11 @@ class Profile(Base):
     github = Column(String, nullable=True)
     portfolio = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     user = relationship("User", back_populates="profile")
@@ -37,4 +41,11 @@ class Profile(Base):
     )
     journal_entries = relationship(
         "CareerJournalEntry", back_populates="profile", cascade="all, delete-orphan"
+    )
+    interview_events = relationship(
+        "InterviewEvent", back_populates="profile", cascade="all, delete-orphan"
+    )
+    star_stories = relationship("StarStory", back_populates="profile", cascade="all, delete-orphan")
+    company_research = relationship(
+        "CompanyResearch", back_populates="profile", cascade="all, delete-orphan"
     )

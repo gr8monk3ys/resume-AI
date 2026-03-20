@@ -40,7 +40,10 @@ class JobApplication(Base):
     notes: Column[str] = Column(Text, nullable=True)
     created_at: Column[datetime] = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Column[datetime] = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), index=True
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        index=True,
     )  # Added index
 
     # HR Contact tracking fields

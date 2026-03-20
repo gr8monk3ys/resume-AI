@@ -24,8 +24,8 @@ interface TimelineTabProps {
   jobs: JobApplication[]
   events: InterviewEvent[]
   onAddEvent: (event: Omit<InterviewEvent, 'id' | 'created_at'>) => void
-  onUpdateEvent: (id: string, updates: Partial<InterviewEvent>) => void
-  onDeleteEvent: (id: string) => void
+  onUpdateEvent: (id: number, updates: Partial<InterviewEvent>) => void
+  onDeleteEvent: (id: number) => void
 }
 
 export const TimelineTab = memo(function TimelineTab({
@@ -102,7 +102,7 @@ export const TimelineTab = memo(function TimelineTab({
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as InterviewEventType | '')}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="glass-select"
             aria-label="Filter by event type"
           >
             <option value="">All Event Types</option>
@@ -116,7 +116,7 @@ export const TimelineTab = memo(function TimelineTab({
 
         <button
           onClick={handleShowAddForm}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          className="glass-button-primary inline-flex items-center"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Event
@@ -127,8 +127,8 @@ export const TimelineTab = memo(function TimelineTab({
         {/* Timeline */}
         <div className="lg:col-span-2 space-y-6">
           {groupedEvents.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-              <Calendar className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <div className="bg-[var(--surface-strong)] rounded-lg shadow p-8 text-center text-[var(--muted)]">
+              <Calendar className="w-12 h-12 mx-auto mb-4 text-[var(--muted-soft)]" />
               <p>No events scheduled</p>
               <button
                 onClick={handleShowAddForm}
@@ -152,7 +152,7 @@ export const TimelineTab = memo(function TimelineTab({
                       isToday
                         ? 'bg-primary-100 text-primary-800'
                         : isPast
-                        ? 'bg-gray-100 text-gray-600'
+                        ? 'bg-[var(--surface)] text-[var(--muted)]'
                         : 'bg-blue-50 text-blue-800'
                     )}
                   >
@@ -162,16 +162,16 @@ export const TimelineTab = memo(function TimelineTab({
                     </span>
                   </div>
 
-                  <div className="space-y-3 ml-4 border-l-2 border-gray-200 pl-4">
+                  <div className="space-y-3 ml-4 border-l-2 border-[var(--line)] pl-4">
                     {dateEvents.map((event) => (
                       <div
                         key={event.id}
                         className={cn(
-                          'bg-white rounded-lg shadow p-4 relative',
+                          'bg-[var(--surface-strong)] rounded-lg shadow p-4 relative',
                           event.is_completed && 'opacity-60'
                         )}
                       >
-                        <div className="absolute -left-6 top-4 w-3 h-3 rounded-full bg-white border-2 border-primary-500" />
+                        <div className="absolute -left-6 top-4 w-3 h-3 rounded-full bg-[var(--surface-strong)] border-2 border-primary-500" />
 
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
@@ -192,28 +192,28 @@ export const TimelineTab = memo(function TimelineTab({
                               )}
                             </div>
 
-                            <h4 className="font-medium text-gray-900 mt-2">
+                            <h4 className="font-medium text-[var(--ink)] mt-2">
                               {event.position}
                             </h4>
-                            <p className="text-sm text-gray-500">{event.company}</p>
+                            <p className="text-sm text-[var(--muted)]">{event.company}</p>
 
-                            <div className="mt-3 space-y-1 text-sm text-gray-600">
+                            <div className="mt-3 space-y-1 text-sm text-[var(--muted)]">
                               {event.scheduled_time && (
                                 <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-gray-400" />
+                                  <Clock className="w-4 h-4 text-[var(--muted-soft)]" />
                                   {event.scheduled_time}
                                   {event.duration_minutes && ` (${event.duration_minutes} min)`}
                                 </div>
                               )}
                               {event.location && (
                                 <div className="flex items-center gap-2">
-                                  <MapPin className="w-4 h-4 text-gray-400" />
+                                  <MapPin className="w-4 h-4 text-[var(--muted-soft)]" />
                                   {event.location}
                                 </div>
                               )}
                               {event.meeting_link && (
                                 <div className="flex items-center gap-2">
-                                  <LinkIcon className="w-4 h-4 text-gray-400" />
+                                  <LinkIcon className="w-4 h-4 text-[var(--muted-soft)]" />
                                   <a
                                     href={event.meeting_link}
                                     target="_blank"
@@ -226,14 +226,14 @@ export const TimelineTab = memo(function TimelineTab({
                               )}
                               {event.interviewer_names && event.interviewer_names.length > 0 && (
                                 <div className="flex items-center gap-2">
-                                  <Users className="w-4 h-4 text-gray-400" />
+                                  <Users className="w-4 h-4 text-[var(--muted-soft)]" />
                                   {event.interviewer_names.join(', ')}
                                 </div>
                               )}
                             </div>
 
                             {event.notes && (
-                              <p className="mt-2 text-sm text-gray-500 italic">
+                              <p className="mt-2 text-sm text-[var(--muted)] italic">
                                 {truncate(event.notes, 150)}
                               </p>
                             )}
@@ -245,7 +245,7 @@ export const TimelineTab = memo(function TimelineTab({
                                 onClick={() =>
                                   onUpdateEvent(event.id, { is_completed: true })
                                 }
-                                className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded"
+                                className="p-2 text-[var(--muted-soft)] hover:text-green-600 hover:bg-green-50 rounded"
                                 aria-label="Mark as completed"
                                 title="Mark as completed"
                               >
@@ -254,7 +254,7 @@ export const TimelineTab = memo(function TimelineTab({
                             )}
                             <button
                               onClick={() => onDeleteEvent(event.id)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                              className="p-2 text-[var(--muted-soft)] hover:text-red-600 hover:bg-red-50 rounded"
                               aria-label="Delete event"
                             >
                               <Trash2 className="w-5 h-5" />
@@ -272,14 +272,14 @@ export const TimelineTab = memo(function TimelineTab({
 
         {/* Follow-up Reminders Sidebar */}
         <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-4">
+            <h3 className="font-semibold text-[var(--ink)] mb-4 flex items-center gap-2">
               <Bell className="w-5 h-5 text-amber-500" />
               Follow-up Reminders
             </h3>
 
             {pendingFollowUps.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-[var(--muted)] text-center py-4">
                 No pending follow-ups
               </p>
             ) : (
@@ -323,27 +323,27 @@ export const TimelineTab = memo(function TimelineTab({
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow p-4">
+            <h3 className="font-semibold text-[var(--ink)] mb-4">Quick Stats</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Total Events</span>
+                <span className="text-[var(--muted)]">Total Events</span>
                 <span className="font-medium">{events.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Upcoming</span>
+                <span className="text-[var(--muted)]">Upcoming</span>
                 <span className="font-medium">
                   {events.filter((e) => !e.is_completed && new Date(e.scheduled_date) >= new Date()).length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Completed</span>
+                <span className="text-[var(--muted)]">Completed</span>
                 <span className="font-medium">
                   {events.filter((e) => e.is_completed).length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Pending Follow-ups</span>
+                <span className="text-[var(--muted)]">Pending Follow-ups</span>
                 <span className="font-medium">{pendingFollowUps.length}</span>
               </div>
             </div>

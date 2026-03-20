@@ -12,33 +12,27 @@ dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.6",
-
     # Database - SQLite (dev) + PostgreSQL (prod)
     "sqlalchemy>=2.0.25",
     "alembic>=1.13.1",
     "psycopg2-binary>=2.9.0",  # Sync PostgreSQL driver (migrations, sync endpoints)
     "asyncpg>=0.29.0",          # Async PostgreSQL driver (high-performance endpoints)
-
     # Redis (optional - for distributed rate limiting)
     "redis>=5.0.0",
-
     # Authentication
     "PyJWT[crypto]>=2.8.0",
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.0.0,<5.1.0",  # Pin to avoid passlib compatibility issue with 4.1.0+
     "cffi>=1.16.0",
     "cryptography>=42.0.0",
-
     # AI/LLM - Multi-provider support
     "openai>=1.10.0",
     "langchain>=0.1.0",
     "langchain-openai>=0.0.5",
     "langchain-community>=0.0.13",
-
     # File parsing
     "PyPDF2>=3.0.1",
     "python-docx>=1.1.0",
-
     # Utilities
     "python-dotenv>=1.0.0",
     "pydantic>=2.5.3",
@@ -47,12 +41,12 @@ dependencies = [
     "email-validator>=2.1.0",
     "cachetools>=5.3.0",
     "tenacity>=8.2.0",
-
     # Background scheduler
     "apscheduler>=3.10.4",
-
     # Monitoring and Error Tracking
     "sentry-sdk[fastapi,sqlalchemy]>=2.0.0",
+    "resend>=2.25.0",
+    "stripe>=14.4.1",
 ]
 
 [dependency-groups]

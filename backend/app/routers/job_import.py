@@ -8,9 +8,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, safe_commit
 from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
+from app.middleware.feature_gate import check_usage_limit
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.user import User
@@ -53,9 +54,9 @@ def _save_job_to_db(
     job_data: JobData,
     profile_id: int,
     db: Session,
-) -> int:
+) -> dict:
     """
-    Save imported job data to database.
+    Save imported job data to database with deduplication.
 
     Args:
         job_data: Extracted job data.
@@ -63,8 +64,23 @@ def _save_job_to_db(
         db: Database session.
 
     Returns:
-        Created job application ID.
+        Dict with id, duplicate flag, and status.
     """
+    job_url = job_data.job_url or job_data.application_url
+
+    # Deduplication: check if this URL already exists for this profile
+    if job_url:
+        existing = (
+            db.query(JobApplication)
+            .filter(
+                JobApplication.profile_id == profile_id,
+                JobApplication.job_url == job_url,
+            )
+            .first()
+        )
+        if existing:
+            return {"id": existing.id, "duplicate": True, "status": existing.status}
+
     job = JobApplication(
         profile_id=profile_id,
         company=job_data.company,
@@ -72,15 +88,15 @@ def _save_job_to_db(
         job_description=job_data.description,
         status="Bookmarked",
         location=job_data.location,
-        job_url=job_data.job_url or job_data.application_url,
+        job_url=job_url,
         application_source=_source_to_application_source(job_data.source),
     )
 
     db.add(job)
-    db.commit()
+    safe_commit(db, "save imported job")
     db.refresh(job)
 
-    return job.id
+    return {"id": job.id, "duplicate": False, "status": job.status}
 
 
 @router.post("/url", response_model=JobImportResponse, status_code=status.HTTP_201_CREATED)
@@ -89,6 +105,7 @@ async def import_job_from_url(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     importer: JobImporter = Depends(get_job_importer),
+    _limit=Depends(check_usage_limit("job_import")),
 ):
     """
     Import a single job from a URL.
@@ -119,7 +136,8 @@ async def import_job_from_url(
         # Save to database if requested
         if request.save_to_pipeline:
             try:
-                job_id = _save_job_to_db(job_data, profile.id, db)
+                save_result = _save_job_to_db(job_data, profile.id, db)
+                job_id = save_result["id"]
             except Exception as e:
                 logger.error(f"Failed to save job to database: {e}")
                 warnings.append("Job imported but could not be saved to pipeline")
@@ -153,6 +171,7 @@ async def import_jobs_bulk(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     importer: JobImporter = Depends(get_job_importer),
+    _limit=Depends(check_usage_limit("job_import")),
 ):
     """
     Import multiple jobs from URLs.
@@ -167,7 +186,8 @@ async def import_jobs_bulk(
 
     # Define save callback for each job
     async def save_callback(job_data: JobData) -> int:
-        return _save_job_to_db(job_data, profile.id, db)
+        result = _save_job_to_db(job_data, profile.id, db)
+        return result["id"]
 
     # Perform bulk import
     if request.save_to_pipeline:
@@ -184,6 +204,7 @@ async def import_jobs_from_github(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     importer: JobImporter = Depends(get_job_importer),
+    _limit=Depends(check_usage_limit("job_import")),
 ):
     """
     Import jobs from a SimplifyJobs-style GitHub repository.
@@ -222,7 +243,8 @@ async def import_jobs_from_github(
 
             if request.save_to_pipeline:
                 try:
-                    job_id = _save_job_to_db(job_data, profile.id, db)
+                    save_result = _save_job_to_db(job_data, profile.id, db)
+                    job_id = save_result["id"]
                     total_imported += 1
                 except Exception as e:
                     logger.error(f"Failed to save job {job_data.title}: {e}")
@@ -294,7 +316,7 @@ async def preview_job_from_url(
 
 
 @router.get("/sources")
-async def list_supported_sources(
+def list_supported_sources(
     current_user: User = Depends(get_current_user),
 ):
     """

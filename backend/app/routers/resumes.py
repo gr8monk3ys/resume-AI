@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.database import get_db, safe_commit
 from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
+from app.middleware.feature_gate import get_user_subscription, is_pro_user
 from app.models.profile import Profile
 from app.models.resume import Resume
 from app.models.user import User
@@ -46,7 +47,7 @@ def get_ats_analyzer() -> ATSAnalyzer:
 
 
 @router.get("", response_model=PaginatedResponse[ResumeResponse])
-async def list_resumes(
+def list_resumes(
     pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -85,13 +86,40 @@ async def list_resumes(
 
 
 @router.post("", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
-async def create_resume(
+def create_resume(
     resume_data: ResumeCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a new resume."""
     profile = get_user_profile(current_user, db)
+
+    settings = get_settings()
+    if settings.enable_billing:
+        sub = get_user_subscription(db, current_user.id)
+        if not is_pro_user(sub):
+            resume_count = (
+                db.query(Resume)
+                .filter(
+                    Resume.profile_id == profile.id,
+                )
+                .count()
+            )
+            if resume_count >= 2:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail={
+                        "error": "free_tier_limit_reached",
+                        "feature": "resume_versions",
+                        "limit": 2,
+                        "period": "total",
+                        "used": resume_count,
+                        "message": (
+                            "You have reached the limit of 2 resume versions on the free tier. "
+                            "Upgrade to Pro for unlimited resumes."
+                        ),
+                    },
+                )
 
     resume = Resume(
         profile_id=profile.id,
@@ -106,7 +134,7 @@ async def create_resume(
 
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
-async def get_resume(
+def get_resume(
     resume_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get a specific resume."""
@@ -123,7 +151,7 @@ async def get_resume(
 
 
 @router.put("/{resume_id}", response_model=ResumeResponse)
-async def update_resume(
+def update_resume(
     resume_id: int,
     resume_data: ResumeUpdate,
     current_user: User = Depends(get_current_user),
@@ -150,7 +178,7 @@ async def update_resume(
 
 
 @router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_resume(
+def delete_resume(
     resume_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Delete a resume."""
@@ -168,7 +196,7 @@ async def delete_resume(
 
 
 @router.post("/analyze", response_model=ATSAnalysisResponse)
-async def analyze_resume(
+def analyze_resume(
     request: ATSAnalysisRequest,
     current_user: User = Depends(get_current_user),
 ):

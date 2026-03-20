@@ -10,6 +10,7 @@ Provides:
 """
 
 import html
+import logging
 import re
 import uuid
 from typing import Callable, Dict, List, Optional, Set
@@ -17,6 +18,8 @@ from typing import Callable, Dict, List, Optional, Set
 from fastapi import Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
 
 # Request ID header name
 REQUEST_ID_HEADER = "X-Request-ID"
@@ -217,10 +220,12 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             if self.log_violations:
                 request_id = getattr(request.state, "request_id", "unknown")
                 client_ip = self._get_client_ip(request)
-                print(
-                    f"[SECURITY] Input validation violations - "
-                    f"request_id={request_id}, ip={client_ip}, "
-                    f"path={path}, violations={violations}"
+                logger.warning(
+                    "Input validation violations - " "request_id=%s, ip=%s, path=%s, violations=%s",
+                    request_id,
+                    client_ip,
+                    path,
+                    violations,
                 )
 
             # Optionally block the request
@@ -252,10 +257,16 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def _get_client_ip(request: Request) -> str:
-        """Get client IP address."""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
+        """Get client IP address, respecting trust_proxy_headers setting."""
+        from app.config import get_settings
+
+        settings = get_settings()
+
+        if settings.trust_proxy_headers:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                return forwarded.split(",")[0].strip()
+
         return request.client.host if request.client else "unknown"
 
 
@@ -431,11 +442,63 @@ def get_user_agent(request: Request) -> str:
     return request.headers.get("User-Agent", "unknown")[:500]  # Limit length
 
 
+class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to reject requests with bodies exceeding a size limit.
+
+    Checks the Content-Length header and rejects requests that are too large.
+    Specific paths (e.g., file upload endpoints) can be excluded.
+    """
+
+    def __init__(
+        self,
+        app,
+        max_body_size: int = 10 * 1024 * 1024,  # 10 MB default
+        exempt_paths: Optional[Set[str]] = None,
+    ):
+        super().__init__(app)
+        self.max_body_size = max_body_size
+        self.exempt_paths = exempt_paths or set()
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Reject requests with bodies exceeding the size limit."""
+        path = request.url.path
+
+        # Skip exempt paths (e.g., file upload endpoints)
+        if path in self.exempt_paths:
+            return await call_next(request)
+
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > self.max_body_size:
+                    from fastapi.responses import JSONResponse
+
+                    logger.warning(
+                        "Request body too large: %s bytes on path %s (limit: %s)",
+                        content_length,
+                        path,
+                        self.max_body_size,
+                    )
+                    return JSONResponse(
+                        status_code=413,
+                        content={
+                            "error": "Request body too large",
+                            "detail": f"Maximum body size is {self.max_body_size} bytes",
+                        },
+                    )
+            except ValueError:
+                pass  # Invalid Content-Length, let downstream handle it
+
+        return await call_next(request)
+
+
 # Export all security utilities
 __all__ = [
     "SecurityHeadersMiddleware",
     "RequestIDMiddleware",
     "InputSanitizationMiddleware",
+    "RequestBodySizeLimitMiddleware",
     "sanitize_string",
     "escape_html_string",
     "strip_html_tags",

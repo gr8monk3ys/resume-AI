@@ -133,9 +133,9 @@ export const KanbanBoard = memo(function KanbanBoard({
 
       <DragOverlay>
         {activeJob ? (
-          <div className="bg-white rounded-lg shadow-lg p-4 border-l-4 border-primary-500 w-72 rotate-3">
-            <h4 className="font-medium text-gray-900 truncate">{activeJob.position}</h4>
-            <p className="text-sm text-gray-500 truncate">{activeJob.company}</p>
+          <div className="bg-[var(--surface-strong)] rounded-lg shadow-lg p-4 border-l-4 border-primary-500 w-72 rotate-3">
+            <h4 className="font-medium text-[var(--ink)] truncate">{activeJob.position}</h4>
+            <p className="text-sm text-[var(--muted)] truncate">{activeJob.company}</p>
           </div>
         ) : null}
       </DragOverlay>

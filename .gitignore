@@ -75,3 +75,7 @@ htmlcov/
 
 # Backups
 backups/
+
+# Development screenshots
+dashboard-working.png
+register-page.png.superpowers/

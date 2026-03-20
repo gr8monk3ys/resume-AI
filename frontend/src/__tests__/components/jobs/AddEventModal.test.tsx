@@ -185,7 +185,7 @@ describe('AddEventModal', () => {
       await waitFor(() => {
         expect(mockOnAdd).toHaveBeenCalledWith(
           expect.objectContaining({
-            job_id: 1,
+            job_application_id: 1,
             company: 'TechCorp',
             position: 'Software Engineer',
             event_type: 'phone_screen',

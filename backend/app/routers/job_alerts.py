@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/alerts", tags=["Job Alerts"])
 
 
 @router.get("", response_model=List[JobAlertResponse])
-async def list_alerts(
+def list_alerts(
     active_only: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -42,7 +42,7 @@ async def list_alerts(
 
 
 @router.post("", response_model=JobAlertResponse, status_code=status.HTTP_201_CREATED)
-async def create_alert(
+def create_alert(
     alert_data: JobAlertCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -67,7 +67,7 @@ async def create_alert(
 
 
 @router.get("/{alert_id}", response_model=JobAlertResponse)
-async def get_alert(
+def get_alert(
     alert_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -97,7 +97,7 @@ async def get_alert(
 
 
 @router.put("/{alert_id}", response_model=JobAlertResponse)
-async def update_alert(
+def update_alert(
     alert_id: int,
     update_data: JobAlertUpdate,
     current_user: User = Depends(get_current_user),
@@ -129,7 +129,7 @@ async def update_alert(
 
 
 @router.delete("/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_alert(
+def delete_alert(
     alert_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -154,7 +154,7 @@ async def delete_alert(
 
 
 @router.post("/{alert_id}/test", response_model=AlertTestResult)
-async def test_alert(
+def test_alert(
     alert_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -187,7 +187,7 @@ async def test_alert(
 
 
 @router.post("/{alert_id}/toggle", response_model=JobAlertResponse)
-async def toggle_alert(
+def toggle_alert(
     alert_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -220,7 +220,7 @@ async def toggle_alert(
 
 
 @router.post("/check", response_model=dict)
-async def check_alerts(
+def check_alerts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

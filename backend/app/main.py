@@ -35,6 +35,7 @@ from app.middleware.rate_limiter import (
 )
 from app.middleware.security import (
     InputSanitizationMiddleware,
+    RequestBodySizeLimitMiddleware,
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
     configure_cors,
@@ -44,17 +45,24 @@ from app.routers import (
     ai,
     analytics,
     auth,
+    billing,
     career_journal,
+    company_research,
     cover_letters,
+    email_preferences,
+    interview_events,
     job_alerts,
     job_filters,
     job_import,
     jobs,
+    nudges,
     profile,
     resumes,
     scheduler,
+    star_stories,
     websocket,
 )
+from app.services.email_scheduler import get_email_scheduler
 from app.services.scheduler import get_job_scheduler
 
 logger = logging.getLogger(__name__)
@@ -214,9 +222,27 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to start job scheduler: {e}")
 
+    # Start the email scheduler for automated email delivery
+    if settings.enable_email:
+        try:
+            email_scheduler = get_email_scheduler()
+            email_scheduler.start()
+            logger.info("Email scheduler started successfully")
+        except Exception as e:
+            logger.error(f"Failed to start email scheduler: {e}")
+
     yield
 
     # Shutdown
+    # Stop the email scheduler gracefully
+    if settings.enable_email:
+        try:
+            email_scheduler = get_email_scheduler()
+            email_scheduler.stop()
+            logger.info("Email scheduler stopped")
+        except Exception as e:
+            logger.error(f"Error stopping email scheduler: {e}")
+
     # Stop the job scheduler gracefully
     if settings.enable_scheduler:
         try:
@@ -256,6 +282,13 @@ configure_cors(
 # Request ID middleware (for tracing)
 # Should be early in the chain so other middleware can use it
 app.add_middleware(RequestIDMiddleware)
+
+# Request body size limit middleware (10 MB default, exempt file upload endpoints)
+app.add_middleware(
+    RequestBodySizeLimitMiddleware,
+    max_body_size=10 * 1024 * 1024,  # 10 MB
+    exempt_paths={"/api/resumes/upload"},
+)
 
 # Security headers middleware
 if settings.enable_security_headers:
@@ -339,6 +372,7 @@ if sentry_enabled:
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(billing.router)
 app.include_router(profile.router)
 app.include_router(resumes.router)
 app.include_router(jobs.router)
@@ -346,8 +380,13 @@ app.include_router(job_alerts.router)
 app.include_router(job_filters.router)
 app.include_router(job_import.router)
 app.include_router(cover_letters.router)
+app.include_router(email_preferences.router)
 app.include_router(career_journal.router)
+app.include_router(interview_events.router)
+app.include_router(star_stories.router)
+app.include_router(company_research.router)
 app.include_router(ai.router)
+app.include_router(nudges.router)
 app.include_router(analytics.router)
 app.include_router(scheduler.router)
 app.include_router(websocket.router)

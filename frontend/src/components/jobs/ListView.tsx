@@ -71,7 +71,7 @@ const ListViewRow = memo(function ListViewRow({
 
   return (
     <tr
-      className="hover:bg-gray-50 cursor-pointer"
+      className="hover:bg-[var(--surface)] cursor-pointer"
       onClick={handleRowClick}
       style={style}
     >
@@ -80,20 +80,20 @@ const ListViewRow = memo(function ListViewRow({
           type="checkbox"
           checked={isSelected}
           onChange={handleCheckboxChange}
-          className="rounded border-gray-300"
+          className="rounded border-[var(--line-strong)]"
           aria-label={`Select ${job.company}`}
         />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-900">{job.company}</span>
+          <span className="font-medium text-[var(--ink)]">{job.company}</span>
           {job.job_url && (
             <a
               href={job.job_url}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="text-gray-400 hover:text-primary-600"
+              className="text-[var(--muted-soft)] hover:text-primary-600"
               aria-label="Open job link"
             >
               <ExternalLink className="w-3 h-3" />
@@ -101,7 +101,7 @@ const ListViewRow = memo(function ListViewRow({
           )}
         </div>
       </td>
-      <td className="px-4 py-3 text-gray-700">{job.position}</td>
+      <td className="px-4 py-3 text-[var(--ink-secondary)]">{job.position}</td>
       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
         <select
           value={job.status}
@@ -127,16 +127,16 @@ const ListViewRow = memo(function ListViewRow({
               ? 'bg-green-100 text-green-800'
               : matchScore >= 60
               ? 'bg-yellow-100 text-yellow-800'
-              : 'bg-gray-100 text-gray-800'
+              : 'bg-[var(--surface)] text-[var(--ink)]'
           )}
         >
           {matchScore}%
         </span>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-500">
+      <td className="px-4 py-3 text-sm text-[var(--muted)]">
         {job.application_date ? formatDate(job.application_date) : '-'}
       </td>
-      <td className="px-4 py-3 text-sm text-gray-500">
+      <td className="px-4 py-3 text-sm text-[var(--muted)]">
         {job.location || '-'}
       </td>
       <td
@@ -146,14 +146,14 @@ const ListViewRow = memo(function ListViewRow({
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={handleEdit}
-            className="p-1 text-gray-400 hover:text-primary-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-primary-600"
             aria-label="Edit job"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={handleDelete}
-            className="p-1 text-gray-400 hover:text-red-600"
+            className="p-1 text-[var(--muted-soft)] hover:text-red-600"
             aria-label="Delete job"
           >
             <Trash2 className="w-4 h-4" />
@@ -300,7 +300,7 @@ export const ListView = memo(function ListView({
   const SortIcon = useCallback(
     ({ field }: { field: SortField }) => {
       if (sortField !== field) {
-        return <ArrowUpDown className="w-4 h-4 text-gray-400" />
+        return <ArrowUpDown className="w-4 h-4 text-[var(--muted-soft)]" />
       }
       return sortDirection === 'asc' ? (
         <ChevronUp className="w-4 h-4" />
@@ -316,22 +316,22 @@ export const ListView = memo(function ListView({
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--muted-soft)]" />
           <input
             type="text"
             placeholder="Search by company or position..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 glass-input"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500" />
+          <Filter className="w-4 h-4 text-[var(--muted)]" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as JobStatus | '')}
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="glass-select"
             aria-label="Filter by status"
           >
             <option value="">All Statuses</option>
@@ -357,7 +357,7 @@ export const ListView = memo(function ListView({
                 e.target.value = ''
               }
             }}
-            className="text-sm border border-primary-200 rounded px-2 py-1 bg-white"
+            className="text-sm border border-primary-200 rounded px-2 py-1 bg-[var(--surface-strong)]"
             aria-label="Bulk change status"
           >
             <option value="">Change Status...</option>
@@ -375,7 +375,7 @@ export const ListView = memo(function ListView({
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-gray-600 hover:text-gray-700"
+            className="text-sm text-[var(--muted)] hover:text-[var(--ink-secondary)]"
           >
             Clear Selection
           </button>
@@ -385,23 +385,23 @@ export const ListView = memo(function ListView({
       {/* Table with virtualization */}
       <div
         ref={tableContainerRef}
-        className="overflow-auto rounded-lg border border-gray-200"
+        className="overflow-auto rounded-lg border border-[var(--line)]"
         style={{ maxHeight: 'calc(100vh - 320px)', minHeight: '400px' }}
       >
         <table className="w-full">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+          <thead className="bg-[var(--surface-thin)] sticky top-0 z-10">
             <tr>
               <th className="w-12 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={selectedIds.size === filteredJobs.length && filteredJobs.length > 0}
                   onChange={handleSelectAll}
-                  className="rounded border-gray-300"
+                  className="rounded border-[var(--line-strong)]"
                   aria-label="Select all"
                 />
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-100"
+                className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)] cursor-pointer hover:bg-[var(--surface)]"
                 onClick={handleCompanySort}
               >
                 <div className="flex items-center gap-2">
@@ -410,7 +410,7 @@ export const ListView = memo(function ListView({
                 </div>
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-100"
+                className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)] cursor-pointer hover:bg-[var(--surface)]"
                 onClick={handlePositionSort}
               >
                 <div className="flex items-center gap-2">
@@ -419,7 +419,7 @@ export const ListView = memo(function ListView({
                 </div>
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-100"
+                className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)] cursor-pointer hover:bg-[var(--surface)]"
                 onClick={handleStatusSort}
               >
                 <div className="flex items-center gap-2">
@@ -427,11 +427,11 @@ export const ListView = memo(function ListView({
                   <SortIcon field="status" />
                 </div>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Match
               </th>
               <th
-                className="px-4 py-3 text-left text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-100"
+                className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)] cursor-pointer hover:bg-[var(--surface)]"
                 onClick={handleDateSort}
               >
                 <div className="flex items-center gap-2">
@@ -439,15 +439,15 @@ export const ListView = memo(function ListView({
                   <SortIcon field="application_date" />
                 </div>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+              <th className="px-4 py-3 text-left text-sm font-medium text-[var(--ink-secondary)]">
                 Location
               </th>
-              <th className="w-24 px-4 py-3 text-right text-sm font-medium text-gray-700">
+              <th className="w-24 px-4 py-3 text-right text-sm font-medium text-[var(--ink-secondary)]">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+          <tbody className="divide-y divide-[var(--line)] bg-[var(--surface-strong)]">
             {/* Top padding row for virtualization */}
             {paddingTop > 0 && (
               <tr>
@@ -479,7 +479,7 @@ export const ListView = memo(function ListView({
         </table>
 
         {filteredJobs.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-[var(--muted)]">
             No jobs found matching your criteria
           </div>
         )}
@@ -487,7 +487,7 @@ export const ListView = memo(function ListView({
 
       {/* Item count indicator */}
       {filteredJobs.length > 0 && (
-        <div className="text-sm text-gray-500 text-right">
+        <div className="text-sm text-[var(--muted)] text-right">
           Showing {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
         </div>
       )}

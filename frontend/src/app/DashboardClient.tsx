@@ -15,7 +15,10 @@ import {
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-import { coverLettersApi, jobsApi, resumesApi } from '@/lib/api'
+import { ActionItemsGrid } from '@/components/ActionItemsGrid'
+import { NudgeBar } from '@/components/NudgeBar'
+import { OnboardingWizard } from '@/components/OnboardingWizard'
+import { coverLettersApi, jobsApi, onboardingApi, resumesApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { cn, formatDate } from '@/lib/utils'
 
@@ -593,6 +596,14 @@ function Dashboard({
         jobs={jobs}
       />
 
+      <section className="mt-6">
+        <NudgeBar />
+      </section>
+
+      <section className="mt-6">
+        <ActionItemsGrid />
+      </section>
+
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
         <RecentApplicationsPanel
           isLoadingStats={isLoadingStats}
@@ -607,6 +618,7 @@ function Dashboard({
 export function DashboardClient() {
   const { user, isAuthenticated } = useAuth()
   const [dashboardState, setDashboardState] = useState<DashboardState>(INITIAL_DASHBOARD_STATE)
+  const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -639,6 +651,16 @@ export function DashboardClient() {
         } catch (error) {
           console.error('Failed to fetch dashboard data:', error)
         }
+
+        // Check if user needs onboarding
+        try {
+          const onboarding = await onboardingApi.update({})
+          if (isMounted && !onboarding.onboarding_completed && !onboarding.onboarding_dismissed) {
+            setShowOnboarding(true)
+          }
+        } catch {
+          // Non-critical, skip onboarding check
+        }
       }
 
       if (isMounted) {
@@ -660,13 +682,21 @@ export function DashboardClient() {
   }
 
   return (
-    <Dashboard
-      user={user}
-      jobs={dashboardState.jobs}
-      resumes={dashboardState.resumes}
-      coverLetters={dashboardState.coverLetters}
-      jobStats={dashboardState.jobStats}
-      isLoadingStats={dashboardState.isLoadingStats}
-    />
+    <>
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={() => setShowOnboarding(false)}
+          onDismiss={() => setShowOnboarding(false)}
+        />
+      )}
+      <Dashboard
+        user={user}
+        jobs={dashboardState.jobs}
+        resumes={dashboardState.resumes}
+        coverLetters={dashboardState.coverLetters}
+        jobStats={dashboardState.jobStats}
+        isLoadingStats={dashboardState.isLoadingStats}
+      />
+    </>
   )
 }

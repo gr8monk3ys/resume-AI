@@ -8,6 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import get_db, safe_commit
 from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
@@ -38,7 +39,7 @@ def entry_to_response(entry: CareerJournalEntry) -> CareerJournalResponse:
 
 
 @router.get("", response_model=List[CareerJournalResponse])
-async def list_entries(
+def list_entries(
     search: Optional[str] = Query(None, description="Search in title and description"),
     tag: Optional[str] = Query(None, description="Filter by tag"),
     current_user: User = Depends(get_current_user),
@@ -67,7 +68,7 @@ async def list_entries(
 
 
 @router.post("", response_model=CareerJournalResponse, status_code=status.HTTP_201_CREATED)
-async def create_entry(
+def create_entry(
     entry_data: CareerJournalCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -90,7 +91,7 @@ async def create_entry(
 
 
 @router.get("/{entry_id}", response_model=CareerJournalResponse)
-async def get_entry(
+def get_entry(
     entry_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -114,7 +115,7 @@ async def get_entry(
 
 
 @router.put("/{entry_id}", response_model=CareerJournalResponse)
-async def update_entry(
+def update_entry(
     entry_id: int,
     entry_data: CareerJournalUpdate,
     current_user: User = Depends(get_current_user),
@@ -149,7 +150,7 @@ async def update_entry(
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_entry(
+def delete_entry(
     entry_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -174,7 +175,7 @@ async def delete_entry(
 
 
 @router.post("/{entry_id}/enhance", response_model=EnhanceAchievementResponse)
-async def enhance_achievement(
+def enhance_achievement(
     entry_id: int,
     request: Optional[EnhanceAchievementRequest] = None,
     current_user: User = Depends(get_current_user),
@@ -211,7 +212,13 @@ async def enhance_achievement(
             enhanced=enhanced_text,
         )
     except Exception as e:
+        settings = get_settings()
+        detail = (
+            f"Failed to enhance achievement: {str(e)}"
+            if settings.debug
+            else "Failed to enhance achievement. Please try again."
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to enhance achievement: {str(e)}",
+            detail=detail,
         )

@@ -2,6 +2,7 @@
 Cover letters router.
 """
 
+import asyncio
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,28 +14,57 @@ from app.middleware.auth import get_current_user
 from app.models.cover_letter import CoverLetter
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.cover_letter import CoverLetterCreate, CoverLetterGenerate, CoverLetterResponse
+from app.schemas.cover_letter import (
+    CoverLetterCreate,
+    CoverLetterGenerate,
+    CoverLetterResponse,
+    CoverLetterUpdate,
+)
+from app.schemas.pagination import PaginatedResponse, PaginationParams
 
 router = APIRouter(prefix="/api/cover-letters", tags=["Cover Letters"])
 
 
-@router.get("", response_model=List[CoverLetterResponse])
-async def list_cover_letters(
-    current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+@router.get("", response_model=PaginatedResponse[CoverLetterResponse])
+def list_cover_letters(
+    pagination: PaginationParams = Depends(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """List all cover letters for current user."""
+    """
+    List cover letters for current user with pagination.
+
+    Args:
+        pagination: Pagination parameters (page, limit)
+
+    Returns:
+        Paginated list of cover letters with metadata
+    """
     profile = get_user_profile(current_user, db)
+
+    query = db.query(CoverLetter).filter(CoverLetter.profile_id == profile.id)
+
+    # Get total count efficiently using SQL COUNT
+    total = query.count()
+
+    # Apply pagination and ordering
     cover_letters = (
-        db.query(CoverLetter)
-        .filter(CoverLetter.profile_id == profile.id)
-        .order_by(CoverLetter.updated_at.desc())
+        query.order_by(CoverLetter.updated_at.desc())
+        .offset(pagination.skip)
+        .limit(pagination.limit)
         .all()
     )
-    return cover_letters
+
+    return PaginatedResponse.create(
+        items=cover_letters,
+        total=total,
+        page=pagination.page,
+        limit=pagination.limit,
+    )
 
 
 @router.post("", response_model=CoverLetterResponse, status_code=status.HTTP_201_CREATED)
-async def create_cover_letter(
+def create_cover_letter(
     data: CoverLetterCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -67,11 +97,13 @@ async def generate_cover_letter(
 
     # Get LLM service and generate cover letter
     llm_service = get_llm_service()
-    generated_content = llm_service.generate_cover_letter(
+    generated_content = await asyncio.to_thread(
+        llm_service.generate_cover_letter,
         resume=data.resume_content,
         job_description=data.job_description,
         company_name=data.company_name,
         position=data.position,
+        user_id=int(current_user.id),
     )
 
     # Save to database
@@ -87,7 +119,7 @@ async def generate_cover_letter(
 
 
 @router.get("/{cover_letter_id}", response_model=CoverLetterResponse)
-async def get_cover_letter(
+def get_cover_letter(
     cover_letter_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -107,8 +139,36 @@ async def get_cover_letter(
     return cover_letter
 
 
+@router.put("/{cover_letter_id}", response_model=CoverLetterResponse)
+def update_cover_letter(
+    cover_letter_id: int,
+    data: CoverLetterUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a cover letter."""
+    profile = get_user_profile(current_user, db)
+
+    cover_letter = (
+        db.query(CoverLetter)
+        .filter(CoverLetter.id == cover_letter_id, CoverLetter.profile_id == profile.id)
+        .first()
+    )
+
+    if not cover_letter:
+        raise HTTPException(status_code=404, detail="Cover letter not found")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(cover_letter, field, value)
+
+    safe_commit(db, "update cover letter")
+    db.refresh(cover_letter)
+    return cover_letter
+
+
 @router.delete("/{cover_letter_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_cover_letter(
+def delete_cover_letter(
     cover_letter_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

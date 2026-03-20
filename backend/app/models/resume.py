@@ -22,7 +22,11 @@ class Resume(Base):
     ats_score = Column(Integer, nullable=True)
     keywords = Column(Text, nullable=True)  # JSON string of extracted keywords
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     # Relationships
     profile = relationship("Profile", back_populates="resumes")

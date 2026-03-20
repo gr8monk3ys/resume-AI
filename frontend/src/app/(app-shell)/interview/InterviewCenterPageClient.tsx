@@ -23,23 +23,34 @@ import {
   X,
   Copy,
   Check,
+  Calendar,
+  CalendarClock,
+  ExternalLink,
+  Video,
+  MapPin,
+  Users,
+  Edit3,
+  Plus,
 } from 'lucide-react'
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from 'react'
 
-import { aiApi, resumesApi } from '@/lib/api'
+import { AIMarkdown } from '@/components/AIMarkdown'
+import { aiApi, resumesApi, starStoriesApi, companyResearchApi, interviewEventsApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { migrateLocalStorage } from '@/lib/localStorageMigration'
 import { cn, generateId } from '@/lib/utils'
 
+import type { StarStory as ApiStarStory, CompanyResearch as ApiCompanyResearch, InterviewEventResponse } from '@/lib/api'
 import type { Resume } from '@/types'
 
 // Loading skeleton for tab transitions
 function TabLoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-8 bg-gray-200 rounded w-1/4" />
-      <div className="h-48 bg-gray-200 rounded" />
-      <div className="h-48 bg-gray-200 rounded" />
-      <div className="h-48 bg-gray-200 rounded" />
+      <div className="h-8 bg-[var(--line)] rounded-[var(--radius-md)] w-1/4" />
+      <div className="h-48 bg-[var(--line)] rounded-[var(--radius-md)]" />
+      <div className="h-48 bg-[var(--line)] rounded-[var(--radius-md)]" />
+      <div className="h-48 bg-[var(--line)] rounded-[var(--radius-md)]" />
     </div>
   )
 }
@@ -48,7 +59,7 @@ function TabLoadingSkeleton() {
 // Types
 // ============================================================================
 
-type TabType = 'questions' | 'star' | 'research' | 'practice'
+type TabType = 'questions' | 'star' | 'research' | 'practice' | 'events'
 
 type QuestionCategory =
   | 'Behavioral'
@@ -65,7 +76,7 @@ interface Question {
 }
 
 interface STARStory {
-  id: string
+  id: number | string
   title: string
   situation: string
   task: string
@@ -76,14 +87,134 @@ interface STARStory {
 }
 
 interface CompanyResearch {
+  id?: number
   companyName: string
   talkingPoints: string[]
   notes: string
   checklist: {
-    id: string
-    label: string
-    checked: boolean
+    id?: string
+    text?: string
+    label?: string
+    done?: boolean
+    checked?: boolean
   }[]
+}
+
+function apiStoryToLocal(s: ApiStarStory): STARStory {
+  return {
+    id: s.id,
+    title: s.title,
+    situation: s.situation,
+    task: s.task,
+    action: s.action,
+    result: s.result,
+    tags: s.tags ?? [],
+    createdAt: s.created_at,
+  }
+}
+
+function apiResearchToLocal(r: ApiCompanyResearch): CompanyResearch {
+  return {
+    id: r.id,
+    companyName: r.company_name,
+    talkingPoints: r.talking_points ?? [],
+    notes: r.notes ?? '',
+    checklist: (r.checklist ?? []).map((c) => ({
+      text: c.text,
+      label: c.text,
+      done: c.done,
+      checked: c.done,
+    })),
+  }
+}
+
+interface InterviewEventLocal {
+  id: number
+  jobApplicationId: number | null
+  company: string
+  position: string
+  eventType: string
+  scheduledDate: string
+  scheduledTime: string | null
+  durationMinutes: number | null
+  location: string | null
+  meetingLink: string | null
+  interviewerNames: string[] | null
+  notes: string | null
+  isCompleted: boolean
+  followUpDate: string | null
+  followUpDone: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+function apiEventToLocal(e: InterviewEventResponse): InterviewEventLocal {
+  return {
+    id: e.id,
+    jobApplicationId: e.job_application_id,
+    company: e.company,
+    position: e.position,
+    eventType: e.event_type,
+    scheduledDate: e.scheduled_date,
+    scheduledTime: e.scheduled_time,
+    durationMinutes: e.duration_minutes,
+    location: e.location,
+    meetingLink: e.meeting_link,
+    interviewerNames: e.interviewer_names,
+    notes: e.notes,
+    isCompleted: e.is_completed,
+    followUpDate: e.follow_up_date,
+    followUpDone: e.follow_up_done,
+    createdAt: e.created_at,
+    updatedAt: e.updated_at,
+  }
+}
+
+function localEventToApi(
+  e: Omit<InterviewEventLocal, 'id' | 'createdAt' | 'updatedAt'>
+): Omit<InterviewEventResponse, 'id' | 'profile_id' | 'created_at' | 'updated_at'> {
+  return {
+    job_application_id: e.jobApplicationId,
+    company: e.company,
+    position: e.position,
+    event_type: e.eventType,
+    scheduled_date: e.scheduledDate,
+    scheduled_time: e.scheduledTime,
+    duration_minutes: e.durationMinutes,
+    location: e.location,
+    meeting_link: e.meetingLink,
+    interviewer_names: e.interviewerNames,
+    notes: e.notes,
+    is_completed: e.isCompleted,
+    follow_up_date: e.followUpDate,
+    follow_up_done: e.followUpDone,
+  }
+}
+
+const EVENT_TYPE_OPTIONS = [
+  { value: 'phone_screen', label: 'Phone Screen' },
+  { value: 'technical', label: 'Technical' },
+  { value: 'behavioral', label: 'Behavioral' },
+  { value: 'onsite', label: 'Onsite' },
+  { value: 'panel', label: 'Panel' },
+  { value: 'hr', label: 'HR' },
+  { value: 'final', label: 'Final Round' },
+  { value: 'follow_up', label: 'Follow Up' },
+  { value: 'other', label: 'Other' },
+]
+
+function getCountdownText(dateStr: string): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(dateStr + 'T00:00:00')
+  target.setHours(0, 0, 0, 0)
+  const diffMs = target.getTime() - today.getTime()
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'Today!'
+  if (diffDays === 1) return 'Tomorrow'
+  if (diffDays > 1) return `In ${diffDays} days`
+  if (diffDays === -1) return '1 day ago'
+  return `${Math.abs(diffDays)} days ago`
 }
 
 interface PracticeSession {
@@ -307,11 +438,11 @@ const RESEARCH_CHECKLIST_ITEMS = [
 ]
 
 const CATEGORY_COLORS: Record<QuestionCategory, string> = {
-  Behavioral: 'bg-blue-100 text-blue-800 border-blue-200',
-  Technical: 'bg-purple-100 text-purple-800 border-purple-200',
-  Situational: 'bg-amber-100 text-amber-800 border-amber-200',
-  'Company/Role': 'bg-green-100 text-green-800 border-green-200',
-  'Career Goals': 'bg-pink-100 text-pink-800 border-pink-200',
+  Behavioral: 'bg-[var(--status-info-bg)] text-[var(--status-info-text)] border border-[var(--status-info-border)]',
+  Technical: 'bg-purple-50/80 text-purple-700 border border-purple-200/60',
+  Situational: 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border border-[var(--status-warning-border)]',
+  'Company/Role': 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]',
+  'Career Goals': 'bg-pink-50/80 text-pink-700 border border-pink-200/60',
 }
 
 // ============================================================================
@@ -396,14 +527,12 @@ function QuestionBankTab({
   return (
     <div className="space-y-6">
       {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
+      <div className="glass-tabs flex-wrap">
         <button
           onClick={() => setSelectedCategory('All')}
           className={cn(
-            'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-            selectedCategory === 'All'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            'glass-tab',
+            selectedCategory === 'All' && 'glass-tab-active'
           )}
         >
           All Questions
@@ -413,10 +542,8 @@ function QuestionBankTab({
             key={category}
             onClick={() => setSelectedCategory(category)}
             className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              selectedCategory === category
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              'glass-tab',
+              selectedCategory === category && 'glass-tab-active'
             )}
           >
             {category}
@@ -429,10 +556,10 @@ function QuestionBankTab({
         {filteredQuestions.map((question) => (
           <div
             key={question.id}
-            className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden"
+            className="surface-card-inner overflow-hidden"
           >
             <div
-              className="p-4 cursor-pointer hover:bg-gray-50"
+              className="p-4 cursor-pointer hover:bg-[var(--surface)]"
               onClick={() => toggleExpand(question.id)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -453,28 +580,28 @@ function QuestionBankTab({
                   >
                     {question.category}
                   </span>
-                  <p className="text-gray-900 font-medium">{question.text}</p>
+                  <p className="text-[var(--ink)] font-medium">{question.text}</p>
                 </div>
                 {expandedQuestions.has(question.id) ? (
-                  <ChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <ChevronUp className="w-5 h-5 text-[var(--muted-soft)] flex-shrink-0" />
                 ) : (
-                  <ChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                  <ChevronDown className="w-5 h-5 text-[var(--muted-soft)] flex-shrink-0" />
                 )}
               </div>
             </div>
 
             {expandedQuestions.has(question.id) && (
-              <div className="px-4 pb-4 border-t border-gray-100">
+              <div className="px-4 pb-4 glass-divider">
                 {/* Tips */}
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
+                  <h4 className="text-sm font-medium text-[var(--ink-secondary)] flex items-center gap-2 mb-2">
                     <Lightbulb className="w-4 h-4 text-amber-500" />
                     Tips for answering
                   </h4>
                   <ul className="space-y-1">
                     {question.tips.map((tip) => (
-                      <li key={tip} className="text-sm text-gray-600 flex items-start gap-2">
-                        <span className="text-primary-600 mt-0.5">-</span>
+                      <li key={tip} className="text-sm text-[var(--muted)] flex items-start gap-2">
+                        <span className="text-[var(--accent)] mt-0.5">-</span>
                         {tip}
                       </li>
                     ))}
@@ -483,11 +610,9 @@ function QuestionBankTab({
 
                 {/* Example Answer */}
                 {exampleAnswers[question.id] && (
-                  <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <h4 className="text-sm font-medium text-green-800 mb-2">Example Answer</h4>
-                    <p className="text-sm text-green-700 whitespace-pre-wrap">
-                      {exampleAnswers[question.id]}
-                    </p>
+                  <div className="mt-4 p-3 bg-[var(--status-success-bg)] rounded-[var(--radius-md)] border border-[var(--status-success-border)]">
+                    <h4 className="text-sm font-medium text-[var(--status-success-text)] mb-2">Example Answer</h4>
+                    <AIMarkdown content={exampleAnswers[question.id]!} />
                   </div>
                 )}
 
@@ -499,7 +624,7 @@ function QuestionBankTab({
                       void generateExampleAnswer(question)
                     }}
                     disabled={generatingExample === question.id}
-                    className="inline-flex items-center px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                    className="glass-button-primary"
                   >
                     {generatingExample === question.id ? (
                       <>
@@ -520,7 +645,7 @@ function QuestionBankTab({
                       setPracticeAnswer('')
                       setFeedback(null)
                     }}
-                    className="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                    className="glass-button-secondary"
                   >
                     <MessageSquare className="w-4 h-4 mr-1" />
                     Practice
@@ -535,16 +660,16 @@ function QuestionBankTab({
       {/* Practice Modal */}
       {practiceQuestion && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Practice Mode</h2>
+          <div className="surface-card-strong max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 glass-divider">
+              <h2 className="text-xl font-bold font-display text-[var(--ink)]">Practice Mode</h2>
               <button
                 onClick={() => {
                   setPracticeQuestion(null)
                   setPracticeAnswer('')
                   setFeedback(null)
                 }}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
                 aria-label="Close modal"
               >
                 <X className="w-6 h-6" />
@@ -552,7 +677,7 @@ function QuestionBankTab({
             </div>
 
             <div className="p-4 space-y-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-[var(--surface-thin)] rounded-[var(--radius-md)]">
                 <span
                   className={cn(
                     'inline-block px-2 py-1 text-xs font-medium rounded-full mb-2',
@@ -561,11 +686,11 @@ function QuestionBankTab({
                 >
                   {practiceQuestion.category}
                 </span>
-                <p className="text-gray-900 font-medium">{practiceQuestion.text}</p>
+                <p className="text-[var(--ink)] font-medium">{practiceQuestion.text}</p>
               </div>
 
               <div>
-                <label htmlFor="practice-answer" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="practice-answer" className="glass-label">
                   Your Answer
                 </label>
                 <textarea
@@ -573,7 +698,7 @@ function QuestionBankTab({
                   value={practiceAnswer}
                   onChange={(e) => setPracticeAnswer(e.target.value)}
                   rows={8}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="glass-textarea"
                   placeholder="Type your answer here..."
                 />
               </div>
@@ -581,7 +706,7 @@ function QuestionBankTab({
               <button
                 onClick={() => { void handleGetFeedback() }}
                 disabled={!practiceAnswer.trim() || isGettingFeedback}
-                className="w-full py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center"
+                className="glass-button-primary w-full"
               >
                 {isGettingFeedback ? (
                   <>
@@ -597,12 +722,12 @@ function QuestionBankTab({
               </button>
 
               {feedback && (
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                <div className="p-4 bg-[var(--status-info-bg)] rounded-[var(--radius-md)] border border-[var(--status-info-border)]">
+                  <h4 className="text-sm font-medium text-[var(--status-info-text)] mb-2 flex items-center gap-2">
                     <MessageSquare className="w-4 h-4" />
                     AI Feedback
                   </h4>
-                  <p className="text-sm text-blue-700 whitespace-pre-wrap">{feedback}</p>
+                  <AIMarkdown content={feedback} />
                 </div>
               )}
             </div>
@@ -619,8 +744,8 @@ function QuestionBankTab({
 
 interface STARBuilderTabProps {
   stories: STARStory[]
-  onSaveStory: (story: STARStory) => void
-  onDeleteStory: (id: string) => void
+  onSaveStory: (story: STARStory) => void | Promise<void>
+  onDeleteStory: (id: string | number) => void | Promise<void>
 }
 
 function STARBuilderTab({ stories, onSaveStory, onDeleteStory }: STARBuilderTabProps) {
@@ -632,7 +757,7 @@ function STARBuilderTab({ stories, onSaveStory, onDeleteStory }: STARBuilderTabP
     result: '',
     tags: '',
   })
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | number | null>(null)
   const [isPolishing, setIsPolishing] = useState(false)
   const [polishedStory, setPolishedStory] = useState<string | null>(null)
   const [copiedField, setCopiedField] = useState<string | null>(null)
@@ -651,7 +776,7 @@ function STARBuilderTab({ stories, onSaveStory, onDeleteStory }: STARBuilderTabP
         ? stories.find((s) => s.id === editingId)?.createdAt || new Date().toISOString()
         : new Date().toISOString(),
     }
-    onSaveStory(story)
+    void onSaveStory(story)
     resetForm()
   }
 
@@ -719,15 +844,15 @@ Result: ${formData.result}
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Form */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="surface-card p-6">
+        <h3 className="text-lg font-semibold font-display text-[var(--ink)] mb-4 flex items-center gap-2">
           <Star className="w-5 h-5 text-amber-500" />
           {editingId ? 'Edit STAR Story' : 'Create STAR Story'}
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="story-title" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-title" className="glass-label">
               Story Title
             </label>
             <input
@@ -736,15 +861,15 @@ Result: ${formData.result}
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-input"
               placeholder="e.g., Led cross-functional project"
             />
           </div>
 
           <div>
-            <label htmlFor="story-situation" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-situation" className="glass-label">
               <span className="inline-flex items-center gap-1">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center font-bold">
+                <span className="w-5 h-5 rounded-full bg-[var(--status-info-bg)] text-[var(--status-info-text)] text-xs flex items-center justify-center font-bold">
                   S
                 </span>
                 Situation
@@ -756,15 +881,15 @@ Result: ${formData.result}
               value={formData.situation}
               onChange={(e) => setFormData({ ...formData, situation: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-textarea"
               placeholder="Describe the context and background..."
             />
           </div>
 
           <div>
-            <label htmlFor="story-task" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-task" className="glass-label">
               <span className="inline-flex items-center gap-1">
-                <span className="w-5 h-5 rounded-full bg-green-100 text-green-800 text-xs flex items-center justify-center font-bold">
+                <span className="w-5 h-5 rounded-full bg-[var(--status-success-bg)] text-[var(--status-success-text)] text-xs flex items-center justify-center font-bold">
                   T
                 </span>
                 Task
@@ -776,15 +901,15 @@ Result: ${formData.result}
               value={formData.task}
               onChange={(e) => setFormData({ ...formData, task: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-textarea"
               placeholder="What was your responsibility or goal?"
             />
           </div>
 
           <div>
-            <label htmlFor="story-action" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-action" className="glass-label">
               <span className="inline-flex items-center gap-1">
-                <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 text-xs flex items-center justify-center font-bold">
+                <span className="w-5 h-5 rounded-full bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] text-xs flex items-center justify-center font-bold">
                   A
                 </span>
                 Action
@@ -796,15 +921,15 @@ Result: ${formData.result}
               value={formData.action}
               onChange={(e) => setFormData({ ...formData, action: e.target.value })}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-textarea"
               placeholder="What specific actions did you take?"
             />
           </div>
 
           <div>
-            <label htmlFor="story-result" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-result" className="glass-label">
               <span className="inline-flex items-center gap-1">
-                <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-800 text-xs flex items-center justify-center font-bold">
+                <span className="w-5 h-5 rounded-full bg-purple-50/80 text-purple-700 text-xs flex items-center justify-center font-bold">
                   R
                 </span>
                 Result
@@ -816,13 +941,13 @@ Result: ${formData.result}
               value={formData.result}
               onChange={(e) => setFormData({ ...formData, result: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-textarea"
               placeholder="What was the outcome? Include metrics if possible..."
             />
           </div>
 
           <div>
-            <label htmlFor="story-tags" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="story-tags" className="glass-label">
               Tags (comma separated)
             </label>
             <input
@@ -830,7 +955,7 @@ Result: ${formData.result}
               type="text"
               value={formData.tags}
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-input"
               placeholder="e.g., leadership, problem-solving, teamwork"
             />
           </div>
@@ -840,7 +965,7 @@ Result: ${formData.result}
               type="button"
               onClick={() => { void handlePolish() }}
               disabled={isPolishing || !formData.situation || !formData.task || !formData.action || !formData.result}
-              className="flex-1 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center"
+              className="flex-1 py-2 bg-amber-500 text-white rounded-[var(--radius-md)] hover:bg-amber-600 disabled:opacity-50 flex items-center justify-center font-semibold text-sm"
             >
               {isPolishing ? (
                 <>
@@ -856,7 +981,7 @@ Result: ${formData.result}
             </button>
             <button
               type="submit"
-              className="flex-1 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center"
+              className="glass-button-primary flex-1"
             >
               <Save className="w-5 h-5 mr-2" />
               {editingId ? 'Update Story' : 'Save Story'}
@@ -867,7 +992,7 @@ Result: ${formData.result}
             <button
               type="button"
               onClick={resetForm}
-              className="w-full py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="w-full py-2 text-[var(--muted)] hover:bg-[var(--surface)] rounded-[var(--radius-md)]"
             >
               Cancel Editing
             </button>
@@ -876,12 +1001,12 @@ Result: ${formData.result}
 
         {/* Polished Story Output */}
         {polishedStory && (
-          <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+          <div className="mt-4 p-4 bg-[var(--status-warning-bg)] rounded-[var(--radius-md)] border border-[var(--status-warning-border)]">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-amber-800">AI Polished Version</h4>
+              <h4 className="text-sm font-medium text-[var(--status-warning-text)]">AI Polished Version</h4>
               <button
                 onClick={() => { void copyToClipboard(polishedStory, 'polished') }}
-                className="p-1 text-amber-600 hover:text-amber-800"
+                className="p-1 text-[var(--status-warning-text)] hover:opacity-80"
                 aria-label="Copy to clipboard"
               >
                 {copiedField === 'polished' ? (
@@ -891,34 +1016,34 @@ Result: ${formData.result}
                 )}
               </button>
             </div>
-            <p className="text-sm text-amber-700 whitespace-pre-wrap">{polishedStory}</p>
+            <AIMarkdown content={polishedStory} />
           </div>
         )}
       </div>
 
       {/* Saved Stories */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-primary-600" />
+        <h3 className="text-lg font-semibold font-display text-[var(--ink)] flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-[var(--accent)]" />
           Saved Stories ({stories.length})
         </h3>
 
         {stories.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-            <Star className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <div className="surface-card p-8 text-center text-[var(--muted)]">
+            <Star className="w-12 h-12 mx-auto mb-4 text-[var(--muted-soft)]" />
             <p>No STAR stories saved yet</p>
             <p className="text-sm mt-1">Create your first story using the form</p>
           </div>
         ) : (
           <div className="space-y-4">
             {stories.map((story) => (
-              <div key={story.id} className="bg-white rounded-lg shadow p-4">
+              <div key={story.id} className="surface-card-inner p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium text-gray-900">{story.title}</h4>
+                  <h4 className="font-medium text-[var(--ink)]">{story.title}</h4>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => editStory(story)}
-                      className="p-1 text-gray-400 hover:text-primary-600"
+                      className="p-1 text-[var(--muted-soft)] hover:text-[var(--accent)]"
                       aria-label="Edit story"
                     >
                       <MessageSquare className="w-4 h-4" />
@@ -926,10 +1051,10 @@ Result: ${formData.result}
                     <button
                       onClick={() => {
                         if (confirm('Delete this story?')) {
-                          onDeleteStory(story.id)
+                          void onDeleteStory(story.id)
                         }
                       }}
-                      className="p-1 text-gray-400 hover:text-red-600"
+                      className="p-1 text-[var(--muted-soft)] hover:text-[var(--status-error-text)]"
                       aria-label="Delete story"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -942,7 +1067,7 @@ Result: ${formData.result}
                     {story.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+                        className="px-2 py-0.5 text-xs bg-[var(--surface)] text-[var(--muted)] rounded-full border border-[var(--line)]"
                       >
                         {tag}
                       </span>
@@ -952,20 +1077,20 @@ Result: ${formData.result}
 
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="font-medium text-blue-600">S:</span>{' '}
-                    <span className="text-gray-600">{story.situation.slice(0, 100)}...</span>
+                    <span className="font-medium text-[var(--status-info-text)]">S:</span>{' '}
+                    <span className="text-[var(--muted)]">{story.situation.slice(0, 100)}...</span>
                   </div>
                   <div>
-                    <span className="font-medium text-green-600">T:</span>{' '}
-                    <span className="text-gray-600">{story.task.slice(0, 100)}...</span>
+                    <span className="font-medium text-[var(--status-success-text)]">T:</span>{' '}
+                    <span className="text-[var(--muted)]">{story.task.slice(0, 100)}...</span>
                   </div>
                   <div>
-                    <span className="font-medium text-amber-600">A:</span>{' '}
-                    <span className="text-gray-600">{story.action.slice(0, 100)}...</span>
+                    <span className="font-medium text-[var(--status-warning-text)]">A:</span>{' '}
+                    <span className="text-[var(--muted)]">{story.action.slice(0, 100)}...</span>
                   </div>
                   <div>
-                    <span className="font-medium text-purple-600">R:</span>{' '}
-                    <span className="text-gray-600">{story.result.slice(0, 100)}...</span>
+                    <span className="font-medium text-purple-700">R:</span>{' '}
+                    <span className="text-[var(--muted)]">{story.result.slice(0, 100)}...</span>
                   </div>
                 </div>
               </div>
@@ -983,7 +1108,7 @@ Result: ${formData.result}
 
 interface CompanyResearchTabProps {
   research: CompanyResearch
-  onUpdateResearch: (research: CompanyResearch) => void
+  onUpdateResearch: (research: CompanyResearch) => void | Promise<void>
 }
 
 function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabProps) {
@@ -1006,7 +1131,7 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
         .map((line) => line.replace(/^[-*]\s*/, '').trim())
         .filter((line) => line.length > 0)
 
-      onUpdateResearch({
+      void onUpdateResearch({
         ...research,
         companyName: companyInput,
         talkingPoints: points,
@@ -1018,11 +1143,11 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
     }
   }
 
-  const toggleChecklistItem = (itemId: string) => {
-    const updatedChecklist = research.checklist.map((item) =>
-      item.id === itemId ? { ...item, checked: !item.checked } : item
+  const toggleChecklistItem = (itemId: string | undefined, index: number) => {
+    const updatedChecklist = research.checklist.map((item, i) =>
+      (itemId ? item.id === itemId : i === index) ? { ...item, checked: !item.checked, done: !(item.done ?? item.checked) } : item
     )
-    onUpdateResearch({ ...research, checklist: updatedChecklist })
+    void onUpdateResearch({ ...research, checklist: updatedChecklist })
   }
 
   const completedCount = research.checklist.filter((item) => item.checked).length
@@ -1031,9 +1156,9 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Research Input */}
       <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary-600" />
+        <div className="surface-card p-6">
+          <h3 className="text-lg font-semibold font-display text-[var(--ink)] mb-4 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-[var(--accent)]" />
             Company Research
           </h3>
 
@@ -1042,13 +1167,13 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
               type="text"
               value={companyInput}
               onChange={(e) => setCompanyInput(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-input flex-1"
               placeholder="Enter company name..."
             />
             <button
               onClick={() => { void handleGenerateTalkingPoints() }}
               disabled={isGenerating || !companyInput.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center"
+              className="glass-button-primary"
             >
               {isGenerating ? (
                 <>
@@ -1067,7 +1192,7 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
           {/* Talking Points */}
           {research.talkingPoints.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <h4 className="text-sm font-medium text-[var(--ink-secondary)] flex items-center gap-2">
                 <Lightbulb className="w-4 h-4 text-amber-500" />
                 AI-Generated Talking Points
               </h4>
@@ -1075,9 +1200,9 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
                 {research.talkingPoints.map((point) => (
                   <li
                     key={point}
-                    className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700 flex items-start gap-2"
+                    className="p-3 bg-[var(--surface-thin)] rounded-[var(--radius-md)] text-sm text-[var(--ink-secondary)] flex items-start gap-2"
                   >
-                    <Target className="w-4 h-4 text-primary-600 mt-0.5 flex-shrink-0" />
+                    <Target className="w-4 h-4 text-[var(--accent)] mt-0.5 flex-shrink-0" />
                     {point}
                   </li>
                 ))}
@@ -1087,15 +1212,15 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
 
           {/* Notes */}
           <div className="mt-6">
-            <label htmlFor="research-notes" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="research-notes" className="glass-label">
               Your Research Notes
             </label>
             <textarea
               id="research-notes"
               value={research.notes}
-              onChange={(e) => onUpdateResearch({ ...research, notes: e.target.value })}
+              onChange={(e) => { void onUpdateResearch({ ...research, notes: e.target.value }) }}
               rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-textarea"
               placeholder="Add your own research notes here..."
             />
           </div>
@@ -1103,22 +1228,22 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
       </div>
 
       {/* Research Checklist */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-green-600" />
+      <div className="surface-card p-6">
+        <h3 className="text-lg font-semibold font-display text-[var(--ink)] mb-4 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5 text-[var(--status-success-text)]" />
           Research Checklist
         </h3>
 
         <div className="mb-4">
-          <div className="flex justify-between text-sm text-gray-600 mb-1">
+          <div className="flex justify-between text-sm text-[var(--muted)] mb-1">
             <span>Progress</span>
             <span>
               {completedCount} / {research.checklist.length}
             </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2">
+          <div className="w-full bg-[var(--surface)] rounded-full h-2">
             <div
-              className="bg-green-500 h-2 rounded-full transition-all"
+              className="bg-[var(--signal)] h-2 rounded-full transition-all"
               style={{
                 width: `${(completedCount / research.checklist.length) * 100}%`,
               }}
@@ -1127,22 +1252,22 @@ function CompanyResearchTab({ research, onUpdateResearch }: CompanyResearchTabPr
         </div>
 
         <ul className="space-y-2">
-          {research.checklist.map((item) => (
-            <li key={item.id}>
-              <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+          {research.checklist.map((item, idx) => (
+            <li key={item.id ?? idx}>
+              <label className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] hover:bg-[var(--surface)] cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={item.checked}
-                  onChange={() => toggleChecklistItem(item.id)}
-                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                  checked={item.checked ?? item.done ?? false}
+                  onChange={() => toggleChecklistItem(item.id, idx)}
+                  className="w-4 h-4 text-[var(--signal)] rounded border-[var(--line-strong)] focus:ring-[var(--ink)]/20"
                 />
                 <span
                   className={cn(
                     'text-sm',
-                    item.checked ? 'text-gray-400 line-through' : 'text-gray-700'
+                    (item.checked ?? item.done) ? 'text-[var(--muted-soft)] line-through' : 'text-[var(--ink-secondary)]'
                   )}
                 >
-                  {item.label}
+                  {item.label ?? item.text}
                 </span>
               </label>
             </li>
@@ -1309,15 +1434,15 @@ SUGGESTIONS:
   return (
     <div className="space-y-6">
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="surface-card p-4">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label htmlFor="practice-category" className="text-sm font-medium text-gray-700">Category:</label>
+            <label htmlFor="practice-category" className="text-sm font-medium text-[var(--ink-secondary)]">Category:</label>
             <select
               id="practice-category"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as QuestionCategory)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-select"
             >
               {QUESTION_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -1329,7 +1454,7 @@ SUGGESTIONS:
 
           <button
             onClick={getRandomQuestion}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center"
+            className="glass-button-primary"
           >
             <Shuffle className="w-5 h-5 mr-2" />
             Random Question
@@ -1337,27 +1462,27 @@ SUGGESTIONS:
 
           {/* Timer */}
           <div className="flex items-center gap-2 ml-auto">
-            <Clock className="w-5 h-5 text-gray-500" />
-            <span className="text-xl font-mono font-bold text-gray-900 w-16">
+            <Clock className="w-5 h-5 text-[var(--muted)]" />
+            <span className="text-xl font-mono font-bold text-[var(--ink)] w-16">
               {formatTime(timer)}
             </span>
             <button
               onClick={isTimerRunning ? pauseTimer : startTimer}
-              className="p-2 rounded-lg hover:bg-gray-100"
+              className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--surface)]"
               aria-label={isTimerRunning ? 'Pause timer' : 'Start timer'}
             >
               {isTimerRunning ? (
-                <Pause className="w-5 h-5 text-gray-600" />
+                <Pause className="w-5 h-5 text-[var(--muted)]" />
               ) : (
-                <Play className="w-5 h-5 text-gray-600" />
+                <Play className="w-5 h-5 text-[var(--muted)]" />
               )}
             </button>
             <button
               onClick={resetTimer}
-              className="p-2 rounded-lg hover:bg-gray-100"
+              className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--surface)]"
               aria-label="Reset timer"
             >
-              <RotateCcw className="w-5 h-5 text-gray-600" />
+              <RotateCcw className="w-5 h-5 text-[var(--muted)]" />
             </button>
           </div>
         </div>
@@ -1369,7 +1494,7 @@ SUGGESTIONS:
           {currentQuestion ? (
             <>
               {/* Question */}
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="surface-card p-6">
                 <span
                   className={cn(
                     'inline-block px-2 py-1 text-xs font-medium rounded-full mb-3',
@@ -1378,12 +1503,12 @@ SUGGESTIONS:
                 >
                   {currentQuestion.category}
                 </span>
-                <p className="text-lg font-medium text-gray-900">{currentQuestion.text}</p>
+                <p className="text-lg font-medium text-[var(--ink)]">{currentQuestion.text}</p>
               </div>
 
               {/* Answer Input */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <label htmlFor="practice-mode-answer" className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="surface-card p-6">
+                <label htmlFor="practice-mode-answer" className="glass-label mb-2">
                   Your Answer
                 </label>
                 <textarea
@@ -1391,14 +1516,14 @@ SUGGESTIONS:
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   rows={10}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="glass-textarea"
                   placeholder="Type your answer here... Use the STAR method for behavioral questions."
                 />
 
                 <button
                   onClick={() => { void handleGetFeedback() }}
                   disabled={!answer.trim() || isGettingFeedback}
-                  className="mt-4 w-full py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center"
+                  className="glass-button-primary mt-4 w-full"
                 >
                   {isGettingFeedback ? (
                     <>
@@ -1416,23 +1541,23 @@ SUGGESTIONS:
 
               {/* Feedback */}
               {feedback && (
-                <div className="bg-white rounded-lg shadow p-6">
+                <div className="surface-card p-6">
                   <div className="flex items-center gap-4 mb-4">
                     <div
                       className={cn(
                         'w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold',
                         feedback.score >= 8
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)]'
                           : feedback.score >= 6
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-red-100 text-red-800'
+                          ? 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
+                          : 'bg-[var(--status-error-bg)] text-[var(--status-error-text)]'
                       )}
                     >
                       {feedback.score}/10
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900">Your Score</h4>
-                      <p className="text-sm text-gray-500">
+                      <h4 className="font-semibold text-[var(--ink)]">Your Score</h4>
+                      <p className="text-sm text-[var(--muted)]">
                         {feedback.score >= 8
                           ? 'Excellent answer!'
                           : feedback.score >= 6
@@ -1444,13 +1569,13 @@ SUGGESTIONS:
 
                   <div className="space-y-4">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Analysis</h4>
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{feedback.text}</p>
+                      <h4 className="text-sm font-medium text-[var(--ink-secondary)] mb-2">Analysis</h4>
+                      <AIMarkdown content={feedback.text} />
                     </div>
 
                     {feedback.suggestions.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-[var(--ink-secondary)] mb-2 flex items-center gap-2">
                           <AlertCircle className="w-4 h-4 text-amber-500" />
                           Improvement Suggestions
                         </h4>
@@ -1458,7 +1583,7 @@ SUGGESTIONS:
                           {feedback.suggestions.map((suggestion) => (
                             <li
                               key={suggestion}
-                              className="text-sm text-gray-600 flex items-start gap-2"
+                              className="text-sm text-[var(--muted)] flex items-start gap-2"
                             >
                               <span className="text-amber-500 mt-0.5">-</span>
                               {suggestion}
@@ -1472,15 +1597,15 @@ SUGGESTIONS:
               )}
             </>
           ) : (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <Shuffle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Practice?</h3>
-              <p className="text-gray-500 mb-4">
+            <div className="surface-card p-12 text-center">
+              <Shuffle className="w-16 h-16 mx-auto mb-4 text-[var(--muted-soft)]" />
+              <h3 className="text-lg font-medium font-display text-[var(--ink)] mb-2">Ready to Practice?</h3>
+              <p className="text-[var(--muted)] mb-4">
                 Select a category and click "Random Question" to start practicing
               </p>
               <button
                 onClick={getRandomQuestion}
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 inline-flex items-center"
+                className="glass-button-primary"
               >
                 <Shuffle className="w-5 h-5 mr-2" />
                 Get Started
@@ -1491,25 +1616,25 @@ SUGGESTIONS:
 
         {/* Session Stats */}
         <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Session Stats</h3>
+          <div className="surface-card p-6">
+            <h3 className="text-lg font-semibold font-display text-[var(--ink)] mb-4">Session Stats</h3>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Questions Practiced</span>
-                <span className="font-bold text-gray-900">{sessionHistory.length}</span>
+                <span className="text-sm text-[var(--muted)]">Questions Practiced</span>
+                <span className="font-bold text-[var(--ink)]">{sessionHistory.length}</span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Average Score</span>
-                <span className="font-bold text-gray-900">
+                <span className="text-sm text-[var(--muted)]">Average Score</span>
+                <span className="font-bold text-[var(--ink)]">
                   {sessionHistory.length > 0 ? `${averageScore}/10` : '-'}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Time</span>
-                <span className="font-bold text-gray-900">
+                <span className="text-sm text-[var(--muted)]">Total Time</span>
+                <span className="font-bold text-[var(--ink)]">
                   {formatTime(sessionHistory.reduce((sum, s) => sum + s.timeSpent, 0))}
                 </span>
               </div>
@@ -1517,8 +1642,8 @@ SUGGESTIONS:
           </div>
 
           {sessionHistory.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Practice</h3>
+            <div className="surface-card p-6">
+              <h3 className="text-lg font-semibold font-display text-[var(--ink)] mb-4">Recent Practice</h3>
               <ul className="space-y-3">
                 {sessionHistory
                   .slice(-5)
@@ -1526,7 +1651,7 @@ SUGGESTIONS:
                   .map((session) => {
                     const question = SAMPLE_QUESTIONS.find((q) => q.id === session.questionId)
                     return (
-                      <li key={session.id} className="p-3 bg-gray-50 rounded-lg">
+                      <li key={session.id} className="p-3 bg-[var(--surface-thin)] rounded-[var(--radius-md)]">
                         <div className="flex items-center justify-between mb-1">
                           <span
                             className={cn(
@@ -1540,19 +1665,19 @@ SUGGESTIONS:
                             className={cn(
                               'text-sm font-medium',
                               (session.score || 0) >= 8
-                                ? 'text-green-600'
+                                ? 'text-[var(--status-success-text)]'
                                 : (session.score || 0) >= 6
-                                ? 'text-amber-600'
-                                : 'text-red-600'
+                                ? 'text-[var(--status-warning-text)]'
+                                : 'text-[var(--status-error-text)]'
                             )}
                           >
                             {session.score}/10
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 truncate">
+                        <p className="text-xs text-[var(--muted)] truncate">
                           {question?.text.slice(0, 50)}...
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-[var(--muted-soft)] mt-1">
                           Time: {formatTime(session.timeSpent)}
                         </p>
                       </li>
@@ -1563,12 +1688,12 @@ SUGGESTIONS:
           )}
 
           {/* Tips Card */}
-          <div className="bg-amber-50 rounded-lg border border-amber-200 p-4">
-            <h4 className="text-sm font-medium text-amber-800 mb-2 flex items-center gap-2">
+          <div className="bg-[var(--status-warning-bg)] rounded-[var(--radius-lg)] border border-[var(--status-warning-border)] p-4">
+            <h4 className="text-sm font-medium text-[var(--status-warning-text)] mb-2 flex items-center gap-2">
               <Lightbulb className="w-4 h-4" />
               Practice Tips
             </h4>
-            <ul className="text-sm text-amber-700 space-y-1">
+            <ul className="text-sm text-[var(--status-warning-text)] space-y-1">
               <li>- Practice out loud, not just in writing</li>
               <li>- Aim for 2-3 minute answers</li>
               <li>- Use specific examples with metrics</li>
@@ -1577,6 +1702,613 @@ SUGGESTIONS:
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Interview Events Tab
+// ============================================================================
+
+interface InterviewEventsTabProps {
+  events: InterviewEventLocal[]
+  onSaveEvent: (event: Omit<InterviewEventLocal, 'id' | 'createdAt' | 'updatedAt'> & { id?: number }) => void | Promise<void>
+  onDeleteEvent: (id: number) => void | Promise<void>
+  onMarkComplete: (id: number) => void | Promise<void>
+  onToggleFollowUp: (id: number) => void | Promise<void>
+}
+
+function InterviewEventsTab({
+  events,
+  onSaveEvent,
+  onDeleteEvent,
+  onMarkComplete,
+  onToggleFollowUp,
+}: InterviewEventsTabProps) {
+  const [showModal, setShowModal] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<InterviewEventLocal | null>(null)
+  const [formData, setFormData] = useState({
+    company: '',
+    position: '',
+    eventType: 'phone_screen',
+    scheduledDate: '',
+    scheduledTime: '',
+    durationMinutes: '',
+    location: '',
+    meetingLink: '',
+    interviewerNames: '',
+    notes: '',
+    followUpDate: '',
+  })
+
+  const resetForm = () => {
+    setFormData({
+      company: '',
+      position: '',
+      eventType: 'phone_screen',
+      scheduledDate: '',
+      scheduledTime: '',
+      durationMinutes: '',
+      location: '',
+      meetingLink: '',
+      interviewerNames: '',
+      notes: '',
+      followUpDate: '',
+    })
+    setEditingEvent(null)
+  }
+
+  const openAddModal = () => {
+    resetForm()
+    setShowModal(true)
+  }
+
+  const openEditModal = (event: InterviewEventLocal) => {
+    setEditingEvent(event)
+    setFormData({
+      company: event.company,
+      position: event.position,
+      eventType: event.eventType,
+      scheduledDate: event.scheduledDate,
+      scheduledTime: event.scheduledTime ?? '',
+      durationMinutes: event.durationMinutes?.toString() ?? '',
+      location: event.location ?? '',
+      meetingLink: event.meetingLink ?? '',
+      interviewerNames: event.interviewerNames?.join(', ') ?? '',
+      notes: event.notes ?? '',
+      followUpDate: event.followUpDate ?? '',
+    })
+    setShowModal(true)
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const names = formData.interviewerNames
+      .split(',')
+      .map((n) => n.trim())
+      .filter(Boolean)
+    const eventData = {
+      ...(editingEvent ? { id: editingEvent.id } : {}),
+      jobApplicationId: editingEvent?.jobApplicationId ?? null,
+      company: formData.company,
+      position: formData.position,
+      eventType: formData.eventType,
+      scheduledDate: formData.scheduledDate,
+      scheduledTime: formData.scheduledTime || null,
+      durationMinutes: formData.durationMinutes ? parseInt(formData.durationMinutes, 10) : null,
+      location: formData.location || null,
+      meetingLink: formData.meetingLink || null,
+      interviewerNames: names.length > 0 ? names : null,
+      notes: formData.notes || null,
+      isCompleted: editingEvent?.isCompleted ?? false,
+      followUpDate: formData.followUpDate || null,
+      followUpDone: editingEvent?.followUpDone ?? false,
+    }
+    void onSaveEvent(eventData)
+    setShowModal(false)
+    resetForm()
+  }
+
+  const upcoming = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return events
+      .filter((ev) => {
+        if (ev.isCompleted) return false
+        const evDate = new Date(ev.scheduledDate + 'T00:00:00')
+        evDate.setHours(0, 0, 0, 0)
+        return evDate.getTime() >= today.getTime()
+      })
+      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+  }, [events])
+
+  const past = useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return events
+      .filter((ev) => {
+        if (ev.isCompleted) return true
+        const evDate = new Date(ev.scheduledDate + 'T00:00:00')
+        evDate.setHours(0, 0, 0, 0)
+        return evDate.getTime() < today.getTime()
+      })
+      .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate))
+  }, [events])
+
+  const getEventTypeLabel = (value: string): string => {
+    return EVENT_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value
+  }
+
+  const getEventTypeBadgeColor = (value: string): string => {
+    switch (value) {
+      case 'phone_screen':
+        return 'bg-[var(--status-info-bg)] text-[var(--status-info-text)] border border-[var(--status-info-border)]'
+      case 'technical':
+        return 'bg-purple-50/80 text-purple-700 border border-purple-200/60'
+      case 'behavioral':
+        return 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border border-[var(--status-warning-border)]'
+      case 'onsite':
+        return 'bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]'
+      case 'panel':
+        return 'bg-pink-50/80 text-pink-700 border border-pink-200/60'
+      case 'final':
+        return 'bg-amber-50/80 text-amber-700 border border-amber-200/60'
+      default:
+        return 'bg-[var(--surface)] text-[var(--muted)] border border-[var(--line)]'
+    }
+  }
+
+  const getCountdownBadgeColor = (dateStr: string): string => {
+    const text = getCountdownText(dateStr)
+    if (text === 'Today!') return 'bg-[var(--status-error-bg)] text-[var(--status-error-text)] border border-[var(--status-error-border)]'
+    if (text === 'Tomorrow') return 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border border-[var(--status-warning-border)]'
+    return 'bg-[var(--status-info-bg)] text-[var(--status-info-text)] border border-[var(--status-info-border)]'
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold font-display text-[var(--ink)] flex items-center gap-2">
+          <CalendarClock className="w-5 h-5 text-[var(--accent)]" />
+          Interview Events
+        </h3>
+        <button onClick={openAddModal} className="glass-button-primary">
+          <Plus className="w-4 h-4 mr-1" />
+          Add Event
+        </button>
+      </div>
+
+      {events.length === 0 ? (
+        /* Empty State */
+        <div className="surface-card p-12 text-center">
+          <Calendar className="w-16 h-16 mx-auto mb-4 text-[var(--muted-soft)]" />
+          <h3 className="text-lg font-medium font-display text-[var(--ink)] mb-2">No Interview Events Yet</h3>
+          <p className="text-[var(--muted)] mb-4">
+            Add your first interview to start tracking your schedule
+          </p>
+          <button onClick={openAddModal} className="glass-button-primary">
+            <Plus className="w-5 h-5 mr-2" />
+            Add Your First Interview
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Upcoming Section */}
+          {upcoming.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-[var(--ink-secondary)] mb-3 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[var(--accent)]" />
+                Upcoming ({upcoming.length})
+              </h4>
+              <div className="space-y-3">
+                {upcoming.map((event) => (
+                  <div key={event.id} className="surface-card-inner p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span
+                            className={cn(
+                              'inline-block px-2 py-0.5 text-xs font-medium rounded-full',
+                              getCountdownBadgeColor(event.scheduledDate)
+                            )}
+                          >
+                            {getCountdownText(event.scheduledDate)}
+                          </span>
+                          <span
+                            className={cn(
+                              'inline-block px-2 py-0.5 text-xs font-medium rounded-full',
+                              getEventTypeBadgeColor(event.eventType)
+                            )}
+                          >
+                            {getEventTypeLabel(event.eventType)}
+                          </span>
+                          {event.durationMinutes && (
+                            <span className="text-xs text-[var(--muted)]">
+                              {event.durationMinutes} min
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-medium text-[var(--ink)]">{event.company}</h4>
+                        <p className="text-sm text-[var(--muted)]">{event.position}</p>
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-[var(--muted)]">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(event.scheduledDate + 'T00:00:00').toLocaleDateString()}
+                            {event.scheduledTime && ` at ${event.scheduledTime}`}
+                          </span>
+                          {event.location && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {event.location}
+                            </span>
+                          )}
+                          {event.interviewerNames && event.interviewerNames.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5" />
+                              {event.interviewerNames.join(', ')}
+                            </span>
+                          )}
+                        </div>
+                        {event.notes && (
+                          <p className="mt-2 text-xs text-[var(--muted-soft)] truncate">{event.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        {event.meetingLink && (
+                          <a
+                            href={event.meetingLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-[var(--status-info-bg)] text-[var(--status-info-text)] rounded-[var(--radius-md)] border border-[var(--status-info-border)] hover:opacity-80"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            Join
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEditModal(event)}
+                            className="p-1 text-[var(--muted-soft)] hover:text-[var(--accent)]"
+                            aria-label="Edit event"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => { void onMarkComplete(event.id) }}
+                            className="p-1 text-[var(--muted-soft)] hover:text-[var(--status-success-text)]"
+                            aria-label="Mark complete"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this event?')) {
+                                void onDeleteEvent(event.id)
+                              }
+                            }}
+                            className="p-1 text-[var(--muted-soft)] hover:text-[var(--status-error-text)]"
+                            aria-label="Delete event"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Past Section */}
+          {past.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-[var(--ink-secondary)] mb-3 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-[var(--status-success-text)]" />
+                Past / Completed ({past.length})
+              </h4>
+              <div className="space-y-3">
+                {past.map((event) => (
+                  <div key={event.id} className="surface-card-inner p-4 opacity-80">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span
+                            className={cn(
+                              'inline-block px-2 py-0.5 text-xs font-medium rounded-full',
+                              getEventTypeBadgeColor(event.eventType)
+                            )}
+                          >
+                            {getEventTypeLabel(event.eventType)}
+                          </span>
+                          {event.isCompleted && (
+                            <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]">
+                              Completed
+                            </span>
+                          )}
+                          {event.followUpDate && event.followUpDone && (
+                            <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-[var(--status-success-bg)] text-[var(--status-success-text)] border border-[var(--status-success-border)]">
+                              Follow-up sent
+                            </span>
+                          )}
+                          {event.followUpDate && !event.followUpDone && (() => {
+                            const fDate = new Date(event.followUpDate + 'T00:00:00')
+                            fDate.setHours(0, 0, 0, 0)
+                            const now = new Date()
+                            now.setHours(0, 0, 0, 0)
+                            if (fDate.getTime() < now.getTime()) {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-[var(--status-error-bg)] text-[var(--status-error-text)] border border-[var(--status-error-border)]">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Follow-up overdue
+                                </span>
+                              )
+                            }
+                            return (
+                              <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] border border-[var(--status-warning-border)]">
+                                Follow-up pending
+                              </span>
+                            )
+                          })()}
+                        </div>
+                        <h4 className="font-medium text-[var(--ink)]">{event.company}</h4>
+                        <p className="text-sm text-[var(--muted)]">{event.position}</p>
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-[var(--muted)]">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {new Date(event.scheduledDate + 'T00:00:00').toLocaleDateString()}
+                          </span>
+                          {event.interviewerNames && event.interviewerNames.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5" />
+                              {event.interviewerNames.join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {event.followUpDate && !event.followUpDone && (
+                          <button
+                            onClick={() => { void onToggleFollowUp(event.id) }}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] rounded-[var(--radius-md)] border border-[var(--status-warning-border)] hover:opacity-80"
+                            aria-label="Mark follow-up done"
+                          >
+                            <Check className="w-3 h-3" />
+                            Follow-up done
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openEditModal(event)}
+                          className="p-1 text-[var(--muted-soft)] hover:text-[var(--accent)]"
+                          aria-label="Edit event"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this event?')) {
+                              void onDeleteEvent(event.id)
+                            }
+                          }}
+                          className="p-1 text-[var(--muted-soft)] hover:text-[var(--status-error-text)]"
+                          aria-label="Delete event"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Add/Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="surface-card-strong max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 glass-divider">
+              <h2 className="text-xl font-bold font-display text-[var(--ink)]">
+                {editingEvent ? 'Edit Interview Event' : 'Add Interview Event'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  resetForm()
+                }}
+                className="p-1 text-[var(--muted-soft)] hover:text-[var(--muted)]"
+                aria-label="Close modal"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="event-company" className="glass-label">
+                    Company
+                  </label>
+                  <input
+                    id="event-company"
+                    type="text"
+                    required
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    className="glass-input"
+                    placeholder="e.g., Google"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="event-position" className="glass-label">
+                    Position
+                  </label>
+                  <input
+                    id="event-position"
+                    type="text"
+                    required
+                    value={formData.position}
+                    onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                    className="glass-input"
+                    placeholder="e.g., Senior Software Engineer"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="event-type" className="glass-label">
+                    Event Type
+                  </label>
+                  <select
+                    id="event-type"
+                    value={formData.eventType}
+                    onChange={(e) => setFormData({ ...formData, eventType: e.target.value })}
+                    className="glass-select"
+                  >
+                    {EVENT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="event-date" className="glass-label">
+                    Date
+                  </label>
+                  <input
+                    id="event-date"
+                    type="date"
+                    required
+                    value={formData.scheduledDate}
+                    onChange={(e) => setFormData({ ...formData, scheduledDate: e.target.value })}
+                    className="glass-input"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="event-time" className="glass-label">
+                    Time
+                  </label>
+                  <input
+                    id="event-time"
+                    type="time"
+                    value={formData.scheduledTime}
+                    onChange={(e) => setFormData({ ...formData, scheduledTime: e.target.value })}
+                    className="glass-input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="event-duration" className="glass-label">
+                    Duration (minutes)
+                  </label>
+                  <input
+                    id="event-duration"
+                    type="number"
+                    min="0"
+                    value={formData.durationMinutes}
+                    onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
+                    className="glass-input"
+                    placeholder="e.g., 60"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="event-location" className="glass-label">
+                    Location
+                  </label>
+                  <input
+                    id="event-location"
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    className="glass-input"
+                    placeholder="e.g., Office / Remote"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="event-meeting-link" className="glass-label">
+                  Meeting Link
+                </label>
+                <input
+                  id="event-meeting-link"
+                  type="url"
+                  value={formData.meetingLink}
+                  onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
+                  className="glass-input"
+                  placeholder="e.g., https://zoom.us/j/..."
+                />
+              </div>
+
+              <div>
+                <label htmlFor="event-interviewers" className="glass-label">
+                  Interviewer Names (comma-separated)
+                </label>
+                <input
+                  id="event-interviewers"
+                  type="text"
+                  value={formData.interviewerNames}
+                  onChange={(e) => setFormData({ ...formData, interviewerNames: e.target.value })}
+                  className="glass-input"
+                  placeholder="e.g., Jane Doe, John Smith"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="event-notes" className="glass-label">
+                  Notes
+                </label>
+                <textarea
+                  id="event-notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={3}
+                  className="glass-textarea"
+                  placeholder="Any preparation notes or details..."
+                />
+              </div>
+
+              <div>
+                <label htmlFor="event-followup-date" className="glass-label">
+                  Follow-up Date
+                </label>
+                <input
+                  id="event-followup-date"
+                  type="date"
+                  value={formData.followUpDate}
+                  onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
+                  className="glass-input"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false)
+                    resetForm()
+                  }}
+                  className="flex-1 py-2 text-[var(--muted)] hover:bg-[var(--surface)] rounded-[var(--radius-md)] font-semibold text-sm"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="glass-button-primary flex-1">
+                  <Save className="w-5 h-5 mr-2" />
+                  {editingEvent ? 'Update Event' : 'Save Event'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1601,6 +2333,7 @@ export default function InterviewCenterPage() {
     notes: '',
     checklist: RESEARCH_CHECKLIST_ITEMS,
   })
+  const [interviewEvents, setInterviewEvents] = useState<InterviewEventLocal[]>([])
 
   // Auth redirect
   const loadData = useCallback(async () => {
@@ -1626,50 +2359,179 @@ export default function InterviewCenterPage() {
     }
   }, [isAuthenticated, loadData])
 
-  // Load saved data from localStorage
+  // Load saved data from backend API (migrating localStorage on first run)
   useEffect(() => {
-    const storedStories = localStorage.getItem('star_stories')
-    if (storedStories) {
-      setStarStories(JSON.parse(storedStories) as STARStory[])
+    if (!isAuthenticated) return
+    let mounted = true
+
+    async function loadSavedData() {
+      // Migrate STAR stories from localStorage
+      await migrateLocalStorage<{ title: string; situation: string; task: string; action: string; result: string; tags?: string[] }, { title: string; situation: string; task: string; action: string; result: string; tags: string[] }>(
+        'star_stories',
+        () => starStoriesApi.list(),
+        (item) => starStoriesApi.create(item as Parameters<typeof starStoriesApi.create>[0]),
+        (raw) => ({
+          title: raw.title,
+          situation: raw.situation,
+          task: raw.task,
+          action: raw.action,
+          result: raw.result,
+          tags: raw.tags ?? [],
+        })
+      ).catch((err) => console.warn('STAR stories migration skipped:', err))
+
+      // Migrate company research from localStorage
+      await migrateLocalStorage<{ companyName: string; talkingPoints?: string[]; notes?: string; checklist?: { label?: string; checked?: boolean }[] }, { company_name: string; talking_points: string[]; notes: string; checklist: { text: string; done: boolean }[] }>(
+        'company_research',
+        () => companyResearchApi.list(),
+        (item) => companyResearchApi.create(item as Parameters<typeof companyResearchApi.create>[0]),
+        (raw) => ({
+          company_name: raw.companyName,
+          talking_points: raw.talkingPoints ?? [],
+          notes: raw.notes ?? '',
+          checklist: (raw.checklist ?? []).map((c) => ({ text: c.label ?? '', done: c.checked ?? false })),
+        })
+      ).catch((err) => console.warn('Company research migration skipped:', err))
+
+      // Load from API
+      try {
+        const [stories, research, eventsList] = await Promise.all([
+          starStoriesApi.list(),
+          companyResearchApi.list(),
+          interviewEventsApi.list(),
+        ])
+        if (mounted) {
+          setStarStories(stories.map(apiStoryToLocal))
+          if (research.length > 0 && research[0]) {
+            setCompanyResearch(apiResearchToLocal(research[0]))
+          }
+          setInterviewEvents(eventsList.map(apiEventToLocal))
+        }
+      } catch (error) {
+        console.error('Failed to load saved data:', error)
+      }
     }
 
-    const storedResearch = localStorage.getItem('company_research')
-    if (storedResearch) {
-      setCompanyResearch(JSON.parse(storedResearch) as CompanyResearch)
+    void loadSavedData()
+    return () => { mounted = false }
+  }, [isAuthenticated])
+
+  const handleSaveStory = async (story: STARStory) => {
+    try {
+      const existingIndex = starStories.findIndex((s) => s.id === story.id)
+      if (existingIndex >= 0 && typeof story.id === 'number') {
+        // Update existing
+        const updated = await starStoriesApi.update(story.id, {
+          title: story.title,
+          situation: story.situation,
+          task: story.task,
+          action: story.action,
+          result: story.result,
+          tags: story.tags,
+        })
+        setStarStories((prev) => prev.map((s) => s.id === story.id ? apiStoryToLocal(updated) : s))
+      } else {
+        // Create new
+        const created = await starStoriesApi.create({
+          title: story.title,
+          situation: story.situation,
+          task: story.task,
+          action: story.action,
+          result: story.result,
+          tags: story.tags,
+        })
+        setStarStories((prev) => [...prev, apiStoryToLocal(created)])
+      }
+    } catch (error) {
+      console.error('Failed to save story:', error)
     }
-  }, [])
-
-  const handleSaveStory = (story: STARStory) => {
-    const existingIndex = starStories.findIndex((s) => s.id === story.id)
-    let updatedStories: STARStory[]
-
-    if (existingIndex >= 0) {
-      updatedStories = [...starStories]
-      updatedStories[existingIndex] = story
-    } else {
-      updatedStories = [...starStories, story]
-    }
-
-    setStarStories(updatedStories)
-    localStorage.setItem('star_stories', JSON.stringify(updatedStories))
   }
 
-  const handleDeleteStory = (id: string) => {
-    const updatedStories = starStories.filter((s) => s.id !== id)
-    setStarStories(updatedStories)
-    localStorage.setItem('star_stories', JSON.stringify(updatedStories))
+  const handleDeleteStory = async (id: string | number) => {
+    try {
+      if (typeof id === 'number') {
+        await starStoriesApi.delete(id)
+      }
+      setStarStories((prev) => prev.filter((s) => s.id !== id))
+    } catch (error) {
+      console.error('Failed to delete story:', error)
+    }
   }
 
-  const handleUpdateResearch = (research: CompanyResearch) => {
+  const handleUpdateResearch = async (research: CompanyResearch) => {
     setCompanyResearch(research)
-    localStorage.setItem('company_research', JSON.stringify(research))
+    try {
+      const apiData = {
+        company_name: research.companyName,
+        talking_points: research.talkingPoints,
+        notes: research.notes,
+        checklist: research.checklist.map((c) => ({
+          text: c.label ?? c.text ?? '',
+          done: c.checked ?? c.done ?? false,
+        })),
+      }
+
+      if (research.id && typeof research.id === 'number') {
+        const updated = await companyResearchApi.update(research.id, apiData)
+        setCompanyResearch(apiResearchToLocal(updated))
+      } else {
+        const created = await companyResearchApi.create(apiData as Parameters<typeof companyResearchApi.create>[0])
+        setCompanyResearch(apiResearchToLocal(created))
+      }
+    } catch (error) {
+      console.error('Failed to save company research:', error)
+    }
+  }
+
+  const handleSaveEvent = async (event: Omit<InterviewEventLocal, 'id' | 'createdAt' | 'updatedAt'> & { id?: number }) => {
+    try {
+      const apiData = localEventToApi(event)
+      if (event.id) {
+        const updated = await interviewEventsApi.update(event.id, apiData)
+        setInterviewEvents((prev) => prev.map((ev) => ev.id === event.id ? apiEventToLocal(updated) : ev))
+      } else {
+        const created = await interviewEventsApi.create(apiData)
+        setInterviewEvents((prev) => [...prev, apiEventToLocal(created)])
+      }
+    } catch (error) {
+      console.error('Failed to save event:', error)
+    }
+  }
+
+  const handleDeleteEvent = async (id: number) => {
+    try {
+      await interviewEventsApi.delete(id)
+      setInterviewEvents((prev) => prev.filter((ev) => ev.id !== id))
+    } catch (error) {
+      console.error('Failed to delete event:', error)
+    }
+  }
+
+  const handleMarkComplete = async (id: number) => {
+    try {
+      const updated = await interviewEventsApi.update(id, { is_completed: true })
+      setInterviewEvents((prev) => prev.map((ev) => ev.id === id ? apiEventToLocal(updated) : ev))
+    } catch (error) {
+      console.error('Failed to mark event complete:', error)
+    }
+  }
+
+  const handleToggleFollowUp = async (id: number) => {
+    try {
+      const event = interviewEvents.find((ev) => ev.id === id)
+      if (!event) return
+      const updated = await interviewEventsApi.update(id, { follow_up_done: !event.followUpDone })
+      setInterviewEvents((prev) => prev.map((ev) => ev.id === id ? apiEventToLocal(updated) : ev))
+    } catch (error) {
+      console.error('Failed to toggle follow-up:', error)
+    }
   }
 
   // Loading state
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -1681,7 +2543,7 @@ export default function InterviewCenterPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     )
   }
@@ -1691,23 +2553,24 @@ export default function InterviewCenterPage() {
     { id: 'star' as const, label: 'STAR Builder', icon: Star },
     { id: 'research' as const, label: 'Company Research', icon: Building2 },
     { id: 'practice' as const, label: 'Practice Mode', icon: Target },
+    { id: 'events' as const, label: 'Interview Events', icon: CalendarClock },
   ]
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Interview Center</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold font-display tracking-[-0.02em] text-[var(--ink)]">Interview Center</h1>
+        <p className="text-[var(--muted)]">
           Prepare for interviews with AI-powered tools and practice sessions
         </p>
       </div>
 
       {/* Context Selection */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="surface-card p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="resume-select" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="resume-select" className="glass-label">
               Select Resume (for personalized answers)
             </label>
             <select
@@ -1717,7 +2580,7 @@ export default function InterviewCenterPage() {
                 const resume = resumes.find((r) => r.id === Number(e.target.value))
                 setSelectedResume(resume || null)
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-select"
             >
               <option value="">No resume selected</option>
               {resumes.map((resume) => (
@@ -1729,7 +2592,7 @@ export default function InterviewCenterPage() {
           </div>
 
           <div>
-            <label htmlFor="job-description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="job-description" className="glass-label">
               Job Description (optional)
             </label>
             <textarea
@@ -1737,7 +2600,7 @@ export default function InterviewCenterPage() {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-textarea"
               placeholder="Paste job description for more relevant answers..."
             />
           </div>
@@ -1745,25 +2608,21 @@ export default function InterviewCenterPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-4 -mb-px" aria-label="Tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors',
-                activeTab === tab.id
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              )}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      <div className="glass-tabs mb-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              'glass-tab',
+              activeTab === tab.id && 'glass-tab-active'
+            )}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab Content - Wrapped in Suspense for better code splitting */}
@@ -1779,15 +2638,15 @@ export default function InterviewCenterPage() {
         {activeTab === 'star' && (
           <STARBuilderTab
             stories={starStories}
-            onSaveStory={handleSaveStory}
-            onDeleteStory={handleDeleteStory}
+            onSaveStory={(story) => { void handleSaveStory(story) }}
+            onDeleteStory={(id) => { void handleDeleteStory(id) }}
           />
         )}
 
         {activeTab === 'research' && (
           <CompanyResearchTab
             research={companyResearch}
-            onUpdateResearch={handleUpdateResearch}
+            onUpdateResearch={(r) => { void handleUpdateResearch(r) }}
           />
         )}
 
@@ -1796,6 +2655,16 @@ export default function InterviewCenterPage() {
             resumes={resumes}
             selectedResume={selectedResume}
             jobDescription={jobDescription}
+          />
+        )}
+
+        {activeTab === 'events' && (
+          <InterviewEventsTab
+            events={interviewEvents}
+            onSaveEvent={(event) => { void handleSaveEvent(event) }}
+            onDeleteEvent={(id) => { void handleDeleteEvent(id) }}
+            onMarkComplete={(id) => { void handleMarkComplete(id) }}
+            onToggleFollowUp={(id) => { void handleToggleFollowUp(id) }}
           />
         )}
       </Suspense>

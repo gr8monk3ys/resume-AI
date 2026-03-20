@@ -126,22 +126,23 @@ export type InterviewEventType =
 export type FollowUpUrgency = 'low' | 'medium' | 'high' | 'overdue';
 
 export interface InterviewEvent {
-  id: string;
-  job_id: number;
+  id: number;
+  job_application_id: number | null;
   company: string;
   position: string;
   event_type: InterviewEventType;
   scheduled_date: string;
-  scheduled_time?: string;
-  duration_minutes?: number;
-  location?: string;
-  meeting_link?: string;
-  interviewer_names?: string[];
-  notes?: string;
+  scheduled_time?: string | null;
+  duration_minutes?: number | null;
+  location?: string | null;
+  meeting_link?: string | null;
+  interviewer_names?: string[] | null;
+  notes?: string | null;
   is_completed: boolean;
-  follow_up_date?: string;
+  follow_up_date?: string | null;
   follow_up_done: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 // Analytics types
@@ -278,4 +279,93 @@ export interface JobCheckResult {
   required: boolean;
   matched_company_filter: CompanyFilter | null;
   matched_keyword_filters: KeywordFilter[];
+}
+
+// Billing & Subscription
+export interface BillingStatus {
+  plan: 'free' | 'pro_monthly' | 'pro_annual'
+  status: 'active' | 'past_due' | 'canceled'
+  current_period_end: string | null
+  usage: UsageInfo[]
+}
+
+export interface UsageInfo {
+  feature: string
+  used: number
+  limit: number | null
+  reset_at: string | null
+}
+
+export interface UsageLimitError {
+  error: 'limit_reached'
+  feature: string
+  limit: number
+  used: number
+  reset_at: string | null
+  upgrade_url: string
+}
+
+export interface OnboardingState {
+  onboarding_completed: boolean
+  onboarding_dismissed: boolean
+  onboarding_step: number
+}
+
+export interface JobPreview {
+  company: string
+  title: string
+  description: string
+  location: string
+  job_url: string
+  source: string
+}
+
+export interface JobImportResult {
+  id: number
+  duplicate: boolean
+  status?: string
+}
+
+export interface JobImportData {
+  title: string
+  company: string
+  location: string | null
+  description: string | null
+  job_url: string | null
+  source: string
+}
+
+export interface JobImportResponse {
+  success: boolean
+  job_data: JobImportData | null
+  job_id: number | null
+  errors: string[]
+  warnings: string[]
+  source_detected: string | null
+}
+
+export interface JobPreviewResponse {
+  success: boolean
+  job_data: JobImportData | null
+  source_detected: string | null
+  confidence: number
+  errors: string[]
+  warnings: string[]
+}
+
+export interface BulkImportResult {
+  url: string
+  success: boolean
+  job_data: JobImportData | null
+  job_id: number | null
+}
+
+export interface BulkImportResponse {
+  success: boolean
+  results: BulkImportResult[]
+  success_count: number
+  error_count: number
+  total_requested: number
+  errors: string[]
+  warnings: string[]
 }

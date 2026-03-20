@@ -66,7 +66,7 @@ export const SortableJobCard = memo(function SortableJobCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow border-l-4',
+        'bg-[var(--surface-strong)] rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow border-l-4',
         statusColors.border,
         isDragging && 'opacity-50 shadow-lg'
       )}
@@ -75,7 +75,7 @@ export const SortableJobCard = memo(function SortableJobCard({
         <button
           {...attributes}
           {...listeners}
-          className="mt-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+          className="mt-1 text-[var(--muted-soft)] hover:text-[var(--muted)] cursor-grab active:cursor-grabbing"
           aria-label="Drag to reorder"
         >
           <GripVertical className="w-4 h-4" />
@@ -90,7 +90,7 @@ export const SortableJobCard = memo(function SortableJobCard({
               aria-label={`Edit job application for ${job.position} at ${job.company}`}
             >
               <div className="flex items-center gap-2">
-                <h4 className="font-medium text-gray-900 truncate">{job.position}</h4>
+                <h4 className="font-medium text-[var(--ink)] truncate">{job.position}</h4>
                 {matchedCompanyFilter && (
                   <span
                     className={cn(
@@ -109,7 +109,7 @@ export const SortableJobCard = memo(function SortableJobCard({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-500 truncate">{job.company}</p>
+              <p className="text-sm text-[var(--muted)] truncate">{job.company}</p>
             </button>
             <div className="flex items-center gap-2 ml-2">
               <span
@@ -119,7 +119,7 @@ export const SortableJobCard = memo(function SortableJobCard({
                     ? 'bg-green-100 text-green-800'
                     : matchScore >= 60
                     ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-gray-100 text-gray-800'
+                    : 'bg-[var(--surface)] text-[var(--ink)]'
                 )}
               >
                 {matchScore}%
@@ -129,7 +129,7 @@ export const SortableJobCard = memo(function SortableJobCard({
                   href={job.job_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-primary-600"
+                  className="text-[var(--muted-soft)] hover:text-primary-600"
                   onClick={(e) => e.stopPropagation()}
                   aria-label="Open job link"
                 >
@@ -140,14 +140,14 @@ export const SortableJobCard = memo(function SortableJobCard({
           </div>
 
           {job.location && (
-            <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+            <p className="text-xs text-[var(--muted-soft)] mt-2 flex items-center gap-1">
               <MapPin className="w-3 h-3" />
               {job.location}
             </p>
           )}
 
           {job.application_date && (
-            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+            <p className="text-xs text-[var(--muted-soft)] mt-1 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {formatDate(job.application_date)}
             </p>
@@ -157,7 +157,7 @@ export const SortableJobCard = memo(function SortableJobCard({
             <select
               value={job.status}
               onChange={(e) => onStatusChange(job.id, e.target.value as JobStatus)}
-              className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="glass-select text-xs"
               onClick={(e) => e.stopPropagation()}
               aria-label="Change job status"
             >
@@ -172,7 +172,7 @@ export const SortableJobCard = memo(function SortableJobCard({
                 e.stopPropagation()
                 onDelete(job.id)
               }}
-              className="text-gray-400 hover:text-red-600 p-1"
+              className="text-[var(--muted-soft)] hover:text-red-600 p-1"
               aria-label="Delete job"
             >
               <Trash2 className="w-4 h-4" />

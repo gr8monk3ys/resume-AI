@@ -15,15 +15,15 @@ IMPORTANT: Before running this migration in production:
 
 This migration will FAIL if orphaned profiles exist.
 """
+
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
-revision: str = 'a93ef862abc0'
-down_revision: Union[str, Sequence[str], None] = 'd12b0d5a45ef'
+revision: str = "a93ef862abc0"
+down_revision: Union[str, Sequence[str], None] = "d12b0d5a45ef"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -41,9 +41,7 @@ def upgrade() -> None:
     connection = op.get_bind()
 
     # Check if any orphaned profiles exist
-    result = connection.execute(
-        sa.text("SELECT COUNT(*) FROM profiles WHERE user_id IS NULL")
-    )
+    result = connection.execute(sa.text("SELECT COUNT(*) FROM profiles WHERE user_id IS NULL"))
     orphan_count = result.scalar()
 
     if orphan_count > 0:
@@ -59,9 +57,9 @@ def upgrade() -> None:
 
     # Use batch mode for SQLite compatibility
     # SQLite doesn't support ALTER COLUMN directly, so Alembic recreates the table
-    with op.batch_alter_table('profiles', schema=None) as batch_op:
+    with op.batch_alter_table("profiles", schema=None) as batch_op:
         batch_op.alter_column(
-            'user_id',
+            "user_id",
             existing_type=sa.Integer(),
             nullable=False,
         )
@@ -74,9 +72,9 @@ def downgrade() -> None:
     This is provided for rollback purposes, but note that making
     a column nullable is generally safe and doesn't lose data.
     """
-    with op.batch_alter_table('profiles', schema=None) as batch_op:
+    with op.batch_alter_table("profiles", schema=None) as batch_op:
         batch_op.alter_column(
-            'user_id',
+            "user_id",
             existing_type=sa.Integer(),
             nullable=True,
         )

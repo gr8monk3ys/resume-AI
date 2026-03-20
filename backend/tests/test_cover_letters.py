@@ -28,7 +28,9 @@ class TestCoverLetterList:
         """Test listing cover letters when none exist."""
         response = await client.get("/api/cover-letters", headers=auth_headers)
         assert response.status_code == 200
-        assert response.json() == []
+        data = response.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_list_cover_letters_with_data(
@@ -47,9 +49,9 @@ class TestCoverLetterList:
         response = await client.get("/api/cover-letters", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 1
-        assert data[0]["content"] == cover_letter.content
-        assert data[0]["id"] == cover_letter.id
+        assert data["total"] == 1
+        assert data["items"][0]["content"] == cover_letter.content
+        assert data["items"][0]["id"] == cover_letter.id
 
     @pytest.mark.asyncio
     async def test_list_cover_letters_multiple(
@@ -68,7 +70,8 @@ class TestCoverLetterList:
         response = await client.get("/api/cover-letters", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data) == 3
+        assert data["total"] == 3
+        assert len(data["items"]) == 3
 
     @pytest.mark.asyncio
     async def test_list_cover_letters_unauthorized(self, client: AsyncClient, db: Session):
@@ -407,12 +410,12 @@ class TestCoverLetterIsolation:
         # Admin lists their cover letters - should be empty
         response = await client.get("/api/cover-letters", headers=admin_auth_headers)
         assert response.status_code == 200
-        assert len(response.json()) == 0
+        assert response.json()["total"] == 0
 
         # Test user lists their cover letters - should have 1
         response = await client.get("/api/cover-letters", headers=auth_headers)
         assert response.status_code == 200
-        assert len(response.json()) == 1
+        assert response.json()["total"] == 1
 
 
 class TestCoverLetterEdgeCases:

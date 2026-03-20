@@ -156,7 +156,7 @@ describe('KanbanColumn', () => {
       )
 
       // Find the header div with bg class
-      const header = container.querySelector('.bg-gray-50')
+      const header = container.querySelector('.bg-\\[var\\(--surface-thin\\)\\]')
       expect(header).toBeInTheDocument()
     })
 

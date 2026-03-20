@@ -53,9 +53,9 @@ def validate_password_strength(password: str) -> Tuple[bool, str]:
     return True, ""
 
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db, safe_commit
@@ -148,11 +148,11 @@ class PasswordChangeRequest(BaseModel):
     """Request model for password change."""
 
     current_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=12, max_length=128)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user."""
     # Check if username exists
     if db.query(User).filter(User.username == user_data.username).first():
@@ -164,6 +164,14 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+        )
+
+    # Validate password strength (defense-in-depth alongside schema validation)
+    is_valid, error_message = validate_password_strength(user_data.password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_message,
         )
 
     # Create user and profile in a single transaction
@@ -190,7 +198,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(
+def login(
     request: Request,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -323,7 +331,7 @@ class RefreshTokenRequest(BaseModel):
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_tokens(
+def refresh_tokens(
     request: Request,
     response: Response,
     body: Optional[RefreshTokenRequest] = None,
@@ -393,7 +401,7 @@ async def refresh_tokens(
 
 
 @router.post("/logout")
-async def logout(
+def logout(
     request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
@@ -433,13 +441,13 @@ async def logout(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: User = Depends(get_current_user)):
+def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information."""
     return current_user
 
 
 @router.get("/status", response_model=AuthStatusResponse)
-async def get_auth_status(
+def get_auth_status(
     request: Request,
     bearer_token: Optional[str] = Depends(oauth2_scheme_optional),
     db: Session = Depends(get_db),
@@ -469,7 +477,7 @@ async def get_auth_status(
 
 
 @router.get("/lockout-status/{username}", response_model=LockoutStatusResponse)
-async def check_lockout_status(
+def check_lockout_status(
     username: str,
     current_user: User = Depends(get_current_user),
 ):
@@ -521,7 +529,7 @@ async def check_lockout_status(
 
 
 @router.post("/change-password")
-async def change_password(
+def change_password(
     request: Request,
     password_data: PasswordChangeRequest,
     current_user: User = Depends(get_current_user),
@@ -579,4 +587,67 @@ async def change_password(
 
     return {
         "message": "Password changed successfully. All existing sessions have been invalidated."
+    }
+
+
+@router.get("/verify-email")
+def verify_email(
+    token: str = Query(..., description="Email verification token"),
+    db: Session = Depends(get_db),
+):
+    """Verify email address using token from verification email."""
+    user = db.query(User).filter(User.email_verification_token == token).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+    user.email_verified = True
+    user.email_verification_token = None
+    safe_commit(db, "verify email")
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification")
+def resend_verification(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Resend email verification link."""
+    if current_user.email_verified:
+        return {"message": "Email already verified"}
+    from app.services.email_service import get_email_service
+
+    email_service = get_email_service()
+    token = email_service.generate_verification_token()
+    current_user.email_verification_token = token
+    safe_commit(db, "update verification token")
+    settings = get_settings()
+    verify_url = f"{settings.app_url}/verify-email?token={token}"
+    html = email_service.render_verification(verify_url)
+    email_service.send(current_user.email, "Verify your email — ResuBoost", html)
+    return {"message": "Verification email sent"}
+
+
+class OnboardingUpdate(BaseModel):
+    completed: Optional[bool] = None
+    dismissed: Optional[bool] = None
+    step: Optional[int] = None
+
+
+@router.patch("/onboarding")
+def update_onboarding(
+    data: OnboardingUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update onboarding progress."""
+    if data.completed is not None:
+        current_user.onboarding_completed = data.completed
+    if data.dismissed is not None:
+        current_user.onboarding_dismissed = data.dismissed
+    if data.step is not None:
+        current_user.onboarding_step = data.step
+    safe_commit(db, "update onboarding")
+    return {
+        "onboarding_completed": current_user.onboarding_completed,
+        "onboarding_dismissed": current_user.onboarding_dismissed,
+        "onboarding_step": current_user.onboarding_step,
     }

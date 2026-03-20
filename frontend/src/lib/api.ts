@@ -21,6 +21,11 @@ import type {
   KeywordFilter,
   QuestionTemplate,
   JobCheckResult,
+  BillingStatus,
+  OnboardingState,
+  JobImportResponse,
+  JobPreviewResponse,
+  BulkImportResponse,
 } from '@/types'
 
 /**
@@ -938,7 +943,7 @@ export const aiApi = {
     context?: string,
     token?: string
   ): Promise<AnswerQuestionResponse> => {
-    return authenticatedRequest<AnswerQuestionResponse>('/api/ai/answer', token, {
+    return authenticatedRequest<AnswerQuestionResponse>('/api/ai/answer-question', token, {
       method: 'POST',
       body: JSON.stringify({ question, context }),
     })
@@ -964,10 +969,11 @@ export const aiApi = {
     resumeContent: string,
     jobDescription: string,
     companyName: string,
+    position: string = '',
     token?: string
-  ): Promise<{ cover_letter: string }> => {
-    return authenticatedRequest<{ cover_letter: string }>(
-      '/api/ai/generate-cover-letter',
+  ): Promise<CoverLetter> => {
+    return authenticatedRequest<CoverLetter>(
+      '/api/cover-letters/generate',
       token,
       {
         method: 'POST',
@@ -975,6 +981,7 @@ export const aiApi = {
           resume_content: resumeContent,
           job_description: jobDescription,
           company_name: companyName,
+          position,
         }),
       }
     )
@@ -1087,6 +1094,17 @@ export const filtersApi = {
     })
   },
 
+  // Import defaults
+  importDefaults: async (
+    overwrite?: boolean,
+    token?: string
+  ): Promise<{ success: boolean; imported_count: number; skipped_count: number; message: string }> => {
+    const params = overwrite ? '?overwrite=true' : ''
+    return authenticatedRequest(`/api/filters/import-defaults${params}`, token, {
+      method: 'POST',
+    })
+  },
+
   // Job check
   checkJob: async (
     title: string,
@@ -1097,6 +1115,445 @@ export const filtersApi = {
     return authenticatedRequest<JobCheckResult>('/api/filters/check-job', token, {
       method: 'POST',
       body: JSON.stringify({ title, company, description }),
+    })
+  },
+}
+
+/**
+ * Health API (public, no auth required)
+ */
+export const healthApi = {
+  check: async (): Promise<{
+    status: string
+    database: { status: string }
+    sentry_enabled: boolean
+  }> => {
+    return apiRequest('/health')
+  },
+}
+
+/**
+ * Analytics API
+ */
+export interface SourcePerformance {
+  source: string
+  total_applications: number
+  response_count: number
+  interview_count: number
+  offer_count: number
+  response_rate: number
+  interview_rate: number
+  offer_rate: number
+}
+
+export interface ResumePerformance {
+  resume_id: number
+  version_name: string
+  total_applications: number
+  response_count: number
+  interview_count: number
+  offer_count: number
+  response_rate: number
+  interview_rate: number
+  offer_rate: number
+}
+
+export const analyticsApi = {
+  getSourcePerformance: async (
+    token?: string
+  ): Promise<{ sources: SourcePerformance[]; best_performing_source: string | null }> => {
+    return authenticatedRequest('/api/analytics/source-performance', token)
+  },
+
+  getResumePerformance: async (
+    token?: string
+  ): Promise<{ resumes: ResumePerformance[]; best_performing_resume: string | null }> => {
+    return authenticatedRequest('/api/analytics/resume-performance', token)
+  },
+}
+
+/**
+ * Career Journal API
+ */
+export interface CareerJournalEntry {
+  id: number
+  profile_id: number
+  title: string
+  description: string
+  achievement_date: string | null
+  tags: string[] | null
+  created_at: string
+  updated_at: string
+}
+
+export const careerJournalApi = {
+  list: async (
+    search?: string,
+    tag?: string,
+    token?: string
+  ): Promise<CareerJournalEntry[]> => {
+    const params = new URLSearchParams()
+    if (search) params.set('search', search)
+    if (tag) params.set('tag', tag)
+    const query = params.toString()
+    return authenticatedRequest(`/api/career-journal${query ? `?${query}` : ''}`, token)
+  },
+
+  create: async (
+    data: {
+      title: string
+      description: string
+      achievement_date?: string | null
+      tags?: string[]
+    },
+    token?: string
+  ): Promise<CareerJournalEntry> => {
+    return authenticatedRequest('/api/career-journal', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update: async (
+    id: number,
+    data: {
+      title?: string
+      description?: string
+      achievement_date?: string | null
+      tags?: string[]
+    },
+    token?: string
+  ): Promise<CareerJournalEntry> => {
+    return authenticatedRequest(`/api/career-journal/${id}`, token, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  delete: async (id: number, token?: string): Promise<void> => {
+    await authenticatedRequest(`/api/career-journal/${id}`, token, {
+      method: 'DELETE',
+    })
+  },
+
+  enhance: async (
+    id: number,
+    achievementText?: string,
+    token?: string
+  ): Promise<{ original: string; enhanced: string }> => {
+    return authenticatedRequest(`/api/career-journal/${id}/enhance`, token, {
+      method: 'POST',
+      body: JSON.stringify(
+        achievementText ? { achievement_text: achievementText } : {}
+      ),
+    })
+  },
+}
+
+/**
+ * Interview Events API
+ */
+export interface InterviewEventResponse {
+  id: number
+  profile_id: number
+  job_application_id: number | null
+  company: string
+  position: string
+  event_type: string
+  scheduled_date: string
+  scheduled_time: string | null
+  duration_minutes: number | null
+  location: string | null
+  meeting_link: string | null
+  interviewer_names: string[] | null
+  notes: string | null
+  is_completed: boolean
+  follow_up_date: string | null
+  follow_up_done: boolean
+  created_at: string
+  updated_at: string
+}
+
+export const interviewEventsApi = {
+  list: async (token?: string): Promise<InterviewEventResponse[]> => {
+    return authenticatedRequest('/api/interview-events', token)
+  },
+
+  create: async (
+    data: Omit<InterviewEventResponse, 'id' | 'profile_id' | 'created_at' | 'updated_at'>,
+    token?: string
+  ): Promise<InterviewEventResponse> => {
+    return authenticatedRequest('/api/interview-events', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update: async (
+    id: number,
+    data: Partial<Omit<InterviewEventResponse, 'id' | 'profile_id' | 'created_at' | 'updated_at'>>,
+    token?: string
+  ): Promise<InterviewEventResponse> => {
+    return authenticatedRequest(`/api/interview-events/${id}`, token, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  delete: async (id: number, token?: string): Promise<void> => {
+    await authenticatedRequest(`/api/interview-events/${id}`, token, {
+      method: 'DELETE',
+    })
+  },
+}
+
+/**
+ * STAR Stories API
+ */
+export interface StarStory {
+  id: number
+  profile_id: number
+  title: string
+  situation: string
+  task: string
+  action: string
+  result: string
+  tags: string[] | null
+  created_at: string
+  updated_at: string
+}
+
+export const starStoriesApi = {
+  list: async (token?: string): Promise<StarStory[]> => {
+    return authenticatedRequest('/api/star-stories', token)
+  },
+
+  create: async (
+    data: Omit<StarStory, 'id' | 'profile_id' | 'created_at' | 'updated_at'>,
+    token?: string
+  ): Promise<StarStory> => {
+    return authenticatedRequest('/api/star-stories', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update: async (
+    id: number,
+    data: Partial<Omit<StarStory, 'id' | 'profile_id' | 'created_at' | 'updated_at'>>,
+    token?: string
+  ): Promise<StarStory> => {
+    return authenticatedRequest(`/api/star-stories/${id}`, token, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  delete: async (id: number, token?: string): Promise<void> => {
+    await authenticatedRequest(`/api/star-stories/${id}`, token, {
+      method: 'DELETE',
+    })
+  },
+}
+
+/**
+ * Company Research API
+ */
+export interface CompanyResearch {
+  id: number
+  profile_id: number
+  company_name: string
+  talking_points: string[] | null
+  notes: string | null
+  checklist: Array<{ text: string; done: boolean }> | null
+  created_at: string
+  updated_at: string
+}
+
+export const companyResearchApi = {
+  list: async (token?: string): Promise<CompanyResearch[]> => {
+    return authenticatedRequest('/api/company-research', token)
+  },
+
+  create: async (
+    data: Omit<CompanyResearch, 'id' | 'profile_id' | 'created_at' | 'updated_at'>,
+    token?: string
+  ): Promise<CompanyResearch> => {
+    return authenticatedRequest('/api/company-research', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update: async (
+    id: number,
+    data: Partial<Omit<CompanyResearch, 'id' | 'profile_id' | 'created_at' | 'updated_at'>>,
+    token?: string
+  ): Promise<CompanyResearch> => {
+    return authenticatedRequest(`/api/company-research/${id}`, token, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  },
+
+  delete: async (id: number, token?: string): Promise<void> => {
+    await authenticatedRequest(`/api/company-research/${id}`, token, {
+      method: 'DELETE',
+    })
+  },
+}
+
+/**
+ * Nudge System Types
+ */
+export interface NudgeItem {
+  nudge_type: string
+  entity_type: string
+  entity_id: number | null
+  company: string | null
+  position: string | null
+  title: string
+  description: string
+  color: string
+  days_ago: number | null
+  scheduled_date: string | null
+  recruiter_name: string | null
+  recruiter_email: string | null
+}
+
+export interface NudgeResponse {
+  nudges: NudgeItem[]
+  generated_at: string
+}
+
+export interface DraftRequest {
+  nudge_type: string
+  entity_id?: number | null
+  entity_type: string
+  company?: string | null
+  position?: string | null
+  recruiter_name?: string | null
+  additional_context?: string | null
+}
+
+export interface DraftResponse {
+  content: string
+  subject: string | null
+  tips: string[]
+}
+
+/**
+ * Nudges API
+ */
+export const nudgesApi = {
+  list: async (token?: string): Promise<NudgeResponse> => {
+    return authenticatedRequest<NudgeResponse>('/api/nudges', token)
+  },
+
+  draft: async (data: DraftRequest, token?: string): Promise<DraftResponse> => {
+    return authenticatedRequest<DraftResponse>('/api/nudges/draft', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+}
+
+/**
+ * Job Import API
+ */
+export const jobImportApi = {
+  preview: async (url: string, token?: string): Promise<JobPreviewResponse> => {
+    return authenticatedRequest<JobPreviewResponse>(
+      `/api/jobs/import/preview?url=${encodeURIComponent(url)}`,
+      token
+    )
+  },
+
+  importUrl: async (
+    url: string,
+    saveToLine: boolean = true,
+    token?: string
+  ): Promise<JobImportResponse> => {
+    return authenticatedRequest<JobImportResponse>('/api/jobs/import/url', token, {
+      method: 'POST',
+      body: JSON.stringify({ url, save_to_pipeline: saveToLine }),
+    })
+  },
+
+  importBulk: async (
+    urls: string[],
+    saveToPipeline: boolean = true,
+    token?: string
+  ): Promise<BulkImportResponse> => {
+    return authenticatedRequest<BulkImportResponse>('/api/jobs/import/bulk', token, {
+      method: 'POST',
+      body: JSON.stringify({ urls, save_to_pipeline: saveToPipeline }),
+    })
+  },
+}
+
+/**
+ * Billing API
+ */
+export const billingApi = {
+  getStatus: async (token?: string): Promise<BillingStatus> => {
+    return authenticatedRequest<BillingStatus>('/api/billing/status', token)
+  },
+
+  createCheckout: async (priceId: string, token?: string): Promise<{ url: string }> => {
+    return authenticatedRequest<{ url: string }>('/api/billing/checkout', token, {
+      method: 'POST',
+      body: JSON.stringify({ price_id: priceId }),
+    })
+  },
+
+  createPortal: async (token?: string): Promise<{ url: string }> => {
+    return authenticatedRequest<{ url: string }>('/api/billing/portal', token, {
+      method: 'POST',
+    })
+  },
+}
+
+/**
+ * Email Preferences API
+ */
+export interface EmailPreferences {
+  email_notifications: boolean
+  email_nudges: boolean
+  email_weekly_digest: boolean
+  email_reengagement: boolean
+}
+
+export const emailPreferencesApi = {
+  get: async (token?: string): Promise<EmailPreferences> => {
+    return authenticatedRequest<EmailPreferences>('/api/email-preferences', token)
+  },
+
+  update: async (
+    data: Partial<EmailPreferences>,
+    token?: string
+  ): Promise<EmailPreferences> => {
+    return authenticatedRequest<EmailPreferences>('/api/email-preferences', token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+}
+
+/**
+ * Onboarding API
+ */
+export const onboardingApi = {
+  update: async (data: Partial<OnboardingState>, token?: string): Promise<OnboardingState> => {
+    return authenticatedRequest<OnboardingState>('/api/auth/onboarding', token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  resendVerification: async (token?: string): Promise<{ message: string }> => {
+    return authenticatedRequest<{ message: string }>('/api/auth/resend-verification', token, {
+      method: 'POST',
     })
   },
 }

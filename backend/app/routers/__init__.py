@@ -6,6 +6,7 @@ from app.routers import (
     ai,
     analytics,
     auth,
+    billing,
     career_journal,
     cover_letters,
     job_alerts,
@@ -20,6 +21,7 @@ from app.routers import (
 
 __all__ = [
     "auth",
+    "billing",
     "profile",
     "resumes",
     "jobs",

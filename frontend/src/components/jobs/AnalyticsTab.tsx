@@ -116,54 +116,54 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
     <div className="space-y-6">
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-100 rounded-lg">
               <BarChart3 className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Total Applications</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.total || jobs.length}</p>
+              <p className="text-sm text-[var(--muted)]">Total Applications</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">{stats?.total || jobs.length}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-purple-100 rounded-lg">
               <TrendingUp className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Response Rate</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-[var(--muted)]">Response Rate</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">
                 {stats ? `${Math.round(stats.response_rate)}%` : '0%'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-green-100 rounded-lg">
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Offer Rate</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-[var(--muted)]">Offer Rate</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">
                 {stats ? `${Math.round(stats.offer_rate)}%` : '0%'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-amber-100 rounded-lg">
               <Target className="w-6 h-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Active Applications</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-[var(--muted)]">Active Applications</p>
+              <p className="text-2xl font-bold text-[var(--ink)]">
                 {jobs.filter((j) => !['Rejected', 'Offer'].includes(j.status)).length}
               </p>
             </div>
@@ -173,8 +173,8 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Application Funnel */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold font-display tracking-[-0.02em] text-[var(--ink)] mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary-600" />
             Application Funnel
           </h3>
@@ -182,12 +182,12 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
             {funnelData.map((item, index) => (
               <div key={item.stage}>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium text-gray-700">{item.stage}</span>
-                  <span className="text-gray-500">
+                  <span className="font-medium text-[var(--ink-secondary)]">{item.stage}</span>
+                  <span className="text-[var(--muted)]">
                     {item.count} ({item.percentage}%)
                   </span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-6 overflow-hidden">
+                <div className="w-full bg-[var(--surface)] rounded-full h-6 overflow-hidden">
                   <div
                     className={cn(
                       'h-full rounded-full transition-all duration-500',
@@ -208,8 +208,8 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
         </div>
 
         {/* Status Breakdown */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold font-display tracking-[-0.02em] text-[var(--ink)] mb-4 flex items-center gap-2">
             <PieChart className="w-5 h-5 text-primary-600" />
             Status Breakdown
           </h3>
@@ -226,12 +226,12 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
                   <div className={cn('w-3 h-3 rounded-full', colors.bg, colors.border, 'border')} />
                   <div className="flex-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{status}</span>
-                      <span className="text-gray-500">
+                      <span className="text-[var(--ink-secondary)]">{status}</span>
+                      <span className="text-[var(--muted)]">
                         {count} ({percentage}%)
                       </span>
                     </div>
-                    <div className="w-full bg-gray-100 rounded-full h-2 mt-1">
+                    <div className="w-full bg-[var(--surface)] rounded-full h-2 mt-1">
                       <div
                         className={cn('h-full rounded-full', colors.bg.replace('50', '500'))}
                         style={{ width: `${percentage}%` }}
@@ -245,8 +245,8 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
         </div>
 
         {/* Applications Per Week */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold font-display tracking-[-0.02em] text-[var(--ink)] mb-4 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary-600" />
             Applications Per Week
           </h3>
@@ -263,7 +263,7 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
                     minHeight: item.count > 0 ? '8px' : '2px',
                   }}
                 />
-                <span className="text-xs text-gray-500 mt-2 transform -rotate-45 origin-top-left">
+                <span className="text-xs text-[var(--muted)] mt-2 transform -rotate-45 origin-top-left">
                   {item.week}
                 </span>
               </div>
@@ -272,20 +272,20 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
         </div>
 
         {/* Goals Progress */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-[var(--surface-strong)] rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold font-display tracking-[-0.02em] text-[var(--ink)] mb-4 flex items-center gap-2">
             <Target className="w-5 h-5 text-primary-600" />
             Goals Progress
           </h3>
           <div className="space-y-6">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium text-gray-700">Weekly Goal</span>
-                <span className="text-gray-500">
+                <span className="font-medium text-[var(--ink-secondary)]">Weekly Goal</span>
+                <span className="text-[var(--muted)]">
                   {goals.weekly_current} / {goals.weekly_target}
                 </span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-4">
+              <div className="w-full bg-[var(--surface)] rounded-full h-4">
                 <div
                   className={cn(
                     'h-full rounded-full transition-all duration-500',
@@ -311,12 +311,12 @@ export const AnalyticsTab = memo(function AnalyticsTab({ jobs, stats }: Analytic
 
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium text-gray-700">Monthly Goal</span>
-                <span className="text-gray-500">
+                <span className="font-medium text-[var(--ink-secondary)]">Monthly Goal</span>
+                <span className="text-[var(--muted)]">
                   {goals.monthly_current} / {goals.monthly_target}
                 </span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-4">
+              <div className="w-full bg-[var(--surface)] rounded-full h-4">
                 <div
                   className={cn(
                     'h-full rounded-full transition-all duration-500',

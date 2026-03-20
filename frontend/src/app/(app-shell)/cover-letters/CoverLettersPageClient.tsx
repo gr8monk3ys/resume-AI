@@ -52,7 +52,7 @@ export default function CoverLettersPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     );
   }
@@ -64,7 +64,7 @@ export default function CoverLettersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]" />
       </div>
     );
   }
@@ -73,12 +73,12 @@ export default function CoverLettersPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Cover Letters</h1>
-          <p className="text-gray-500">Generate and manage cover letters</p>
+          <h1 className="text-2xl font-bold text-[var(--ink)] font-display tracking-[-0.02em]">Cover Letters</h1>
+          <p className="text-[var(--muted)]">Generate and manage cover letters</p>
         </div>
         <button
           onClick={() => setShowGenerator(true)}
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          className="glass-button-primary inline-flex items-center"
         >
           <Wand2 className="w-4 h-4 mr-2" />
           Generate Cover Letter
@@ -86,13 +86,13 @@ export default function CoverLettersPage() {
       </div>
 
       {coverLetters.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Mail className="w-12 h-12 mx-auto text-gray-400" />
-          <h3 className="mt-4 text-lg font-medium text-gray-900">No cover letters yet</h3>
-          <p className="mt-2 text-gray-500">Generate your first cover letter with AI</p>
+        <div className="text-center py-12 bg-[var(--surface-strong)] rounded-lg shadow">
+          <Mail className="w-12 h-12 mx-auto text-[var(--muted-soft)]" />
+          <h3 className="mt-4 text-lg font-medium text-[var(--ink)]">No cover letters yet</h3>
+          <p className="mt-2 text-[var(--muted)]">Generate your first cover letter with AI</p>
           <button
             onClick={() => setShowGenerator(true)}
-            className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            className="mt-4 glass-button-primary inline-flex items-center"
           >
             <Wand2 className="w-4 h-4 mr-2" />
             Generate Cover Letter
@@ -103,23 +103,23 @@ export default function CoverLettersPage() {
           {coverLetters.map((letter) => (
             <div
               key={letter.id}
-              className="bg-white rounded-lg shadow p-6"
+              className="bg-[var(--surface-strong)] rounded-lg shadow p-6"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-[var(--muted)]">
                     Created: {formatDate(letter.created_at)}
                   </p>
                 </div>
                 <button
                   onClick={() => void deleteCoverLetter(letter.id)}
-                  className="text-gray-400 hover:text-red-600"
+                  className="text-[var(--muted-soft)] hover:text-red-600"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
 
-              <p className="mt-4 text-sm text-gray-700 whitespace-pre-line line-clamp-6">
+              <p className="mt-4 text-sm text-[var(--ink-secondary)] whitespace-pre-line line-clamp-6">
                 {letter.content}
               </p>
             </div>
@@ -172,7 +172,7 @@ function GeneratorModal({
       );
       // Create the cover letter with the generated content
       const newLetter = await coverLettersApi.create({
-        content: generated.cover_letter,
+        content: generated.content,
       });
       onGenerate(newLetter);
     } catch (error) {
@@ -184,18 +184,18 @@ function GeneratorModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-        <h2 className="text-xl font-bold mb-4">Generate Cover Letter</h2>
+      <div className="bg-[var(--surface-strong)] rounded-lg shadow-xl max-w-2xl w-full p-6">
+        <h2 className="text-xl font-bold mb-4 font-display tracking-[-0.02em]">Generate Cover Letter</h2>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
           <div>
-            <label htmlFor="select-resume" className="block text-sm font-medium text-gray-700">Select Resume</label>
+            <label htmlFor="select-resume" className="glass-label">Select Resume</label>
             <select
               id="select-resume"
               required
               value={formData.resume_id}
               onChange={(e) => setFormData({ ...formData, resume_id: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full glass-select"
             >
               <option value="">Select a resume...</option>
               {resumes.map((resume) => (
@@ -206,38 +206,38 @@ function GeneratorModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="company-name" className="block text-sm font-medium text-gray-700">Company Name</label>
+              <label htmlFor="company-name" className="glass-label">Company Name</label>
               <input
                 id="company-name"
                 type="text"
                 required
                 value={formData.company_name}
                 onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="mt-1 block w-full glass-input"
               />
             </div>
             <div>
-              <label htmlFor="position" className="block text-sm font-medium text-gray-700">Position</label>
+              <label htmlFor="position" className="glass-label">Position</label>
               <input
                 id="position"
                 type="text"
                 required
                 value={formData.position}
                 onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="mt-1 block w-full glass-input"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="job-description" className="block text-sm font-medium text-gray-700">Job Description</label>
+            <label htmlFor="job-description" className="glass-label">Job Description</label>
             <textarea
               id="job-description"
               required
               rows={6}
               value={formData.job_description}
               onChange={(e) => setFormData({ ...formData, job_description: e.target.value })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full glass-textarea"
               placeholder="Paste the job description here..."
             />
           </div>
@@ -246,14 +246,14 @@ function GeneratorModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
+              className="glass-button-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isGenerating}
-              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 flex items-center"
+              className="glass-button-primary disabled:opacity-50 flex items-center"
             >
               {isGenerating ? (
                 <>

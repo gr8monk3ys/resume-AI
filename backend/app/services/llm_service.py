@@ -904,34 +904,40 @@ class LLMService:
         self.temperature = temperature
         self.enable_cache = enable_cache
 
-    def _get_cache_key(self, method_name: str, prompt: str) -> str:
+    def _get_cache_key(self, method_name: str, prompt: str, user_id: Optional[int] = None) -> str:
         """
-        Generate a cache key from method name and prompt.
+        Generate a cache key from method name, prompt, and user identity.
 
         Args:
             method_name: Name of the calling method
             prompt: The prompt being sent to the LLM
+            user_id: The requesting user's ID for cache isolation
 
         Returns:
             A hash string to use as cache key
         """
-        # Include provider and model in the key to avoid cross-provider cache hits
-        key_content = f"{self.provider.name}:{self.provider.model}:{method_name}:{prompt}"
+        # Include provider, model, and user_id in the key to prevent
+        # cross-provider and cross-user cache hits
+        user_segment = str(user_id) if user_id is not None else "anonymous"
+        key_content = (
+            f"{self.provider.name}:{self.provider.model}:" f"{user_segment}:{method_name}:{prompt}"
+        )
         return hashlib.sha256(key_content.encode()).hexdigest()
 
-    def _invoke_cached(self, method_name: str, prompt: str) -> str:
+    def _invoke_cached(self, method_name: str, prompt: str, user_id: Optional[int] = None) -> str:
         """
         Invoke the LLM with caching support.
 
         Args:
             method_name: Name of the calling method (for cache key)
             prompt: The prompt to send to the LLM
+            user_id: The requesting user's ID for cache isolation
 
         Returns:
             The LLM response (from cache if available)
         """
         if self.enable_cache:
-            cache_key = self._get_cache_key(method_name, prompt)
+            cache_key = self._get_cache_key(method_name, prompt, user_id=user_id)
 
             # Check cache first
             if cache_key in _llm_response_cache:
@@ -960,12 +966,13 @@ class LLMService:
     # Grammar and Text Improvement
     # -------------------------------------------------------------------------
 
-    def correct_grammar(self, text: str) -> str:
+    def correct_grammar(self, text: str, user_id: Optional[int] = None) -> str:
         """
         Correct grammatical errors in text.
 
         Args:
             text: The text to proofread and correct.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             The corrected text with grammar, spelling, and punctuation fixed.
@@ -975,19 +982,22 @@ class LLMService:
 You are an expert proofreader. Please correct any grammatical errors in the text above.
 Maintain the original formatting and structure. Only fix grammar, spelling, and punctuation.
 Return only the corrected text without any explanations."""
-        return self._invoke_cached("correct_grammar", prompt)
+        return self._invoke_cached("correct_grammar", prompt, user_id=user_id)
 
     # -------------------------------------------------------------------------
     # Resume Methods
     # -------------------------------------------------------------------------
 
-    def optimize_resume(self, resume: str, job_description: str) -> str:
+    def optimize_resume(
+        self, resume: str, job_description: str, user_id: Optional[int] = None
+    ) -> str:
         """
         Analyze and provide optimization suggestions for a resume.
 
         Args:
             resume: The current resume text.
             job_description: The target job description.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             Actionable suggestions for improving the resume.
@@ -1005,7 +1015,7 @@ As a career advisor and ATS expert, please:
 4. Ensure the resume is ATS-friendly
 
 Provide your suggestions in a clear, actionable format."""
-        return self._invoke_cached("optimize_resume", prompt)
+        return self._invoke_cached("optimize_resume", prompt, user_id=user_id)
 
     def tailor_resume(
         self,
@@ -1013,6 +1023,7 @@ Provide your suggestions in a clear, actionable format."""
         job_description: str,
         company_name: str = "",
         position: str = "",
+        user_id: Optional[int] = None,
     ) -> str:
         """
         Generate a tailored version of the resume for a specific job.
@@ -1025,6 +1036,7 @@ Provide your suggestions in a clear, actionable format."""
             job_description: The target job description.
             company_name: Name of the target company.
             position: Title of the target position.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             A rewritten resume tailored to the job.
@@ -1054,14 +1066,15 @@ Guidelines:
 8. Make the summary/objective specific to this role
 
 Output the complete tailored resume:"""
-        return self._invoke_cached("tailor_resume", prompt)
+        return self._invoke_cached("tailor_resume", prompt, user_id=user_id)
 
-    def enhance_achievement(self, raw_achievement: str) -> str:
+    def enhance_achievement(self, raw_achievement: str, user_id: Optional[int] = None) -> str:
         """
         Enhance an achievement description with impact-focused language.
 
         Args:
             raw_achievement: The original achievement description.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             An enhanced version with stronger verbs and quantified impact.
@@ -1076,13 +1089,14 @@ Rewrite this achievement to be more impactful by:
 4. Keeping it concise (1-2 sentences)
 
 Enhanced achievement:"""
-        return self._invoke_cached("enhance_achievement", prompt)
+        return self._invoke_cached("enhance_achievement", prompt, user_id=user_id)
 
     def suggest_keyword_additions(
         self,
         resume: str,
         job_description: str,
         missing_keywords: list[str],
+        user_id: Optional[int] = None,
     ) -> str:
         """
         Generate AI-powered suggestions for naturally incorporating missing keywords.
@@ -1091,6 +1105,7 @@ Enhanced achievement:"""
             resume: The current resume text.
             job_description: The target job description.
             missing_keywords: List of keywords missing from the resume.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             Specific suggestions for adding keywords naturally.
@@ -1124,7 +1139,7 @@ Important guidelines:
 - Keep suggestions realistic and professional
 
 Provide 5-7 specific suggestions:"""
-        return self._invoke_cached("suggest_keyword_additions", prompt)
+        return self._invoke_cached("suggest_keyword_additions", prompt, user_id=user_id)
 
     # -------------------------------------------------------------------------
     # Cover Letter and Communication
@@ -1137,6 +1152,7 @@ Provide 5-7 specific suggestions:"""
         company_name: str,
         position: str,
         user_name: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> str:
         """
         Generate a personalized cover letter.
@@ -1147,6 +1163,7 @@ Provide 5-7 specific suggestions:"""
             company_name: Name of the company.
             position: Title of the position.
             user_name: Optional name of the applicant.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             A complete, professional cover letter.
@@ -1173,7 +1190,7 @@ Requirements:
 - End with a call to action
 
 Generate the complete cover letter:"""
-        return self._invoke_cached("generate_cover_letter", prompt)
+        return self._invoke_cached("generate_cover_letter", prompt, user_id=user_id)
 
     def generate_networking_email(
         self,
@@ -1181,6 +1198,7 @@ Generate the complete cover letter:"""
         company: str,
         purpose: str,
         background: Optional[str] = None,
+        user_id: Optional[int] = None,
     ) -> str:
         """
         Generate a professional networking email.
@@ -1190,6 +1208,7 @@ Generate the complete cover letter:"""
             company: Name of the company.
             purpose: Purpose of reaching out.
             background: Optional background information about the sender.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             A complete networking email with subject line.
@@ -1210,7 +1229,7 @@ Requirements:
 - Keep it under 150 words
 
 Generate the email (include subject line):"""
-        return self._invoke_cached("generate_networking_email", prompt)
+        return self._invoke_cached("generate_networking_email", prompt, user_id=user_id)
 
     # -------------------------------------------------------------------------
     # Application and Interview
@@ -1222,6 +1241,7 @@ Generate the email (include subject line):"""
         resume: str,
         job_description: str,
         question_type: str = "general",
+        user_id: Optional[int] = None,
     ) -> str:
         """
         Generate an answer for common job application questions.
@@ -1232,6 +1252,7 @@ Generate the email (include subject line):"""
             job_description: The target job description.
             question_type: Type of question (general, behavioral, motivation,
                           salary, weakness, strength).
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             A well-crafted answer to the question.
@@ -1269,13 +1290,14 @@ Guidelines:
 - Avoid generic responses - make it personal and specific
 
 ANSWER:"""
-        return self._invoke_cached("answer_application_question", prompt)
+        return self._invoke_cached("answer_application_question", prompt, user_id=user_id)
 
     def generate_interview_answer(
         self,
         question: str,
         resume: str,
         job_description: str,
+        user_id: Optional[int] = None,
     ) -> str:
         """
         Generate a sample interview answer using STAR method.
@@ -1284,6 +1306,7 @@ ANSWER:"""
             question: The interview question to answer.
             resume: The candidate's resume text.
             job_description: The job description for context.
+            user_id: The requesting user's ID for cache isolation.
 
         Returns:
             A STAR-formatted interview answer.
@@ -1309,7 +1332,7 @@ Make the answer specific, using details from the resume where applicable.
 Keep it conversational but professional (about 200-300 words).
 
 SAMPLE ANSWER:"""
-        return self._invoke_cached("generate_interview_answer", prompt)
+        return self._invoke_cached("generate_interview_answer", prompt, user_id=user_id)
 
 
 # Singleton instance

@@ -25,6 +25,13 @@ class CoverLetterGenerate(BaseModel):
     tone: Optional[str] = "professional"  # professional, enthusiastic, formal
 
 
+class CoverLetterUpdate(BaseModel):
+    """Schema for updating a cover letter."""
+
+    content: Optional[str] = None
+    job_application_id: Optional[int] = None
+
+
 class CoverLetterResponse(BaseModel):
     """Schema for cover letter response."""
 

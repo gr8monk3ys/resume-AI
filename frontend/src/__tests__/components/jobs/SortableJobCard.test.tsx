@@ -215,7 +215,7 @@ describe('SortableJobCard', () => {
 
       // 50%
       const badge = screen.getByText('50%')
-      expect(badge).toHaveClass('bg-gray-100', 'text-gray-800')
+      expect(badge).toHaveClass('bg-[var(--surface)]', 'text-[var(--ink)]')
     })
 
     it('should render company filter badge for blacklisted company', () => {

@@ -108,6 +108,13 @@ class KeywordSuggestionsResponse(BaseModel):
     matched_keywords: List[str]
 
 
+class OptimizeResumeRequest(BaseModel):
+    """Schema for resume optimization request."""
+
+    resume_content: str
+    job_description: str = ""
+
+
 class JobMatchScoreRequest(BaseModel):
     """Schema for job match score calculation request."""
 

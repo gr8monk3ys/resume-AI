@@ -4,6 +4,7 @@ import {
   Plus,
   Calendar,
   BarChart3,
+  Download,
   List,
   Kanban,
   Settings,
@@ -12,11 +13,13 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 
+import { JobImportModal } from '@/components/JobImportModal'
 import { JobFormModal } from '@/components/jobs'
-import { jobsApi, filtersApi } from '@/lib/api'
+import { jobsApi, filtersApi, interviewEventsApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { TabType } from '@/lib/jobs'
-import { cn, generateId } from '@/lib/utils'
+import { migrateLocalStorage } from '@/lib/localStorageMigration'
+import { cn } from '@/lib/utils'
 
 import type {
   JobApplication,
@@ -96,30 +99,14 @@ const INITIAL_JOBS_PAGE_STATE: JobsPageState = {
   addJobStatus: undefined,
 }
 
-function readInterviewEvents(): InterviewEvent[] {
-  const storedEvents = localStorage.getItem('interview_events')
-  if (!storedEvents) {
-    return []
-  }
-
-  try {
-    return JSON.parse(storedEvents) as InterviewEvent[]
-  } catch (error) {
-    console.error('Failed to parse stored interview events:', error)
-    return []
-  }
-}
-
-function persistInterviewEvents(events: InterviewEvent[]) {
-  localStorage.setItem('interview_events', JSON.stringify(events))
-}
+const EVENTS_STORAGE_KEY = 'interview_events'
 
 function TabLoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-8 w-1/4 rounded bg-gray-200" />
-      <div className="h-64 rounded bg-gray-200" />
-      <div className="h-48 rounded bg-gray-200" />
+      <div className="h-8 w-1/4 rounded bg-[var(--line)]" />
+      <div className="h-64 rounded bg-[var(--line)]" />
+      <div className="h-48 rounded bg-[var(--line)]" />
     </div>
   )
 }
@@ -127,7 +114,7 @@ function TabLoadingSkeleton() {
 function PageLoadingState() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600" />
+      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--accent)]" />
     </div>
   )
 }
@@ -135,15 +122,17 @@ function PageLoadingState() {
 function JobsPageHeader({
   filterCount,
   onAddJob,
+  onImport,
 }: {
   filterCount: number
   onAddJob: () => void
+  onImport: () => void
 }) {
   return (
     <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Job Pipeline</h1>
-        <p className="text-gray-500">
+        <h1 className="text-2xl font-bold text-[var(--ink)] font-display tracking-[-0.03em]">Job Pipeline</h1>
+        <p className="text-[var(--muted)]">
           Track applications, interviews, and your job search progress
         </p>
       </div>
@@ -151,19 +140,26 @@ function JobsPageHeader({
       <div className="flex items-center gap-2">
         <Link
           href="/jobs/filters"
-          className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 shadow-sm hover:bg-gray-50"
+          className="glass-button-secondary"
         >
           <Settings className="mr-2 h-4 w-4" />
           Filters
           {filterCount > 0 && (
-            <span className="ml-2 rounded-full bg-primary-100 px-2 py-0.5 text-xs text-primary-700">
+            <span className="ml-2 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-xs text-[var(--accent-strong)]">
               {filterCount}
             </span>
           )}
         </Link>
         <button
+          onClick={onImport}
+          className="glass-button-secondary flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Import
+        </button>
+        <button
           onClick={onAddJob}
-          className="inline-flex items-center rounded-lg bg-primary-600 px-4 py-2 text-white shadow-sm hover:bg-primary-700"
+          className="glass-button-primary"
         >
           <Plus className="mr-2 h-4 w-4" />
           Add Job
@@ -181,17 +177,15 @@ function JobsTabNavigation({
   onTabChange: (tab: TabType) => void
 }) {
   return (
-    <div className="mb-6 border-b border-gray-200">
-      <nav className="-mb-px flex gap-4" aria-label="Tabs">
+    <div className="mb-6 glass-tabs">
+      <nav className="flex gap-1" aria-label="Tabs">
         {JOB_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             className={cn(
-              'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              'glass-tab',
+              activeTab === tab.id && 'glass-tab-active'
             )}
             aria-current={activeTab === tab.id ? 'page' : undefined}
           >
@@ -234,8 +228,8 @@ function JobsTabContent({
   onBulkDelete: (ids: number[]) => void
   onBulkStatusChange: (ids: number[], status: JobStatus) => void
   onAddEvent: (event: Omit<InterviewEvent, 'id' | 'created_at'>) => void
-  onUpdateEvent: (id: string, updates: Partial<InterviewEvent>) => void
-  onDeleteEvent: (id: string) => void
+  onUpdateEvent: (id: number, updates: Partial<InterviewEvent>) => void
+  onDeleteEvent: (id: number) => void
 }) {
   if (activeTab === 'kanban') {
     return (
@@ -307,12 +301,36 @@ function useJobsPageController() {
 
       try {
         if (isAuthenticated) {
-          const [jobsData, statsData, companyFiltersData, keywordFiltersData] =
+          // Migrate localStorage events to backend
+          await migrateLocalStorage<{ company: string; position: string; event_type: string; scheduled_date: string; [key: string]: unknown }, Record<string, unknown>>(
+            EVENTS_STORAGE_KEY,
+            () => interviewEventsApi.list(),
+            (item) => interviewEventsApi.create(item as Parameters<typeof interviewEventsApi.create>[0]),
+            (raw) => ({
+              company: raw.company,
+              position: raw.position,
+              event_type: raw.event_type,
+              scheduled_date: raw.scheduled_date,
+              job_application_id: null,
+              scheduled_time: (raw.scheduled_time as string) || null,
+              duration_minutes: (raw.duration_minutes as number) || null,
+              location: (raw.location as string) || null,
+              meeting_link: (raw.meeting_link as string) || null,
+              interviewer_names: (raw.interviewer_names as string[]) || null,
+              notes: (raw.notes as string) || null,
+              is_completed: (raw.is_completed as boolean) ?? false,
+              follow_up_date: (raw.follow_up_date as string) || null,
+              follow_up_done: (raw.follow_up_done as boolean) ?? false,
+            })
+          ).catch((err) => console.warn('Event migration skipped:', err))
+
+          const [jobsData, statsData, companyFiltersData, keywordFiltersData, eventsData] =
             await Promise.all([
               jobsApi.list(),
               jobsApi.getStats().catch(() => null),
               filtersApi.getCompanyFilters(),
               filtersApi.getKeywordFilters(),
+              interviewEventsApi.list().catch(() => []),
             ])
 
           nextState = {
@@ -320,7 +338,7 @@ function useJobsPageController() {
             stats: statsData,
             companyFilters: companyFiltersData,
             keywordFilters: keywordFiltersData,
-            events: readInterviewEvents(),
+            events: eventsData as unknown as InterviewEvent[],
             isLoading: false,
           }
         }
@@ -487,46 +505,66 @@ function useJobsPageController() {
   )
 
   const handleAddEvent = useCallback(
-    (event: Omit<InterviewEvent, 'id' | 'created_at'>) => {
-      setPageState((prev) => {
-        const updatedEvents = [
-          ...prev.events,
-          {
-            ...event,
-            id: generateId(),
-            created_at: new Date().toISOString(),
-          },
-        ]
-        persistInterviewEvents(updatedEvents)
-        return { ...prev, events: updatedEvents }
-      })
+    async (event: Omit<InterviewEvent, 'id' | 'created_at'>) => {
+      try {
+        const created = await interviewEventsApi.create({
+          company: event.company,
+          position: event.position,
+          event_type: event.event_type,
+          scheduled_date: event.scheduled_date,
+          job_application_id: event.job_application_id ?? null,
+          scheduled_time: event.scheduled_time ?? null,
+          duration_minutes: event.duration_minutes ?? null,
+          location: event.location ?? null,
+          meeting_link: event.meeting_link ?? null,
+          interviewer_names: event.interviewer_names ?? null,
+          notes: event.notes ?? null,
+          is_completed: event.is_completed,
+          follow_up_date: event.follow_up_date ?? null,
+          follow_up_done: event.follow_up_done,
+        })
+        setPageState((prev) => ({
+          ...prev,
+          events: [...prev.events, created as unknown as InterviewEvent],
+        }))
+      } catch (error) {
+        console.error('Failed to add event:', error)
+      }
     },
     []
   )
 
   const handleUpdateEvent = useCallback(
-    (id: string, updates: Partial<InterviewEvent>) => {
-      setPageState((prev) => {
-        const updatedEvents = prev.events.map((event) =>
-          event.id === id ? { ...event, ...updates } : event
-        )
-        persistInterviewEvents(updatedEvents)
-        return { ...prev, events: updatedEvents }
-      })
+    async (id: number, updates: Partial<InterviewEvent>) => {
+      try {
+        const updated = await interviewEventsApi.update(id, updates as Parameters<typeof interviewEventsApi.update>[1])
+        setPageState((prev) => ({
+          ...prev,
+          events: prev.events.map((event) =>
+            event.id === id ? (updated as unknown as InterviewEvent) : event
+          ),
+        }))
+      } catch (error) {
+        console.error('Failed to update event:', error)
+      }
     },
     []
   )
 
-  const handleDeleteEvent = useCallback((id: string) => {
+  const handleDeleteEvent = useCallback(async (id: number) => {
     if (!confirm('Are you sure you want to delete this event?')) {
       return
     }
 
-    setPageState((prev) => {
-      const updatedEvents = prev.events.filter((event) => event.id !== id)
-      persistInterviewEvents(updatedEvents)
-      return { ...prev, events: updatedEvents }
-    })
+    try {
+      await interviewEventsApi.delete(id)
+      setPageState((prev) => ({
+        ...prev,
+        events: prev.events.filter((event) => event.id !== id),
+      }))
+    } catch (error) {
+      console.error('Failed to delete event:', error)
+    }
   }, [])
 
   const handleTabChange = useCallback((tab: TabType) => {
@@ -616,9 +654,9 @@ function useJobsPageController() {
     handleReorder,
     handleBulkDeleteSync,
     handleBulkStatusChangeSync,
-    handleAddEvent,
-    handleUpdateEvent,
-    handleDeleteEvent,
+    handleAddEvent: (event: Omit<InterviewEvent, 'id' | 'created_at'>) => { void handleAddEvent(event) },
+    handleUpdateEvent: (id: number, updates: Partial<InterviewEvent>) => { void handleUpdateEvent(id, updates) },
+    handleDeleteEvent: (id: number) => { void handleDeleteEvent(id) },
     handleCloseAddModal,
     handleAddJobSync,
     handleCloseEditModal,
@@ -628,6 +666,7 @@ function useJobsPageController() {
 
 export function JobsPageClient() {
   const controller = useJobsPageController()
+  const [showImportModal, setShowImportModal] = useState(false)
 
   if (controller.authLoading || controller.isLoading) {
     return <PageLoadingState />
@@ -642,6 +681,7 @@ export function JobsPageClient() {
       <JobsPageHeader
         filterCount={controller.companyFilters.length + controller.keywordFilters.length}
         onAddJob={controller.handleAddJobButtonClick}
+        onImport={() => setShowImportModal(true)}
       />
 
       <JobsTabNavigation
@@ -681,6 +721,16 @@ export function JobsPageClient() {
           onClose={controller.handleCloseEditModal}
           onSave={controller.handleUpdateJobSync}
           onDelete={controller.handleDeleteJobSync}
+        />
+      )}
+
+      {showImportModal && (
+        <JobImportModal
+          onClose={() => setShowImportModal(false)}
+          onImported={() => {
+            setShowImportModal(false)
+            window.location.reload()
+          }}
         />
       )}
     </div>
