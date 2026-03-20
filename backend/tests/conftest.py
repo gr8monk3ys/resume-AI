@@ -515,3 +515,30 @@ def sample_resume_content() -> str:
 def sample_job_description() -> str:
     """Return sample job description for testing."""
     return SAMPLE_JOB_DESCRIPTION
+
+
+from app.models.subscription import Subscription, UsageRecord
+
+
+@pytest.fixture
+def free_subscription(db: Session, test_user: User) -> Subscription:
+    sub = Subscription(user_id=test_user.id, plan="free", status="active")
+    db.add(sub)
+    db.commit()
+    db.refresh(sub)
+    return sub
+
+
+@pytest.fixture
+def pro_subscription(db: Session, test_user: User) -> Subscription:
+    sub = Subscription(
+        user_id=test_user.id,
+        plan="pro_monthly",
+        status="active",
+        stripe_customer_id="cus_test_pro",
+        stripe_subscription_id="sub_test_pro",
+    )
+    db.add(sub)
+    db.commit()
+    db.refresh(sub)
+    return sub
