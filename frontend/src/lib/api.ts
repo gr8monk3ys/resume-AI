@@ -23,6 +23,9 @@ import type {
   JobCheckResult,
   BillingStatus,
   OnboardingState,
+  JobImportResponse,
+  JobPreviewResponse,
+  BulkImportResponse,
 } from '@/types'
 
 /**
@@ -1451,6 +1454,40 @@ export const nudgesApi = {
     return authenticatedRequest<DraftResponse>('/api/nudges/draft', token, {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  },
+}
+
+/**
+ * Job Import API
+ */
+export const jobImportApi = {
+  preview: async (url: string, token?: string): Promise<JobPreviewResponse> => {
+    return authenticatedRequest<JobPreviewResponse>(
+      `/api/jobs/import/preview?url=${encodeURIComponent(url)}`,
+      token
+    )
+  },
+
+  importUrl: async (
+    url: string,
+    saveToLine: boolean = true,
+    token?: string
+  ): Promise<JobImportResponse> => {
+    return authenticatedRequest<JobImportResponse>('/api/jobs/import/url', token, {
+      method: 'POST',
+      body: JSON.stringify({ url, save_to_pipeline: saveToLine }),
+    })
+  },
+
+  importBulk: async (
+    urls: string[],
+    saveToPipeline: boolean = true,
+    token?: string
+  ): Promise<BulkImportResponse> => {
+    return authenticatedRequest<BulkImportResponse>('/api/jobs/import/bulk', token, {
+      method: 'POST',
+      body: JSON.stringify({ urls, save_to_pipeline: saveToPipeline }),
     })
   },
 }

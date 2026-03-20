@@ -325,3 +325,47 @@ export interface JobImportResult {
   duplicate: boolean
   status?: string
 }
+
+export interface JobImportData {
+  title: string
+  company: string
+  location: string | null
+  description: string | null
+  job_url: string | null
+  source: string
+}
+
+export interface JobImportResponse {
+  success: boolean
+  job_data: JobImportData | null
+  job_id: number | null
+  errors: string[]
+  warnings: string[]
+  source_detected: string | null
+}
+
+export interface JobPreviewResponse {
+  success: boolean
+  job_data: JobImportData | null
+  source_detected: string | null
+  confidence: number
+  errors: string[]
+  warnings: string[]
+}
+
+export interface BulkImportResult {
+  url: string
+  success: boolean
+  job_data: JobImportData | null
+  job_id: number | null
+}
+
+export interface BulkImportResponse {
+  success: boolean
+  results: BulkImportResult[]
+  success_count: number
+  error_count: number
+  total_requested: number
+  errors: string[]
+  warnings: string[]
+}
