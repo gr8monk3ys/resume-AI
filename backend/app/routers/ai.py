@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import get_settings
 from app.middleware.auth import get_current_user
+from app.middleware.feature_gate import check_usage_limit
 from app.models.user import User
 from app.schemas.ai import (
     AnswerQuestionRequest,
@@ -23,6 +24,7 @@ from app.schemas.ai import (
     KeywordSuggestionsResponse,
     NetworkingEmailRequest,
     NetworkingEmailResponse,
+    OptimizeResumeRequest,
     TailorResumeRequest,
     TailorResumeResponse,
 )
@@ -69,6 +71,7 @@ def _handle_ai_error(e: Exception, operation: str, user_id: int) -> HTTPExceptio
 async def tailor_resume(
     request: TailorResumeRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("ai_generation")),
 ):
     """Tailor a resume for a specific job description."""
     from app.services.llm_service import get_llm_service
@@ -94,6 +97,7 @@ async def tailor_resume(
 async def answer_question(
     request: AnswerQuestionRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("ai_generation")),
 ):
     """Generate an answer for an application question."""
     from app.services.llm_service import get_llm_service
@@ -120,6 +124,7 @@ async def answer_question(
 async def interview_prep(
     request: InterviewPrepRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("interview_prep")),
 ):
     """Generate interview answer using STAR method."""
     from app.services.llm_service import get_llm_service
@@ -152,6 +157,7 @@ async def interview_prep(
 async def grammar_check(
     request: GrammarCorrectionRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("ai_generation")),
 ):
     """Check and correct grammar in text."""
     from app.services.llm_service import get_llm_service
@@ -173,9 +179,9 @@ async def grammar_check(
 
 @router.post("/optimize-resume")
 async def optimize_resume(
-    resume_content: str,
-    job_description: str = "",
+    request: OptimizeResumeRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("ai_generation")),
 ):
     """Get AI-powered resume optimization suggestions."""
     from app.services.llm_service import get_llm_service
@@ -184,8 +190,8 @@ async def optimize_resume(
         llm_service = get_llm_service()
         suggestions = await asyncio.to_thread(
             llm_service.optimize_resume,
-            resume=resume_content,
-            job_description=job_description,
+            resume=request.resume_content,
+            job_description=request.job_description,
         )
 
         return {"suggestions": suggestions}
@@ -197,6 +203,7 @@ async def optimize_resume(
 async def generate_networking_email(
     request: NetworkingEmailRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("ai_generation")),
 ):
     """Generate a professional networking email."""
     from app.services.llm_service import get_llm_service
@@ -249,6 +256,7 @@ async def generate_networking_email(
 async def get_keyword_suggestions(
     request: KeywordSuggestionsRequest,
     current_user: User = Depends(get_current_user),
+    _limit=Depends(check_usage_limit("ai_generation")),
 ):
     """Get AI-powered suggestions for adding missing keywords to a resume."""
     from app.services.llm_service import get_llm_service
@@ -318,7 +326,7 @@ async def calculate_job_match_score(
 
 
 @router.post("/ats-analyze", response_model=ATSAnalysisResponse)
-async def ats_analyze(
+def ats_analyze(
     request: ATSAnalysisRequest,
     current_user: User = Depends(get_current_user),
 ):
@@ -360,7 +368,7 @@ async def ats_analyze(
 
 
 @router.post("/extract-keywords", response_model=ExtractKeywordsResponse)
-async def extract_keywords(
+def extract_keywords(
     request: ExtractKeywordsRequest,
     current_user: User = Depends(get_current_user),
 ):
@@ -394,7 +402,7 @@ async def extract_keywords(
 
 
 @router.post("/ats-keyword-suggestions", response_model=ATSKeywordSuggestionsResponse)
-async def ats_keyword_suggestions(
+def ats_keyword_suggestions(
     request: ATSKeywordSuggestionsRequest,
     current_user: User = Depends(get_current_user),
 ):
@@ -454,7 +462,7 @@ async def ats_keyword_suggestions(
 
 
 @router.post("/experience-match", response_model=ExperienceMatchResponse)
-async def calculate_experience_match(
+def calculate_experience_match(
     request: ExperienceMatchRequest,
     current_user: User = Depends(get_current_user),
 ):

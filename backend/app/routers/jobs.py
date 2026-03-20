@@ -8,9 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import get_db, safe_commit
 from app.dependencies import get_user_profile
 from app.middleware.auth import get_current_user
+from app.middleware.feature_gate import get_user_subscription, is_pro_user
 from app.models.job_application import JobApplication
 from app.models.profile import Profile
 from app.models.user import User
@@ -21,7 +23,7 @@ router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
 
 @router.get("", response_model=PaginatedResponse[JobResponse])
-async def list_jobs(
+def list_jobs(
     status_filter: Optional[JobStatus] = Query(None, alias="status"),
     search: Optional[str] = None,
     pagination: PaginationParams = Depends(),
@@ -74,7 +76,7 @@ async def list_jobs(
 
 
 @router.get("/stats")
-async def get_job_stats(
+def get_job_stats(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get job application statistics using SQL aggregation for performance."""
@@ -107,13 +109,37 @@ async def get_job_stats(
 
 
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-async def create_job(
+def create_job(
     job_data: JobCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Create a new job application."""
     profile = get_user_profile(current_user, db)
+
+    settings = get_settings()
+    if settings.enable_billing:
+        sub = get_user_subscription(db, current_user.id)
+        if not is_pro_user(sub):
+            active_count = db.query(JobApplication).filter(
+                JobApplication.profile_id == profile.id,
+                JobApplication.status != "Rejected",
+            ).count()
+            if active_count >= 20:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail={
+                        "error": "free_tier_limit_reached",
+                        "feature": "active_jobs",
+                        "limit": 20,
+                        "period": "total",
+                        "used": active_count,
+                        "message": (
+                            "You have reached the limit of 20 active jobs on the free tier. "
+                            "Upgrade to Pro for unlimited job tracking."
+                        ),
+                    },
+                )
 
     job = JobApplication(
         profile_id=profile.id,
@@ -151,7 +177,7 @@ async def create_job(
 
 
 @router.get("/{job_id}", response_model=JobResponse)
-async def get_job(
+def get_job(
     job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Get a specific job application."""
@@ -170,7 +196,7 @@ async def get_job(
 
 
 @router.put("/{job_id}", response_model=JobResponse)
-async def update_job(
+def update_job(
     job_id: int,
     job_data: JobUpdate,
     current_user: User = Depends(get_current_user),
@@ -204,7 +230,7 @@ async def update_job(
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_job(
+def delete_job(
     job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Delete a job application."""
@@ -224,7 +250,7 @@ async def delete_job(
 
 
 @router.patch("/{job_id}/status", response_model=JobResponse)
-async def update_job_status(
+def update_job_status(
     job_id: int,
     new_status: JobStatus,
     current_user: User = Depends(get_current_user),
