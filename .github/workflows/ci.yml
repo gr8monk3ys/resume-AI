@@ -170,7 +170,7 @@ jobs:
         run: uv run pytest tests/ -v -k "not slow" --tb=short
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         if: github.event_name == 'push'
         with:
           files: backend/coverage.xml
@@ -247,7 +247,7 @@ jobs:
           CI: true
 
       - name: Upload coverage report
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         if: github.event_name == 'push'
         with:
           files: frontend/coverage/coverage-final.json
