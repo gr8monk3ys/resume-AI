@@ -15,7 +15,7 @@ dependencies = [
     # Database - SQLite (dev) + PostgreSQL (prod)
     "sqlalchemy>=2.0.25",
     "alembic>=1.13.1",
-    "psycopg2-binary>=2.9.0",  # Sync PostgreSQL driver (migrations, sync endpoints)
+    "psycopg2-binary>=2.9.11",  # Sync PostgreSQL driver (migrations, sync endpoints)
     "asyncpg>=0.29.0",          # Async PostgreSQL driver (high-performance endpoints)
     # Redis (optional - for distributed rate limiting)
     "redis>=5.0.0",
