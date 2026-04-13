@@ -20,7 +20,7 @@ dependencies = [
     # Redis (optional - for distributed rate limiting)
     "redis>=5.0.0",
     # Authentication
-    "PyJWT[crypto]>=2.8.0",
+    "PyJWT[crypto]>=2.12.1",
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.0.0,<5.1.0",  # Pin to avoid passlib compatibility issue with 4.1.0+
     "cffi>=1.16.0",
