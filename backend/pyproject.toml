@@ -24,7 +24,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.0.0,<5.1.0",  # Pin to avoid passlib compatibility issue with 4.1.0+
     "cffi>=1.16.0",
-    "cryptography>=42.0.0",
+    "cryptography>=46.0.7",
     # AI/LLM - Multi-provider support
     "openai>=1.10.0",
     "langchain>=0.1.0",
