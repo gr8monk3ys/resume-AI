@@ -9,7 +9,7 @@ authors = [{ name = "ResuBoost Team" }]
 
 dependencies = [
     # FastAPI and server
-    "fastapi>=0.109.0",
+    "fastapi>=0.135.3",
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.6",
     # Database - SQLite (dev) + PostgreSQL (prod)
