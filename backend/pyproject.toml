@@ -42,7 +42,7 @@ dependencies = [
     "cachetools>=5.3.0",
     "tenacity>=8.2.0",
     # Background scheduler
-    "apscheduler>=3.10.4",
+    "apscheduler>=3.11.2",
     # Monitoring and Error Tracking
     "sentry-sdk[fastapi,sqlalchemy]>=2.0.0",
     "resend>=2.25.0",
