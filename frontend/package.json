@@ -26,7 +26,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@sentry/nextjs": "^10.36.0",
     "@sentry/react": "10.38.0",
-    "@stripe/stripe-js": "^8.11.0",
+    "@stripe/stripe-js": "^9.8.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-virtual": "^3.13.18",
     "clsx": "^2.1.1",
