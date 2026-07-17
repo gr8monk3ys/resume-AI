@@ -100,7 +100,7 @@ test:
 	cd backend && uv run pytest tests/ -v
 	@echo ""
 	@echo "Running frontend tests..."
-	cd frontend && bun test
+	cd frontend && bun run test
 
 test-e2e:
 	@echo "Running E2E tests with Playwright..."

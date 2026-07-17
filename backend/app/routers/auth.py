@@ -151,6 +151,12 @@ class PasswordChangeRequest(BaseModel):
     new_password: str = Field(..., min_length=12, max_length=128)
 
 
+class DeleteAccountRequest(BaseModel):
+    """Request model for account deletion."""
+
+    password: str
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user."""
@@ -588,6 +594,66 @@ def change_password(
     return {
         "message": "Password changed successfully. All existing sessions have been invalidated."
     }
+
+
+@router.delete("/account")
+def delete_account(
+    request: Request,
+    delete_data: DeleteAccountRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete the current user's account and all associated data.
+
+    Requires the current password for verification. Deleting the profile
+    cascades (via ORM relationship cascade) to resumes, job applications,
+    cover letters, career journal entries, and other profile-owned data.
+    """
+    ip_address = get_client_ip(request)
+    request_id = getattr(request.state, "request_id", None)
+    audit_logger = get_audit_logger()
+
+    if not verify_password(delete_data.password, current_user.password_hash):
+        audit_logger.log_event(
+            AuditEventType.ACCOUNT_DELETED,
+            f"Failed account deletion attempt for {current_user.username}",
+            user_id=current_user.id,
+            username=current_user.username,
+            ip_address=ip_address,
+            request_id=request_id,
+            details={"reason": "Invalid password"},
+            success=False,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password is incorrect",
+        )
+
+    user_id = current_user.id
+    username = current_user.username
+
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if profile:
+        db.delete(profile)
+
+    db.delete(current_user)
+    safe_commit(db, "account deletion")
+
+    audit_logger.log_event(
+        AuditEventType.ACCOUNT_DELETED,
+        f"User {username} deleted their account",
+        user_id=user_id,
+        username=username,
+        ip_address=ip_address,
+        request_id=request_id,
+    )
+
+    clear_auth_cookies(response)
+
+    return {"message": "Account deleted successfully"}
 
 
 @router.get("/verify-email")
