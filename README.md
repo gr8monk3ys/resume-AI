@@ -1,5 +1,9 @@
 # ResuBoost AI
 
+<p align="center">
+  <img src="docs/assets/hero.png" alt="resume-AI preview" width="640">
+</p>
+
 ResuBoost AI is a comprehensive job search toolkit with multi-provider LLM support, designed as an open-source alternative to Simplify.jobs. Built with a modern FastAPI backend and Next.js frontend, it provides an all-in-one platform to optimize resumes, generate cover letters, track applications, and prepare for interviews.
 
 **Supported LLM Providers:** OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
