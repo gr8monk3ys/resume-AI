@@ -64,7 +64,9 @@ class TestCheckRateLimit:
 
 class TestGetAuthorizedHost:
     def test_known_source_host_is_canonicalized(self, importer):
-        assert importer._get_authorized_host("linkedin.com", JobSource.LINKEDIN) == "www.linkedin.com"
+        assert (
+            importer._get_authorized_host("linkedin.com", JobSource.LINKEDIN) == "www.linkedin.com"
+        )
 
     def test_unmapped_host_for_known_source_returns_none(self, importer):
         assert importer._get_authorized_host("evil.com", JobSource.LINKEDIN) is None
@@ -81,7 +83,9 @@ class TestGetAuthorizedHost:
         )
 
     def test_hostname_is_normalized_before_lookup(self, importer):
-        assert importer._get_authorized_host("LinkedIn.com.", JobSource.LINKEDIN) == "www.linkedin.com"
+        assert (
+            importer._get_authorized_host("LinkedIn.com.", JobSource.LINKEDIN) == "www.linkedin.com"
+        )
 
 
 class TestParseSalary:
@@ -194,10 +198,7 @@ class TestExtractMetaTags:
         assert importer._extract_meta_tags(html)["title"] == "Fallback Title"
 
     def test_og_title_takes_precedence_over_title_tag(self, importer):
-        html = (
-            '<title>Page Title</title>'
-            '<meta property="og:title" content="OG Title">'
-        )
+        html = "<title>Page Title</title>" '<meta property="og:title" content="OG Title">'
         assert importer._extract_meta_tags(html)["title"] == "OG Title"
 
     def test_returns_empty_dict_when_nothing_found(self, importer):
@@ -320,7 +321,7 @@ class TestParseGreenhousePage:
 
 class TestParseLinkedinPage:
     def test_splits_title_on_pipe(self, importer):
-        html = '<title>Backend Engineer | Acme Corp | LinkedIn</title>'
+        html = "<title>Backend Engineer | Acme Corp | LinkedIn</title>"
         job = importer._parse_linkedin_page(html)
         assert job.title == "Backend Engineer"
 
@@ -361,7 +362,7 @@ class TestParseIndeedPage:
 
 class TestParseGlassdoorPage:
     def test_splits_title_on_dash(self, importer):
-        html = '<title>Backend Engineer - Acme Corp - Glassdoor</title>'
+        html = "<title>Backend Engineer - Acme Corp - Glassdoor</title>"
         job = importer._parse_glassdoor_page(html)
         assert job.title == "Backend Engineer"
         assert job.company == ""
@@ -376,7 +377,7 @@ class TestParseGlassdoorPage:
 class TestParseGenericPage:
     def test_parses_from_json_patterns(self, importer):
         html = (
-            '<title>Fallback Title</title>'
+            "<title>Fallback Title</title>"
             '<meta property="og:description" content="A great job">'
             '"company": "Acme Corp"'
             '"location": "Remote"'
@@ -417,7 +418,7 @@ class TestParseJobListingPage:
         assert job.source == JobSource.GREENHOUSE
 
     def test_unknown_source_uses_generic_parser(self, importer):
-        html = '<title>Some Job</title>'
+        html = "<title>Some Job</title>"
         job = importer.parse_job_listing_page(html, JobSource.COMPANY_SITE)
         assert job.title == "Some Job"
         assert job.source == JobSource.COMPANY_SITE
@@ -429,7 +430,7 @@ Some intro text.
 | Company | Role | Location | Application | Date Posted |
 | --- | --- | --- | --- | --- |
 | Acme Corp | Software Engineer Intern | Remote | [Apply](https://apply.example.com/1) | Jan 05 |
-| \U0001F984 Beta Inc | Backend Engineer | On-site, NYC | [Apply](https://apply.example.com/2) | Jan 10 |
+| \U0001f984 Beta Inc | Backend Engineer | On-site, NYC | [Apply](https://apply.example.com/2) | Jan 10 |
 | Closed Co | Data Scientist | Remote | Closed | Jan 01 |
 """
 
@@ -482,19 +483,11 @@ class TestParseSimplifyMarkdown:
         assert importer._parse_simplify_markdown("Just some prose, no table here.") == []
 
     def test_rows_missing_company_are_skipped(self, importer):
-        table = (
-            "| Company | Role |\n"
-            "| --- | --- |\n"
-            "|  | Engineer |\n"
-        )
+        table = "| Company | Role |\n" "| --- | --- |\n" "|  | Engineer |\n"
         assert importer._parse_simplify_markdown(table) == []
 
     def test_rows_missing_title_are_skipped(self, importer):
-        table = (
-            "| Company | Role |\n"
-            "| --- | --- |\n"
-            "| Acme |  |\n"
-        )
+        table = "| Company | Role |\n" "| --- | --- |\n" "| Acme |  |\n"
         assert importer._parse_simplify_markdown(table) == []
 
 
