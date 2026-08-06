@@ -2475,7 +2475,7 @@ export default function InterviewCenterPage() {
         const updated = await companyResearchApi.update(research.id, apiData)
         setCompanyResearch(apiResearchToLocal(updated))
       } else {
-        const created = await companyResearchApi.create(apiData as Parameters<typeof companyResearchApi.create>[0])
+        const created = await companyResearchApi.create(apiData)
         setCompanyResearch(apiResearchToLocal(created))
       }
     } catch (error) {

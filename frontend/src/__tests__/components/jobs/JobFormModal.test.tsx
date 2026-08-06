@@ -295,7 +295,8 @@ describe('JobFormModal', () => {
   describe('Delete Actions', () => {
     it('should show confirmation dialog when delete is clicked', async () => {
       const user = userEvent.setup()
-      window.confirm = vi.fn(() => false)
+      const confirmMock = vi.fn(() => false)
+      window.confirm = confirmMock
 
       render(
         <JobFormModal
@@ -309,7 +310,7 @@ describe('JobFormModal', () => {
       const deleteButton = screen.getByRole('button', { name: /delete/i })
       await user.click(deleteButton)
 
-      expect(window.confirm).toHaveBeenCalledWith(
+      expect(confirmMock).toHaveBeenCalledWith(
         'Are you sure you want to delete this job application?'
       )
     })

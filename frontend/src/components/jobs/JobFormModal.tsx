@@ -26,7 +26,7 @@ export function JobFormModal({
     company: job?.company || '',
     position: job?.position || '',
     job_description: job?.job_description || '',
-    status: job?.status || initialStatus || ('Bookmarked' as JobStatus),
+    status: job?.status || initialStatus || ('Bookmarked'),
     application_date: job?.application_date || '',
     deadline: job?.deadline || '',
     location: job?.location || '',

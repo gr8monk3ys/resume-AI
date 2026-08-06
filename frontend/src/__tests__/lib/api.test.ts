@@ -7,7 +7,7 @@ describe('authApi.deleteAccount', () => {
 
   beforeEach(() => {
     fetchMock.mockReset()
-    global.fetch = fetchMock as unknown as typeof fetch
+    global.fetch = fetchMock
   })
 
   afterEach(() => {
