@@ -50,20 +50,28 @@ ResuBoost AI is a comprehensive job search toolkit with multi-provider LLM suppo
 ### Prerequisites
 - Python 3.10+
 - Node.js 20+
-- An LLM API key (OpenAI, Anthropic, Google, or Ollama running locally)
+- Optional: an LLM API key (OpenAI, Anthropic, Google, or Ollama running locally) — the app works out of the box with mock AI responses
 
 ### Quick Start
 
+The fastest path (generates `.env` with a secure key and mock AI enabled, installs everything, starts both servers):
+
+```bash
+make setup && make dev
+```
+
+Or set up manually:
+
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/resume-AI.git
+git clone https://github.com/gr8monk3ys/resume-AI.git
 cd resume-AI
 ```
 
-2. Set up the backend:
+2. Set up the backend (uses [uv](https://docs.astral.sh/uv/), or plain pip):
 ```bash
-cd backend
-pip install -r requirements.txt
+cd backend && uv sync
+# or, with pip: pip install -e ./backend
 ```
 
 3. Set up the frontend:
@@ -107,10 +115,12 @@ make clean      # Remove cache and build files
 
 Create a `.env` file in the root directory with the following variables:
 
-### Required - Choose One LLM Provider
+### Optional - Choose an LLM Provider
+
+The app defaults to `mock` responses so it runs with no API key. Set a real provider for live AI features:
 
 ```bash
-# Provider selection (default: openai)
+# Provider selection (default: mock)
 LLM_PROVIDER=openai  # Options: openai, anthropic, google, ollama, mock
 
 # OpenAI
