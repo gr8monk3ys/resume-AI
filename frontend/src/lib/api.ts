@@ -670,6 +670,16 @@ export const authApi = {
       }),
     })
   },
+
+  /**
+   * Permanently delete the current user's account and all associated data
+   */
+  deleteAccount: async (password: string, token?: string): Promise<void> => {
+    await authenticatedRequest('/api/auth/account', token, {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    })
+  },
 }
 
 /**

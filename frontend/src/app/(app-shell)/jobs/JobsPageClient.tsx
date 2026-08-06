@@ -537,7 +537,7 @@ function useJobsPageController() {
   const handleUpdateEvent = useCallback(
     async (id: number, updates: Partial<InterviewEvent>) => {
       try {
-        const updated = await interviewEventsApi.update(id, updates as Parameters<typeof interviewEventsApi.update>[1])
+        const updated = await interviewEventsApi.update(id, updates)
         setPageState((prev) => ({
           ...prev,
           events: prev.events.map((event) =>

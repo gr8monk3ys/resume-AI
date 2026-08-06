@@ -450,7 +450,8 @@ describe('ListView', () => {
   describe('Bulk Actions', () => {
     it('should call onBulkDelete when delete selected is clicked', async () => {
       const user = userEvent.setup()
-      window.confirm = vi.fn(() => true)
+      const confirmMock = vi.fn(() => true)
+      window.confirm = confirmMock
 
       render(
         <ListView
@@ -470,7 +471,7 @@ describe('ListView', () => {
       const deleteButton = screen.getByText(/delete selected/i)
       await user.click(deleteButton)
 
-      expect(window.confirm).toHaveBeenCalledWith(
+      expect(confirmMock).toHaveBeenCalledWith(
         expect.stringContaining('2 job applications')
       )
       expect(mockOnBulkDelete).toHaveBeenCalledWith([1, 2])
