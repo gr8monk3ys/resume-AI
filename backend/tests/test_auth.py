@@ -16,6 +16,8 @@ from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from app.middleware.auth import create_access_token, create_refresh_token, get_password_hash
+from app.models.profile import Profile
+from app.models.resume import Resume
 from app.models.user import User
 
 
@@ -380,6 +382,65 @@ class TestPasswordChange:
             headers=auth_headers,
         )
         assert response.status_code in (400, 422)
+
+
+class TestDeleteAccount:
+    """Tests for account deletion endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_delete_account_success(
+        self,
+        client: AsyncClient,
+        db: Session,
+        test_user: User,
+        test_resume: Resume,
+        auth_headers: dict,
+    ):
+        """Test successful account deletion cascades to profile and resumes."""
+        user_id = test_user.id
+        profile_id = test_resume.profile_id
+
+        response = await client.request(
+            "DELETE",
+            "/api/auth/account",
+            json={"password": "testpassword123"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert "deleted" in response.json()["message"].lower()
+
+        assert db.query(User).filter(User.id == user_id).first() is None
+        assert db.query(Profile).filter(Profile.id == profile_id).first() is None
+        assert db.query(Resume).filter(Resume.id == test_resume.id).first() is None
+
+        # Token is no longer valid since the user no longer exists
+        me_response = await client.get("/api/auth/me", headers=auth_headers)
+        assert me_response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_delete_account_wrong_password(
+        self, client: AsyncClient, db: Session, test_user: User, auth_headers: dict
+    ):
+        """Test account deletion with wrong password leaves the account intact."""
+        response = await client.request(
+            "DELETE",
+            "/api/auth/account",
+            json={"password": "wrongpassword"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+        assert "incorrect" in response.json()["detail"].lower()
+        assert db.query(User).filter(User.id == test_user.id).first() is not None
+
+    @pytest.mark.asyncio
+    async def test_delete_account_requires_auth(self, client: AsyncClient):
+        """Test account deletion requires authentication."""
+        response = await client.request(
+            "DELETE",
+            "/api/auth/account",
+            json={"password": "testpassword123"},
+        )
+        assert response.status_code == 401
 
 
 class TestLockoutStatus:

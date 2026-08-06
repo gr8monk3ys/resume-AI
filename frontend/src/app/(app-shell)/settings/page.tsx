@@ -301,6 +301,7 @@ function ConfirmDialog({
   confirmVariant = 'danger',
   requireTyping,
   typingText,
+  requirePassword,
   onConfirm,
   onCancel,
 }: {
@@ -311,14 +312,17 @@ function ConfirmDialog({
   confirmVariant?: 'danger' | 'warning'
   requireTyping?: boolean
   typingText?: string
-  onConfirm: () => void
+  requirePassword?: boolean
+  onConfirm: (password?: string) => void
   onCancel: () => void
 }) {
   const [typedText, setTypedText] = useState('')
+  const [password, setPassword] = useState('')
 
   useEffect(() => {
     if (!isOpen) {
       setTypedText('')
+      setPassword('')
     }
   }, [isOpen])
 
@@ -326,7 +330,8 @@ function ConfirmDialog({
     return null
   }
 
-  const canConfirm = !requireTyping || typedText === typingText
+  const canConfirm =
+    (!requireTyping || typedText === typingText) && (!requirePassword || password.length > 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
@@ -355,6 +360,22 @@ function ConfirmDialog({
               {title}
             </h3>
             <p className="mt-2 text-sm text-[var(--muted)]">{message}</p>
+            {requirePassword && (
+              <div className="mt-4">
+                <label htmlFor="confirm-dialog-password" className="mb-2 block text-sm text-[var(--ink-secondary)]">
+                  Enter your password to confirm:
+                </label>
+                <input
+                  id="confirm-dialog-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="glass-input text-sm"
+                  aria-label="Password"
+                  autoComplete="current-password"
+                />
+              </div>
+            )}
             {requireTyping && typingText && (
               <div className="mt-4">
                 <p className="mb-2 text-sm text-[var(--ink-secondary)]">
@@ -379,7 +400,7 @@ function ConfirmDialog({
             Cancel
           </button>
           <button
-            onClick={onConfirm}
+            onClick={() => onConfirm(password)}
             disabled={!canConfirm}
             className={cn(
               'glass-button-danger disabled:cursor-not-allowed disabled:opacity-50',
@@ -1951,19 +1972,36 @@ function useSettingsPageController() {
     }
   }, [data.coverLetters, data.jobs, data.resumes, isAuthenticated])
 
-  const handleDeleteAccount = useCallback(() => {
-    setPageState((prev) => ({
-      ...prev,
-      dialogs: {
-        ...prev.dialogs,
-        deleteAccount: false,
-      },
-      message: {
-        type: 'error',
-        text: 'Account deletion is not yet implemented',
-      },
-    }))
-  }, [])
+  const handleDeleteAccount = useCallback(
+    async (password: string) => {
+      try {
+        await authApi.deleteAccount(password)
+        setPageState((prev) => ({
+          ...prev,
+          dialogs: {
+            ...prev.dialogs,
+            deleteAccount: false,
+          },
+        }))
+        await logout()
+      } catch (error) {
+        const text =
+          error instanceof ApiError && error.status === 400
+            ? 'Password is incorrect'
+            : 'Failed to delete account. Please try again.'
+
+        setPageState((prev) => ({
+          ...prev,
+          dialogs: {
+            ...prev.dialogs,
+            deleteAccount: false,
+          },
+          message: { type: 'error', text },
+        }))
+      }
+    },
+    [logout]
+  )
 
   const handleCheckSystemHealth = useCallback(async () => {
     setPageState((prev) => ({ ...prev, isCheckingHealth: true }))
@@ -2178,7 +2216,10 @@ export default function SettingsPage() {
         confirmVariant="danger"
         requireTyping
         typingText="DELETE MY ACCOUNT"
-        onConfirm={controller.handleDeleteAccount}
+        requirePassword
+        onConfirm={(password) => {
+          void controller.handleDeleteAccount(password ?? '')
+        }}
         onCancel={controller.closeDeleteAccountDialog}
       />
     </div>
