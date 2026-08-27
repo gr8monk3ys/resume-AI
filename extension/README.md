@@ -30,7 +30,7 @@ Browser extension for ResuBoost AI that enables one-click job application autofi
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-org/resume-AI.git
+   git clone https://github.com/gr8monk3ys/resume-AI.git
    cd resume-AI/extension
    ```
 

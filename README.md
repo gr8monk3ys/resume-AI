@@ -1,231 +1,82 @@
-# ResuBoost AI
+# resume-AI
 
-<p align="center">
-  <img src="docs/assets/hero.png" alt="resume-AI preview" width="640">
-</p>
+A resume and job-search toolkit: ATS scoring, resume tailoring, cover letters and a
+job-tracking board, served by a FastAPI backend and a Next.js frontend.
 
-ResuBoost AI is a comprehensive job search toolkit with multi-provider LLM support, designed as an open-source alternative to Simplify.jobs. Built with a modern FastAPI backend and Next.js frontend, it provides an all-in-one platform to optimize resumes, generate cover letters, track applications, and prepare for interviews.
+The part worth reading is the LLM layer. `backend/app/services/llm_service.py` wraps five
+providers (OpenAI, Anthropic, Google, Ollama, and a mock) behind one interface, maps each
+SDK's failures onto an eight-class `LLMError` hierarchy that carries a `retryable` flag, retries
+only those with tenacity (3 attempts, exponential backoff from 1 s to 30 s with jitter), and
+caches responses in a 100-entry, one-hour `TTLCache` keyed by provider, prompt and user so
+two users never share a cached answer. The ATS score is deliberately *not* an LLM call:
+`backend/app/services/ats_analyzer.py` does keyword, section and formatting scoring
+algorithmically, so it is deterministic, free, and testable without a key; the LLM is only
+consulted for wording suggestions when the caller opts in (`use_llm_suggestions`). The
+tradeoff is documented in `backend/app/routers/ai.py` next to the `/api/ai/ats-analyze`
+endpoint. Real ATS systems are keyword matchers, so matching them algorithmically is more
+honest than asking a model to guess a number.
 
-**Supported LLM Providers:** OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models)
+This runs locally. It is not deployed anywhere. `LLM_PROVIDER` defaults to `mock`, so
+everything works with no API key; set a provider in `.env` for real generations.
 
-## Features
+## Run
 
-### Resume Hub
-- **ATS Score Analysis** - Get a detailed score (0-100) showing how well your resume passes Applicant Tracking Systems
-- **AI-Powered Optimization** - Receive personalized suggestions to improve your resume for specific jobs
-- **Resume Tailoring** - Generate job-specific resume versions with optimized keywords
-- **Version Management** - Save and manage multiple resume versions for different applications
-- **Multi-Format Support** - Upload resumes in TXT, PDF, or DOCX formats
-
-### Job Pipeline
-- **Kanban Board** - Visual job tracking with drag-and-drop status updates
-- **6-Stage Workflow** - Bookmarked, Applied, Phone Screen, Interview, Offer, Rejected
-- **Application Analytics** - Track response rates, conversion metrics, and weekly goals
-- **Deadline Management** - Never miss important application deadlines
-- **CSV Export** - Export applications for backup or external analysis
-
-### Interview Center
-- **Question Bank** - 50+ common interview questions across multiple categories
-- **AI Practice Partner** - Get real-time feedback on your interview answers
-- **STAR Story Builder** - Create compelling behavioral interview stories
-- **Company Research** - Generate talking points and research questions
-
-### Document Generator
-- **Cover Letters** - AI-generated personalized cover letters for each application
-- **Email Templates** - Professional networking, follow-up, and thank-you emails
-- **Negotiation Scripts** - Salary negotiation scripts and counter-offer templates
-
-### Career Tools
-- **Career Journal** - Document achievements with AI enhancement
-- **Keyword Gap Analysis** - Identify missing keywords from job descriptions
-- **Salary Research** - Links to market data and compensation calculators
-
-### Account and Settings
-- **Multi-User Support** - Secure authentication with data isolation
-- **Profile Management** - Store contact details, LinkedIn, GitHub, portfolio
-- **Data Export** - Export all your data in standard formats
-
-## Installation
-
-### Prerequisites
-- Python 3.10+
-- Node.js 20+
-- Optional: an LLM API key (OpenAI, Anthropic, Google, or Ollama running locally) — the app works out of the box with mock AI responses
-
-### Quick Start
-
-The fastest path (generates `.env` with a secure key and mock AI enabled, installs everything, starts both servers):
+Requires Python 3.10+, [uv](https://docs.astral.sh/uv/), and [Bun](https://bun.sh).
 
 ```bash
-make setup && make dev
+git clone https://github.com/gr8monk3ys/resume-AI.git && cd resume-AI
+make setup      # writes .env (LLM_PROVIDER=mock, SQLite), installs backend + frontend deps
+make dev        # backend on :8000, frontend on :3000
 ```
 
-Or set up manually:
-
-1. Clone the repository:
-```bash
-git clone https://github.com/gr8monk3ys/resume-AI.git
-cd resume-AI
-```
-
-2. Set up the backend (uses [uv](https://docs.astral.sh/uv/), or plain pip):
-```bash
-cd backend && uv sync
-# or, with pip: pip install -e ./backend
-```
-
-3. Set up the frontend:
-```bash
-cd frontend
-npm install
-```
-
-4. Create a `.env` file in the root directory (see [Environment Variables](#environment-variables)):
-```bash
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-5. Start the application:
-```bash
-# Terminal 1 - Backend (from backend directory)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Terminal 2 - Frontend (from frontend directory)
-npm run dev
-```
-
-6. Open your browser to `http://localhost:3000`
-
-### Using Make Commands
-
-The project includes a Makefile for convenience:
+Or by hand:
 
 ```bash
-make help       # Show available commands
-make backend    # Start FastAPI backend server (port 8000)
-make frontend   # Start Next.js frontend server (port 3000)
-make dev        # Start both backend and frontend
-make test       # Run all tests (backend + frontend)
-make lint       # Run linting on all code
-make clean      # Remove cache and build files
+cd backend  && uv sync && uv run uvicorn app.main:app --reload --port 8000
+cd frontend && bun install && bun run dev
 ```
 
-## Environment Variables
+API docs at http://localhost:8000/docs once the backend is up. `docker-compose.yml` starts
+the same two services plus Postgres if you prefer containers.
 
-Create a `.env` file in the root directory with the following variables:
+## Configure
 
-### Optional - Choose an LLM Provider
-
-The app defaults to `mock` responses so it runs with no API key. Set a real provider for live AI features:
+Copy `.env.example` to `.env`. The variables that matter:
 
 ```bash
-# Provider selection (default: mock)
-LLM_PROVIDER=openai  # Options: openai, anthropic, google, ollama, mock
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o-mini
-
-# Anthropic (Claude)
-ANTHROPIC_API_KEY=your_anthropic_api_key
-ANTHROPIC_MODEL=claude-3-haiku-20240307
-
-# Google (Gemini)
-GOOGLE_API_KEY=your_google_api_key
-GOOGLE_MODEL=gemini-1.5-flash
-
-# Ollama (local - no API key needed)
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+LLM_PROVIDER=mock            # openai | anthropic | google | ollama | mock
+OPENAI_API_KEY=...           # or ANTHROPIC_API_KEY / GOOGLE_API_KEY / OLLAMA_BASE_URL
+SECRET_KEY=...               # JWT signing key; `make setup` generates one
+DATABASE_URL=sqlite:///./data/resume_ai.db   # any SQLAlchemy URL; Postgres is tested in CI
+MAX_FILE_SIZE_MB=10          # resume upload limit
 ```
 
-### Application Settings
+Retry and cache behaviour is tunable through `LLM_MAX_RETRIES`, `LLM_RETRY_DELAY`,
+`LLM_RETRY_MAX_DELAY`; see `backend/app/config.py` for the full list.
+
+## Test
 
 ```bash
-# Security (CHANGE IN PRODUCTION)
-SECRET_KEY=your-secret-key-change-in-production
-
-# Database
-DATABASE_URL=sqlite:///./data/resume_ai.db
-
-# CORS (frontend URL)
-CORS_ORIGINS=["http://localhost:3000"]
-
-# Debug mode
-DEBUG=false
+cd backend  && uv sync --group dev && uv run pytest tests/ -q     # SQLite in-memory, mock LLM
+cd frontend && bun run lint && bun run typecheck && bun run test:ci && bun run build
+cd frontend && bun run test:e2e                                    # Playwright, needs both servers
 ```
 
-### Optional Settings
+CI (`.github/workflows/ci.yml`) runs the backend suite against SQLite and Postgres, the
+frontend lint/typecheck/test/build, and boots both servers for a health check. The
+oversized-upload case generates its 10 MB file in a fixture (`oversized_upload` in
+`backend/tests/conftest.py`) rather than committing one.
 
-```bash
-# JWT Token Expiration
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=7
+## Layout
 
-# Rate Limiting
-RATE_LIMIT_REQUESTS=100
-RATE_LIMIT_WINDOW=60
-AUTH_RATE_LIMIT_REQUESTS=5
-AI_RATE_LIMIT_REQUESTS=20
-
-# Brute Force Protection
-AUTH_MAX_RECENT_FAILURES=5
-AUTH_LOCKOUT_THRESHOLD=10
-
-# File Uploads
-MAX_FILE_SIZE_MB=10
-MAX_RESUME_LENGTH=100000
 ```
-
-## Technology Stack
-
-### Backend
-- **Framework:** FastAPI
-- **Database:** SQLAlchemy with SQLite (PostgreSQL ready)
-- **Authentication:** JWT tokens with bcrypt password hashing
-- **AI Integration:** Multi-provider LLM support via LangChain
-- **File Processing:** PyPDF2, python-docx
-
-### Frontend
-- **Framework:** Next.js 15 with App Router
-- **UI Library:** React 19
-- **Styling:** Tailwind CSS 4
-- **State Management:** TanStack Query
-- **Forms:** React Hook Form with Zod validation
-- **Drag and Drop:** dnd-kit
-
-## API Documentation
-
-Once the backend is running, access the interactive API documentation:
-- **Swagger UI:** http://localhost:8000/docs
-- **ReDoc:** http://localhost:8000/redoc
-
-## Demo Account
-
-A demo account is available for testing:
-- **Username:** `demo`
-- **Password:** `demo123`
-
-## Security Features
-
-- JWT-based authentication with refresh tokens
-- Bcrypt password hashing
-- Rate limiting on all endpoints
-- Brute force protection with account lockout
-- Input sanitization and validation
-- CORS configuration
-- Security headers (XSS protection, HSTS, CSP)
-- Audit logging for security events
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+backend/app/routers/     one file per API area; ai.py is the LLM + ATS surface
+backend/app/services/    llm_service.py, ats_analyzer.py, file_parser.py, job_importer.py
+backend/alembic/         migrations
+frontend/src/            Next.js App Router pages, components, lib/api.ts client
+extension/               Chrome extension that captures job posts into the tracker (unpackaged)
+```
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
