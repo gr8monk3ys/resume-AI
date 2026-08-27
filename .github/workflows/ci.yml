@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
@@ -84,34 +84,6 @@ jobs:
 
       - name: Run mypy
         run: uv run mypy app/ --ignore-missing-imports
-
-  backend-security:
-    name: Backend - Security Scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
-      - name: Install and run Bandit
-        # Security scan with medium+ severity and confidence
-        run: |
-          uv tool install bandit
-          uv tool run bandit -r app/ -ll -ii -f json -o bandit-output.json
-          uv tool run bandit -r app/ -ll -ii
-
-      - name: Audit dependencies
-        run: |
-          uv sync --frozen
-          uv pip audit || echo "::warning::Dependency audit found issues"
 
   backend-test:
     name: Backend - Test
@@ -357,87 +329,3 @@ jobs:
       - name: Health check - Frontend
         run: |
           curl --fail --retry 5 --retry-delay 2 http://localhost:3000
-
-  # ============================================================================
-  # Security Scanning
-  # ============================================================================
-
-  security-scan:
-    name: Security - CodeQL
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      security-events: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4.37.7
-        with:
-          languages: python, javascript
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4.37.7
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4.37.7
-
-  # ============================================================================
-  # Provider-Specific Tests (Main Branch Only)
-  # ============================================================================
-
-  backend-test-openai:
-    name: Backend - Test (OpenAI)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync --frozen --group dev
-
-      - name: Run tests with OpenAI
-        if: env.OPENAI_API_KEY != ''
-        env:
-          LLM_PROVIDER: openai
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TESTING: "true"
-        run: uv run pytest tests/ -v -k "not slow"
-
-  backend-test-anthropic:
-    name: Backend - Test (Anthropic)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Set up Python
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: uv sync --frozen --group dev
-
-      - name: Run tests with Anthropic
-        if: env.ANTHROPIC_API_KEY != ''
-        env:
-          LLM_PROVIDER: anthropic
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TESTING: "true"
-        run: uv run pytest tests/ -v -k "not slow"

@@ -542,3 +542,20 @@ def pro_subscription(db: Session, test_user: User) -> Subscription:
     db.commit()
     db.refresh(sub)
     return sub
+
+
+@pytest.fixture
+def oversized_upload(tmp_path):
+    """A text file just over the upload limit (settings.max_file_size_mb, default 10 MB).
+
+    Generated on demand so the repo does not carry an 11 MB fixture file.
+    """
+    from app.config import get_settings
+
+    settings = get_settings()
+
+    path = tmp_path / "large.txt"
+    size = settings.max_file_size_mb * 1024 * 1024 + 1
+    with path.open("wb") as fh:
+        fh.write(b"lorem ipsum dolor sit amet\n" * (size // 27 + 1))
+    return path

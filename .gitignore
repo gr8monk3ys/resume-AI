@@ -79,3 +79,10 @@ backups/
 # Development screenshots
 dashboard-working.png
 register-page.png.superpowers/
+
+# Claude Code local state
+.claude/settings.local.json
+.playwright-mcp/
+
+# Generated test fixtures
+test_files/large.txt

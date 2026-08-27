@@ -21,7 +21,7 @@ updates:
           - "patch"
 
   # Frontend - Node.js dependencies (npm)
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/frontend"
     schedule:
       interval: "weekly"

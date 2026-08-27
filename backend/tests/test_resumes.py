@@ -314,6 +314,16 @@ class TestFileUpload:
         assert data["filename"] == "resume.txt"
 
     @pytest.mark.asyncio
+    async def test_upload_rejects_oversized_file(
+        self, client: AsyncClient, test_profile: Profile, auth_headers: dict, oversized_upload
+    ):
+        """A file over settings.max_file_size_mb is rejected with 413."""
+        files = {"file": ("large.txt", oversized_upload.read_bytes(), "text/plain")}
+        response = await client.post("/api/resumes/upload", files=files, headers=auth_headers)
+        assert response.status_code == 413
+        assert "File too large" in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_upload_invalid_file_type(
         self, client: AsyncClient, db: Session, test_profile: Profile, auth_headers: dict
     ):
