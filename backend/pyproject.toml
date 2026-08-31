@@ -26,7 +26,7 @@ dependencies = [
     "cffi>=1.16.0",
     "cryptography>=42.0.0",
     # AI/LLM - Multi-provider support
-    "llm-client[openai,anthropic,gemini] @ git+https://github.com/gr8monk3ys/llm-client@v0.1.1",
+    "llm-client[openai,anthropic,gemini] @ git+https://github.com/gr8monk3ys/llm-client@v0.1.2",
     "openai>=1.10.0",
     "langchain>=0.1.0",
     "langchain-openai>=0.0.5",

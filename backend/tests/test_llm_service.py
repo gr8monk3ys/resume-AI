@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import app.services.llm_service as llm_service_module
 from app.services.llm_service import (
     _PROVIDERS,
     BaseLLMProvider,
@@ -502,3 +503,140 @@ class TestLLMServiceIntegration:
             job_description,
         )
         assert len(interview_prep) > 0
+
+
+# =============================================================================
+# Provider Credential Plumbing
+# =============================================================================
+
+
+class TestProviderCredentials:
+    """Regression: a key that lives only in `.env` must reach the LLM client.
+
+    pydantic-settings reads `../.env` into the Settings model without touching
+    `os.environ`, so a provider library that looks the key up in the
+    environment for itself finds nothing. `.env.example` documents exactly that
+    layout, so this is the normal deployment, not an edge case. These tests
+    inspect the constructed client rather than going through MockProvider,
+    which needs no credentials and so would prove nothing.
+    """
+
+    @staticmethod
+    def _settings_with(**overrides):
+        """Real Settings, as if `.env` had supplied these values."""
+        from app.config import get_settings
+
+        return get_settings().model_copy(update=overrides)
+
+    @pytest.mark.parametrize(
+        ("provider", "field", "value"),
+        [
+            ("openai", "openai_api_key", "sk-openai-from-dotenv"),
+            ("anthropic", "anthropic_api_key", "sk-ant-from-dotenv"),
+            ("google", "google_api_key", "goog-from-dotenv"),
+        ],
+    )
+    def test_settings_key_reaches_the_client(self, monkeypatch, provider, field, value):
+        monkeypatch.delenv(f"{provider.upper()}_API_KEY", raising=False)
+        settings = self._settings_with(**{field: value})
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            built = get_llm_provider(provider)
+
+        assert built._client.backend.api_key == value
+
+    @pytest.mark.parametrize(
+        ("provider", "field", "env_var"),
+        [
+            ("openai", "openai_api_key", "OPENAI_API_KEY"),
+            ("anthropic", "anthropic_api_key", "ANTHROPIC_API_KEY"),
+            ("google", "google_api_key", "GOOGLE_API_KEY"),
+        ],
+    )
+    def test_environment_is_the_fallback(self, monkeypatch, provider, field, env_var):
+        """Settings first, environment second - the old precedence exactly."""
+        monkeypatch.setenv(env_var, "from-the-environment")
+        settings = self._settings_with(**{field: None})
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            built = get_llm_provider(provider)
+
+        assert built._client.backend.api_key == "from-the-environment"
+
+    def test_settings_key_wins_over_the_environment(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "from-the-environment")
+        settings = self._settings_with(openai_api_key="from-settings")
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            built = get_llm_provider("openai")
+
+        assert built._client.backend.api_key == "from-settings"
+
+    def test_ollama_base_url_reaches_the_client(self, monkeypatch):
+        """Silent failure before the fix: it fell back to localhost."""
+        monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+        settings = self._settings_with(ollama_base_url="http://ollama.internal:11434")
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            built = get_llm_provider("ollama")
+
+        assert built._client.backend.base_url == "http://ollama.internal:11434"
+
+    @pytest.mark.parametrize(
+        ("provider", "field", "env_var"),
+        [
+            ("openai", "openai_api_key", "OPENAI_API_KEY"),
+            ("anthropic", "anthropic_api_key", "ANTHROPIC_API_KEY"),
+            ("google", "google_api_key", "GOOGLE_API_KEY"),
+        ],
+    )
+    def test_missing_key_fails_at_construction(self, monkeypatch, provider, field, env_var):
+        """Not on the first request, hours later, in a worker."""
+        monkeypatch.delenv(env_var, raising=False)
+        settings = self._settings_with(**{field: None})
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            with pytest.raises(LLMConfigurationError) as excinfo:
+                get_llm_provider(provider)
+
+        assert env_var in str(excinfo.value)
+
+    def test_model_comes_from_settings(self, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
+        monkeypatch.delenv("LLM_MODEL", raising=False)
+        settings = self._settings_with(anthropic_api_key="k", anthropic_model="claude-haiku-4-5")
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            built = get_llm_provider("anthropic")
+
+        assert built.model == "claude-haiku-4-5"
+
+    def test_retry_settings_reach_the_client(self):
+        """get_retry_stats must not report a number the backoff ignores."""
+        settings = self._settings_with(
+            openai_api_key="k",
+            llm_max_retries=7,
+            llm_retry_delay=0.25,
+            llm_retry_max_delay=11.0,
+            llm_retry_exponential_base=3.0,
+        )
+        captured = {}
+        real = llm_service_module.LLMClient
+
+        def spy(*args, **kwargs):
+            captured.update(kwargs)
+            return real(*args, **kwargs)
+
+        with (
+            patch("app.services.llm_service.get_settings", return_value=settings),
+            patch("app.services.llm_service.LLMClient", spy),
+        ):
+            get_llm_provider("openai")
+
+        assert captured["max_retries"] == 7
+        assert captured["retry_initial_delay"] == 0.25
+        assert captured["retry_max_delay"] == 11.0
+        assert captured["retry_exp_base"] == 3.0
+
+    def test_reported_retry_stats_match_the_settings(self):
+        from app.services.llm_service import get_retry_stats
+
+        settings = self._settings_with(llm_retry_exponential_base=3.0)
+        with patch("app.services.llm_service.get_settings", return_value=settings):
+            stats = get_retry_stats()
+
+        assert stats["exponential_base"] == 3.0

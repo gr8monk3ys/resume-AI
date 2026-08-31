@@ -56,6 +56,49 @@ class BaseLLMProvider:
         raise NotImplementedError
 
 
+#: Providers that cannot work without a key, and the variable that supplies it.
+_API_KEY_ENV = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "google": "GOOGLE_API_KEY",
+}
+
+
+def _configured_model(provider_name: str) -> Optional[str]:
+    """The model this deployment configured for ``provider_name``, if any."""
+    settings = get_settings()
+    return {
+        "openai": settings.openai_model,
+        "anthropic": settings.anthropic_model,
+        "google": settings.google_model,
+        "ollama": settings.ollama_model,
+    }.get(provider_name)
+
+
+def _configured_credentials(provider_name: str) -> tuple[Optional[str], Optional[str]]:
+    """The API key and base URL this deployment configured, if any.
+
+    This has to be read here and handed to ``LLMClient`` explicitly.
+    pydantic-settings loads ``../.env`` into the Settings model *without*
+    putting anything into ``os.environ``, so a key that lives only in ``.env``
+    - which is the path ``.env.example`` documents - is invisible to any
+    library that goes looking in the environment for itself.
+
+    Precedence is the one the hand-written providers used: the settings value
+    first, the process environment second.
+    """
+    settings = get_settings()
+    if provider_name == "openai":
+        return settings.openai_api_key or os.getenv("OPENAI_API_KEY"), None
+    if provider_name == "anthropic":
+        return settings.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY"), None
+    if provider_name == "google":
+        return settings.google_api_key or os.getenv("GOOGLE_API_KEY"), None
+    if provider_name == "ollama":
+        return None, settings.ollama_base_url or os.getenv("OLLAMA_BASE_URL")
+    return None, None
+
+
 class _ClientProvider(BaseLLMProvider):
     """Adapts ``llm_client.LLMClient`` to :class:`BaseLLMProvider`.
 
@@ -74,13 +117,26 @@ class _ClientProvider(BaseLLMProvider):
         settings = get_settings()
         self._name = provider_name
         self._temperature = temperature
+
+        api_key, base_url = _configured_credentials(provider_name)
+        env_var = _API_KEY_ENV.get(provider_name)
+        if env_var and not api_key:
+            # Fail here rather than on the first request, as the providers
+            # this replaced did.
+            raise LLMConfigurationError(
+                f"{env_var} environment variable is not set. " "Please add it to your .env file."
+            )
+
         self._client = LLMClient(
             provider_name,
             model_name or _configured_model(provider_name),
+            api_key=api_key,
+            base_url=base_url,
             timeout=timeout,
             max_retries=settings.llm_max_retries,
             retry_initial_delay=settings.llm_retry_delay,
             retry_max_delay=settings.llm_retry_max_delay,
+            retry_exp_base=settings.llm_retry_exponential_base,
         )
 
     def invoke(self, prompt: str) -> str:
@@ -94,17 +150,6 @@ class _ClientProvider(BaseLLMProvider):
     @property
     def model(self) -> str:
         return self._client.model
-
-
-def _configured_model(provider_name: str) -> Optional[str]:
-    """The model this deployment configured for ``provider_name``, if any."""
-    settings = get_settings()
-    return {
-        "openai": settings.openai_model,
-        "anthropic": settings.anthropic_model,
-        "google": settings.google_model,
-        "ollama": settings.ollama_model,
-    }.get(provider_name)
 
 
 class MockProvider(BaseLLMProvider):
@@ -820,6 +865,7 @@ def get_retry_stats() -> dict:
         "initial_delay_seconds": settings.llm_retry_delay,
         "max_delay_seconds": settings.llm_retry_max_delay,
         "exponential_base": settings.llm_retry_exponential_base,
-        # llm_client always jitters its backoff, so this is no longer a switch.
+        # Not a setting: llm_client always jitters. Reported because monitoring
+        # wants to know the backoff shape, and this is a fact about it.
         "jitter_enabled": True,
     }
