@@ -3,7 +3,7 @@ name = "resuboost-backend"
 version = "2.0.0"
 description = "ResuBoost AI Backend - FastAPI REST API with multi-provider LLM support"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "ResuBoost Team" }]
 
@@ -26,6 +26,7 @@ dependencies = [
     "cffi>=1.16.0",
     "cryptography>=42.0.0",
     # AI/LLM - Multi-provider support
+    "llm-client[openai,anthropic,gemini] @ git+https://github.com/gr8monk3ys/llm-client@v0.1.0",
     "openai>=1.10.0",
     "langchain>=0.1.0",
     "langchain-openai>=0.0.5",

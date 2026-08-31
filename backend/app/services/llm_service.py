@@ -3,684 +3,108 @@ Multi-provider LLM Service for ResuBoost AI Backend.
 
 Supports: OpenAI, Anthropic (Claude), Google (Gemini), Ollama (local models), Mock (testing)
 
-Uses direct SDK calls without LangChain for simplicity and control.
-Includes response caching with TTLCache for performance optimization.
-Includes retry logic with exponential backoff for production reliability.
+Provider dispatch, SDK calls, retry with exponential backoff and the exception
+hierarchy all come from the shared ``llm_client`` package. What stays here is
+what is specific to this application: the prompts, and the user-isolated
+response cache that keys on the calling method and the requesting user.
 """
 
 import hashlib
 import logging
 import os
-from abc import ABC, abstractmethod
-from typing import Optional
+from functools import partial
+from typing import Callable, Optional
 
-import httpx
 from cachetools import TTLCache
-from tenacity import (
-    RetryError,
-    before_sleep_log,
-    retry,
-    retry_if_exception,
-    stop_after_attempt,
-    wait_exponential,
-    wait_exponential_jitter,
-)
+from llm_client import LLMClient
+from llm_client import LLMConfigurationError as LLMConfigurationError
+from llm_client import LLMError as LLMError
+from llm_client import LLMProviderError as LLMProviderError
+from llm_client import LLMRateLimitError as LLMRateLimitError
+from llm_client import LLMServerError as LLMServerError
+from llm_client import LLMTimeoutError as LLMTimeoutError
+from llm_client import is_retryable as is_retryable_error
 
 from app.config import get_settings
 
-# Configure logging for retry operations
 logger = logging.getLogger(__name__)
 
-# LLM response cache: 100 items max, 1 hour TTL (3600 seconds)
+# Application-level response cache: 100 items max, 1 hour TTL.
+# This is NOT llm_client's cache. It keys on the calling method and the
+# requesting user so one user's answer is never served to another, which is a
+# policy decision the client library has no business making.
 _llm_response_cache: TTLCache = TTLCache(maxsize=100, ttl=3600)
 
 
-class LLMError(Exception):
-    """Base exception for LLM-related errors."""
+class BaseLLMProvider:
+    """The provider contract the rest of this backend depends on.
 
-    pass
-
-
-class LLMConfigurationError(LLMError):
-    """Raised when LLM is misconfigured (missing API key, etc.)."""
-
-    pass
-
-
-class LLMProviderError(LLMError):
-    """Raised when the LLM provider returns an error."""
-
-    def __init__(self, message: str, status_code: Optional[int] = None, retryable: bool = True):
-        super().__init__(message)
-        self.status_code = status_code
-        self.retryable = retryable
-
-
-class LLMRateLimitError(LLMProviderError):
-    """Raised when rate limited by the LLM provider (429)."""
-
-    def __init__(self, message: str, retry_after: Optional[float] = None):
-        super().__init__(message, status_code=429, retryable=True)
-        self.retry_after = retry_after
-
-
-class LLMTimeoutError(LLMProviderError):
-    """Raised when the LLM request times out."""
-
-    def __init__(self, message: str):
-        super().__init__(message, status_code=None, retryable=True)
-
-
-class LLMConnectionError(LLMProviderError):
-    """Raised when there is a connection error to the LLM provider."""
-
-    def __init__(self, message: str):
-        super().__init__(message, status_code=None, retryable=True)
-
-
-class LLMServerError(LLMProviderError):
-    """Raised when the LLM provider returns a server error (5xx)."""
-
-    def __init__(self, message: str, status_code: int):
-        super().__init__(message, status_code=status_code, retryable=True)
-
-
-class LLMClientError(LLMProviderError):
-    """Raised when the LLM provider returns a client error (4xx except 429)."""
-
-    def __init__(self, message: str, status_code: int):
-        super().__init__(message, status_code=status_code, retryable=False)
-
-
-# HTTP status codes that are retryable
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
-
-# HTTP status codes that are client errors (not retryable)
-CLIENT_ERROR_STATUS_CODES = {400, 401, 403, 404, 405, 422}
-
-
-def is_retryable_error(exception: BaseException) -> bool:
+    ``llm_client`` returns a rich ``Completion``; this backend has only ever
+    wanted the text, so the adapter below flattens it and nothing else changes.
     """
-    Determine if an exception should trigger a retry.
 
-    Args:
-        exception: The exception to check.
+    def invoke(self, prompt: str) -> str:
+        """Send a prompt and return the generated text."""
+        raise NotImplementedError
 
-    Returns:
-        True if the exception is retryable, False otherwise.
+    @property
+    def name(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def model(self) -> str:
+        raise NotImplementedError
+
+
+class _ClientProvider(BaseLLMProvider):
+    """Adapts ``llm_client.LLMClient`` to :class:`BaseLLMProvider`.
+
+    One class replaces the four hand-written provider classes that used to
+    live here. Retry lives in the client; so does turning a vendor SDK
+    exception into an ``LLMProviderError``.
     """
-    # Always retry LLMProviderError if marked as retryable
-    if isinstance(exception, LLMProviderError):
-        return exception.retryable
 
-    # Check for httpx exceptions
-    if isinstance(exception, httpx.TimeoutException):
-        return True
-    if isinstance(exception, httpx.ConnectError):
-        return True
-    if isinstance(exception, httpx.HTTPStatusError):
-        return exception.response.status_code in RETRYABLE_STATUS_CODES
-
-    # Check for provider-specific retryable errors
-    # OpenAI
-    try:
-        from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
-
-        if isinstance(
-            exception, (APITimeoutError, APIConnectionError, RateLimitError, InternalServerError)
-        ):
-            return True
-    except ImportError:
-        pass
-
-    # Anthropic
-    try:
-        from anthropic import APIConnectionError as AnthropicConnectionError
-        from anthropic import APITimeoutError as AnthropicTimeoutError
-        from anthropic import InternalServerError as AnthropicInternalServerError
-        from anthropic import RateLimitError as AnthropicRateLimitError
-
-        if isinstance(
-            exception,
-            (
-                AnthropicTimeoutError,
-                AnthropicConnectionError,
-                AnthropicRateLimitError,
-                AnthropicInternalServerError,
-            ),
-        ):
-            return True
-    except ImportError:
-        pass
-
-    # Google - check for server errors
-    try:
-        from google.api_core.exceptions import (
-            DeadlineExceeded,
-            ResourceExhausted,
-            ServiceUnavailable,
+    def __init__(
+        self,
+        provider_name: str,
+        model_name: Optional[str] = None,
+        temperature: float = 0.7,
+        timeout: int = 60,
+    ):
+        settings = get_settings()
+        self._name = provider_name
+        self._temperature = temperature
+        self._client = LLMClient(
+            provider_name,
+            model_name or _configured_model(provider_name),
+            timeout=timeout,
+            max_retries=settings.llm_max_retries,
+            retry_initial_delay=settings.llm_retry_delay,
+            retry_max_delay=settings.llm_retry_max_delay,
         )
 
-        if isinstance(exception, (ServiceUnavailable, DeadlineExceeded, ResourceExhausted)):
-            return True
-    except ImportError:
-        pass
+    def invoke(self, prompt: str) -> str:
+        return self._client.complete(prompt, temperature=self._temperature).text
 
-    return False
+    @property
+    def name(self) -> str:
+        # The name this backend uses, not llm_client's ("google" -> "gemini").
+        return self._name
 
-
-def _classify_openai_error(e: Exception) -> LLMProviderError:
-    """Classify an OpenAI exception into the appropriate LLMProviderError subclass."""
-    try:
-        from openai import (
-            APIConnectionError,
-            APITimeoutError,
-            AuthenticationError,
-            BadRequestError,
-            InternalServerError,
-            NotFoundError,
-            PermissionDeniedError,
-            RateLimitError,
-        )
-
-        if isinstance(e, APITimeoutError):
-            return LLMTimeoutError(f"OpenAI API timeout: {str(e)}")
-        if isinstance(e, APIConnectionError):
-            return LLMConnectionError(f"OpenAI connection error: {str(e)}")
-        if isinstance(e, RateLimitError):
-            return LLMRateLimitError(f"OpenAI rate limit exceeded: {str(e)}")
-        if isinstance(e, InternalServerError):
-            return LLMServerError(f"OpenAI server error: {str(e)}", status_code=500)
-        if isinstance(
-            e, (BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError)
-        ):
-            status = getattr(e, "status_code", 400)
-            return LLMClientError(f"OpenAI client error: {str(e)}", status_code=status)
-    except ImportError:
-        pass
-
-    return LLMProviderError(f"OpenAI API error: {str(e)}")
+    @property
+    def model(self) -> str:
+        return self._client.model
 
 
-def _classify_anthropic_error(e: Exception) -> LLMProviderError:
-    """Classify an Anthropic exception into the appropriate LLMProviderError subclass."""
-    try:
-        from anthropic import (
-            APIConnectionError,
-            APITimeoutError,
-            AuthenticationError,
-            BadRequestError,
-            InternalServerError,
-            NotFoundError,
-            PermissionDeniedError,
-            RateLimitError,
-        )
-
-        if isinstance(e, APITimeoutError):
-            return LLMTimeoutError(f"Anthropic API timeout: {str(e)}")
-        if isinstance(e, APIConnectionError):
-            return LLMConnectionError(f"Anthropic connection error: {str(e)}")
-        if isinstance(e, RateLimitError):
-            return LLMRateLimitError(f"Anthropic rate limit exceeded: {str(e)}")
-        if isinstance(e, InternalServerError):
-            return LLMServerError(f"Anthropic server error: {str(e)}", status_code=500)
-        if isinstance(
-            e, (BadRequestError, AuthenticationError, PermissionDeniedError, NotFoundError)
-        ):
-            status = getattr(e, "status_code", 400)
-            return LLMClientError(f"Anthropic client error: {str(e)}", status_code=status)
-    except ImportError:
-        pass
-
-    return LLMProviderError(f"Anthropic API error: {str(e)}")
-
-
-def _classify_google_error(e: Exception) -> LLMProviderError:
-    """Classify a Google exception into the appropriate LLMProviderError subclass."""
-    try:
-        from google.api_core.exceptions import (
-            DeadlineExceeded,
-            InvalidArgument,
-            NotFound,
-            PermissionDenied,
-            ResourceExhausted,
-            ServiceUnavailable,
-            Unauthenticated,
-        )
-
-        if isinstance(e, DeadlineExceeded):
-            return LLMTimeoutError(f"Google API timeout: {str(e)}")
-        if isinstance(e, ResourceExhausted):
-            return LLMRateLimitError(f"Google rate limit exceeded: {str(e)}")
-        if isinstance(e, ServiceUnavailable):
-            return LLMServerError(f"Google server unavailable: {str(e)}", status_code=503)
-        if isinstance(e, (InvalidArgument, Unauthenticated, PermissionDenied, NotFound)):
-            return LLMClientError(f"Google client error: {str(e)}", status_code=400)
-    except ImportError:
-        pass
-
-    return LLMProviderError(f"Google API error: {str(e)}")
-
-
-def _classify_httpx_error(e: Exception, provider_name: str = "HTTP") -> LLMProviderError:
-    """Classify an httpx exception into the appropriate LLMProviderError subclass."""
-    if isinstance(e, httpx.TimeoutException):
-        return LLMTimeoutError(f"{provider_name} timeout: {str(e)}")
-    if isinstance(e, httpx.ConnectError):
-        return LLMConnectionError(f"{provider_name} connection error: {str(e)}")
-    if isinstance(e, httpx.HTTPStatusError):
-        status = e.response.status_code
-        if status == 429:
-            return LLMRateLimitError(f"{provider_name} rate limit exceeded: HTTP {status}")
-        if status in RETRYABLE_STATUS_CODES:
-            return LLMServerError(
-                f"{provider_name} server error: HTTP {status}", status_code=status
-            )
-        if status in CLIENT_ERROR_STATUS_CODES:
-            return LLMClientError(
-                f"{provider_name} client error: HTTP {status}", status_code=status
-            )
-        return LLMProviderError(f"{provider_name} error: HTTP {status}", status_code=status)
-
-    return LLMProviderError(f"{provider_name} error: {str(e)}")
-
-
-def create_retry_decorator(
-    max_retries: Optional[int] = None,
-    initial_delay: Optional[float] = None,
-    max_delay: Optional[float] = None,
-    exponential_base: Optional[float] = None,
-    jitter: Optional[bool] = None,
-):
-    """
-    Create a retry decorator with configurable settings.
-
-    Args:
-        max_retries: Maximum number of retry attempts (default from settings).
-        initial_delay: Initial delay before first retry in seconds (default from settings).
-        max_delay: Maximum delay between retries in seconds (default from settings).
-        exponential_base: Base for exponential backoff (default from settings).
-        jitter: Whether to add random jitter (default from settings).
-
-    Returns:
-        A configured retry decorator.
-    """
+def _configured_model(provider_name: str) -> Optional[str]:
+    """The model this deployment configured for ``provider_name``, if any."""
     settings = get_settings()
-
-    max_retries = max_retries if max_retries is not None else settings.llm_max_retries
-    initial_delay = initial_delay if initial_delay is not None else settings.llm_retry_delay
-    max_delay = max_delay if max_delay is not None else settings.llm_retry_max_delay
-    exponential_base = (
-        exponential_base if exponential_base is not None else settings.llm_retry_exponential_base
-    )
-    jitter = jitter if jitter is not None else settings.llm_retry_jitter
-
-    # Choose wait strategy based on jitter setting
-    wait_strategy: wait_exponential | wait_exponential_jitter
-    if jitter:
-        wait_strategy = wait_exponential_jitter(
-            initial=initial_delay,
-            max=max_delay,
-            exp_base=exponential_base,
-        )
-    else:
-        wait_strategy = wait_exponential(
-            multiplier=initial_delay,
-            max=max_delay,
-            exp_base=exponential_base,
-        )
-
-    return retry(
-        retry=retry_if_exception(is_retryable_error),
-        stop=stop_after_attempt(max_retries + 1),  # +1 because first attempt is not a retry
-        wait=wait_strategy,
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True,
-    )
-
-
-class BaseLLMProvider(ABC):
-    """Abstract base class for LLM providers."""
-
-    @abstractmethod
-    def invoke(self, prompt: str) -> str:
-        """
-        Invoke the LLM with a prompt and return the response.
-
-        Args:
-            prompt: The text prompt to send to the LLM.
-
-        Returns:
-            The generated text response.
-
-        Raises:
-            LLMProviderError: If the provider returns an error.
-        """
-        pass
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Return the provider name."""
-        pass
-
-    @property
-    @abstractmethod
-    def model(self) -> str:
-        """Return the model name being used."""
-        pass
-
-
-class OpenAIProvider(BaseLLMProvider):
-    """OpenAI GPT provider using direct SDK calls with retry support."""
-
-    def __init__(
-        self,
-        model_name: Optional[str] = None,
-        temperature: float = 0.7,
-        timeout: int = 60,
-    ):
-        try:
-            from openai import OpenAI
-        except ImportError:
-            raise LLMConfigurationError(
-                "openai package is required for OpenAI support. " "Install with: pip install openai"
-            )
-
-        settings = get_settings()
-        api_key = settings.openai_api_key or os.getenv("OPENAI_API_KEY")
-
-        if not api_key:
-            raise LLMConfigurationError(
-                "OPENAI_API_KEY environment variable is not set. "
-                "Please add it to your .env file."
-            )
-
-        self._model = model_name or settings.openai_model
-        self._temperature = temperature
-        self._timeout = timeout
-        self._client = OpenAI(api_key=api_key, timeout=timeout)
-        self._retry_decorator = create_retry_decorator()
-
-    def _invoke_internal(self, prompt: str) -> str:
-        """Internal invoke method that handles the actual API call."""
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self._temperature,
-        )
-        return response.choices[0].message.content or ""
-
-    def invoke(self, prompt: str) -> str:
-        """Invoke with retry logic."""
-
-        @self._retry_decorator
-        def _invoke_with_retry():
-            try:
-                return self._invoke_internal(prompt)
-            except Exception as e:
-                classified_error = _classify_openai_error(e)
-                logger.warning(
-                    "OpenAI API call failed: %s (retryable: %s)",
-                    str(e),
-                    classified_error.retryable,
-                )
-                raise classified_error from e
-
-        try:
-            return _invoke_with_retry()
-        except RetryError as e:
-            # Extract the last exception from retry attempts
-            last_exception = e.last_attempt.exception()
-            if last_exception:
-                raise last_exception from e
-            raise LLMProviderError(f"OpenAI API error after retries: {str(e)}") from e
-
-    @property
-    def name(self) -> str:
-        return "openai"
-
-    @property
-    def model(self) -> str:
-        return self._model
-
-
-class AnthropicProvider(BaseLLMProvider):
-    """Anthropic Claude provider using direct SDK calls with retry support."""
-
-    def __init__(
-        self,
-        model_name: Optional[str] = None,
-        temperature: float = 0.7,
-        timeout: int = 60,
-    ):
-        try:
-            from anthropic import Anthropic
-        except ImportError:
-            raise LLMConfigurationError(
-                "anthropic package is required for Anthropic support. "
-                "Install with: pip install anthropic"
-            )
-
-        settings = get_settings()
-        api_key = settings.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
-
-        if not api_key:
-            raise LLMConfigurationError(
-                "ANTHROPIC_API_KEY environment variable is not set. "
-                "Please add it to your .env file."
-            )
-
-        self._model = model_name or settings.anthropic_model
-        self._temperature = temperature
-        self._timeout = timeout
-        self._client = Anthropic(api_key=api_key, timeout=timeout)
-        self._retry_decorator = create_retry_decorator()
-
-    def _invoke_internal(self, prompt: str) -> str:
-        """Internal invoke method that handles the actual API call."""
-        response = self._client.messages.create(
-            model=self._model,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self._temperature,
-        )
-        # Handle the response content blocks
-        if response.content and len(response.content) > 0:
-            return response.content[0].text
-        return ""
-
-    def invoke(self, prompt: str) -> str:
-        """Invoke with retry logic."""
-
-        @self._retry_decorator
-        def _invoke_with_retry():
-            try:
-                return self._invoke_internal(prompt)
-            except Exception as e:
-                classified_error = _classify_anthropic_error(e)
-                logger.warning(
-                    "Anthropic API call failed: %s (retryable: %s)",
-                    str(e),
-                    classified_error.retryable,
-                )
-                raise classified_error from e
-
-        try:
-            return _invoke_with_retry()
-        except RetryError as e:
-            last_exception = e.last_attempt.exception()
-            if last_exception:
-                raise last_exception from e
-            raise LLMProviderError(f"Anthropic API error after retries: {str(e)}") from e
-
-    @property
-    def name(self) -> str:
-        return "anthropic"
-
-    @property
-    def model(self) -> str:
-        return self._model
-
-
-class GoogleProvider(BaseLLMProvider):
-    """Google Gemini provider using direct SDK calls with retry support."""
-
-    def __init__(
-        self,
-        model_name: Optional[str] = None,
-        temperature: float = 0.7,
-        timeout: int = 60,
-    ):
-        try:
-            from google import genai
-            from google.genai import types
-        except ImportError:
-            raise LLMConfigurationError(
-                "google-genai package is required for Google support. "
-                "Install with: pip install google-genai"
-            )
-
-        settings = get_settings()
-        api_key = settings.google_api_key or os.getenv("GOOGLE_API_KEY")
-
-        if not api_key:
-            raise LLMConfigurationError(
-                "GOOGLE_API_KEY environment variable is not set. "
-                "Please add it to your .env file."
-            )
-
-        self._model = model_name or settings.google_model
-        self._temperature = temperature
-        self._timeout = timeout
-        self._client = genai.Client(api_key=api_key)
-        self._types = types
-        self._retry_decorator = create_retry_decorator()
-
-    def _invoke_internal(self, prompt: str) -> str:
-        """Internal invoke method that handles the actual API call."""
-        response = self._client.models.generate_content(
-            model=self._model,
-            contents=prompt,
-            config=self._types.GenerateContentConfig(
-                temperature=self._temperature,
-            ),
-        )
-        return response.text or ""
-
-    def invoke(self, prompt: str) -> str:
-        """Invoke with retry logic."""
-
-        @self._retry_decorator
-        def _invoke_with_retry():
-            try:
-                return self._invoke_internal(prompt)
-            except Exception as e:
-                classified_error = _classify_google_error(e)
-                logger.warning(
-                    "Google API call failed: %s (retryable: %s)",
-                    str(e),
-                    classified_error.retryable,
-                )
-                raise classified_error from e
-
-        try:
-            return _invoke_with_retry()
-        except RetryError as e:
-            last_exception = e.last_attempt.exception()
-            if last_exception:
-                raise last_exception from e
-            raise LLMProviderError(f"Google API error after retries: {str(e)}") from e
-
-    @property
-    def name(self) -> str:
-        return "google"
-
-    @property
-    def model(self) -> str:
-        return self._model
-
-
-class OllamaProvider(BaseLLMProvider):
-    """Ollama local model provider using httpx REST API calls with retry support."""
-
-    def __init__(
-        self,
-        model_name: Optional[str] = None,
-        temperature: float = 0.7,
-        timeout: int = 60,
-    ):
-        settings = get_settings()
-        self._base_url = settings.ollama_base_url or os.getenv(
-            "OLLAMA_BASE_URL", "http://localhost:11434"
-        )
-        self._model = model_name or settings.ollama_model or os.getenv("OLLAMA_MODEL", "llama3.2")
-        self._temperature = temperature
-        self._timeout = timeout
-        self._retry_decorator = create_retry_decorator()
-
-    def _invoke_internal(self, prompt: str) -> str:
-        """Internal invoke method that handles the actual API call."""
-        with httpx.Client(timeout=self._timeout) as client:
-            response = client.post(
-                f"{self._base_url}/api/generate",
-                json={
-                    "model": self._model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": self._temperature,
-                    },
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data.get("response", "")
-
-    def invoke(self, prompt: str) -> str:
-        """Invoke with retry logic."""
-
-        @self._retry_decorator
-        def _invoke_with_retry():
-            try:
-                return self._invoke_internal(prompt)
-            except httpx.HTTPStatusError as e:
-                classified_error = _classify_httpx_error(e, "Ollama")
-                logger.warning(
-                    "Ollama API call failed: HTTP %s (retryable: %s)",
-                    e.response.status_code,
-                    classified_error.retryable,
-                )
-                raise classified_error from e
-            except httpx.RequestError as e:
-                classified_error = _classify_httpx_error(e, "Ollama")
-                logger.warning(
-                    "Ollama connection error: %s (retryable: %s)",
-                    str(e),
-                    classified_error.retryable,
-                )
-                # Add helpful message for connection errors
-                if isinstance(classified_error, LLMConnectionError):
-                    classified_error = LLMConnectionError(
-                        f"Ollama connection error: {str(e)}. Is Ollama running at {self._base_url}?"
-                    )
-                raise classified_error from e
-
-        try:
-            return _invoke_with_retry()
-        except RetryError as e:
-            last_exception = e.last_attempt.exception()
-            if last_exception:
-                raise last_exception from e
-            raise LLMProviderError(f"Ollama error after retries: {str(e)}") from e
-
-    @property
-    def name(self) -> str:
-        return "ollama"
-
-    @property
-    def model(self) -> str:
-        return self._model
+    return {
+        "openai": settings.openai_model,
+        "anthropic": settings.anthropic_model,
+        "google": settings.google_model,
+        "ollama": settings.ollama_model,
+    }.get(provider_name)
 
 
 class MockProvider(BaseLLMProvider):
@@ -825,12 +249,13 @@ class MockProvider(BaseLLMProvider):
         return self._model
 
 
-# Provider registry - typed as dict to concrete implementations
-_PROVIDERS: dict[str, type[BaseLLMProvider]] = {
-    "openai": OpenAIProvider,
-    "anthropic": AnthropicProvider,
-    "google": GoogleProvider,
-    "ollama": OllamaProvider,
+# Provider registry: name -> factory. "mock" is a real class because the tests
+# assert on it; the rest are the one adapter, bound to a provider name.
+_PROVIDERS: dict[str, Callable[..., BaseLLMProvider]] = {
+    "openai": partial(_ClientProvider, "openai"),
+    "anthropic": partial(_ClientProvider, "anthropic"),
+    "google": partial(_ClientProvider, "google"),
+    "ollama": partial(_ClientProvider, "ollama"),
     "mock": MockProvider,
 }
 
@@ -865,12 +290,10 @@ def get_llm_provider(
         available = ", ".join(_PROVIDERS.keys())
         raise ValueError(f"Unknown provider: {provider}. Available: {available}")
 
-    timeout = settings.llm_request_timeout
-
     return _PROVIDERS[provider](
         model_name=model_name,
         temperature=temperature,
-        timeout=timeout,
+        timeout=settings.llm_request_timeout,
     )
 
 
@@ -1397,5 +820,6 @@ def get_retry_stats() -> dict:
         "initial_delay_seconds": settings.llm_retry_delay,
         "max_delay_seconds": settings.llm_retry_max_delay,
         "exponential_base": settings.llm_retry_exponential_base,
-        "jitter_enabled": settings.llm_retry_jitter,
+        # llm_client always jitters its backoff, so this is no longer a switch.
+        "jitter_enabled": True,
     }
