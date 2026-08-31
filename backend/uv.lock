@@ -1458,8 +1458,8 @@ wheels = [
 
 [[package]]
 name = "llm-client"
-version = "0.1.0"
-source = { git = "https://github.com/gr8monk3ys/llm-client?rev=v0.1.0#1a4c0a44b99672c72aecd9108968c57f24488899" }
+version = "0.1.1"
+source = { git = "https://github.com/gr8monk3ys/llm-client?rev=v0.1.1#34fcceb0f98dcd772b622dc23023c72e236800eb" }
 dependencies = [
     { name = "cachetools" },
     { name = "httpx" },
@@ -2907,7 +2907,7 @@ requires-dist = [
     { name = "langchain", specifier = ">=0.1.0" },
     { name = "langchain-community", specifier = ">=0.0.13" },
     { name = "langchain-openai", specifier = ">=0.0.5" },
-    { name = "llm-client", extras = ["openai", "anthropic", "gemini"], git = "https://github.com/gr8monk3ys/llm-client?rev=v0.1.0" },
+    { name = "llm-client", extras = ["openai", "anthropic", "gemini"], git = "https://github.com/gr8monk3ys/llm-client?rev=v0.1.1" },
     { name = "openai", specifier = ">=1.10.0" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
