@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     llm_retry_delay: float = 1.0  # Initial delay in seconds before first retry
     llm_retry_max_delay: float = 30.0  # Maximum delay between retries
     llm_retry_exponential_base: float = 2.0  # Base for exponential backoff
-    llm_retry_jitter: bool = True  # Add random jitter to prevent thundering herd
+    # No llm_retry_jitter: the backoff always jitters, so a switch would lie.
 
     # OpenAI
     openai_api_key: Optional[str] = None
