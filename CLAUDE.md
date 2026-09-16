@@ -34,3 +34,17 @@ CI (`.github/workflows/ci.yml`) runs exactly those commands; coverage gate is 63
 - `LLM_PROVIDER` defaults to `mock`; real providers need a key in `.env`.
 - `frontend/e2e/` (Playwright) is not in CI; run with `bun run test:e2e`.
 - Root `pyproject.toml` only holds lint tooling; app deps are in `backend/pyproject.toml`.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `gr8monk3ys/resume-AI`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, label string equal to role name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
