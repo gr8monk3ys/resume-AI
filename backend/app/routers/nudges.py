@@ -191,7 +191,10 @@ def list_nudges(
         .all()
     )
     for resume in stale_resumes:
-        days = (now - resume.updated_at).days if resume.updated_at else 30
+        resume_updated_at = resume.updated_at
+        if resume_updated_at is not None and resume_updated_at.tzinfo is None:
+            resume_updated_at = resume_updated_at.replace(tzinfo=timezone.utc)
+        days = (now - resume_updated_at).days if resume_updated_at else 30
         nudges.append(
             NudgeItem(
                 nudge_type="resume_freshness",
