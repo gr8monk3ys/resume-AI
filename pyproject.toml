@@ -3,7 +3,7 @@ name = "resume-ai"
 version = "1.0.0"
 description = "AI-powered resume analysis and optimization tool"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     # Minimal root dependencies - main app deps are in backend/requirements.txt
     "python-dotenv",

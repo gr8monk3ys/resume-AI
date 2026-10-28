@@ -30,12 +30,14 @@ if backend_dir not in sys.path:
 from app.services.file_parser import (
     MAGIC_BYTES,
     MAX_FILE_SIZE_BYTES,
+    MAX_PDF_PAGES,
     MAX_TEXT_LENGTH,
     _check_file_size,
     _sanitize_file_type,
     _validate_magic_bytes,
     parse_docx,
     parse_file,
+    parse_pdf,
     parse_txt,
 )
 
@@ -199,6 +201,48 @@ class TestParseDocx:
     def test_invalid_docx_raises_value_error(self):
         with pytest.raises(ValueError, match="Error parsing DOCX file"):
             parse_docx(b"PK\x03\x04 not a real docx archive body")
+
+
+# =============================================================================
+# parse_pdf (pypdf)
+# =============================================================================
+
+SAMPLE_PDF = os.path.join(os.path.dirname(backend_dir), "test_files", "resume.pdf")
+
+
+def _build_blank_pdf_bytes(num_pages):
+    from pypdf import PdfWriter
+
+    writer = PdfWriter()
+    for _ in range(num_pages):
+        writer.add_blank_page(width=612, height=792)
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+class TestParsePdf:
+    def test_extracts_text_from_sample_resume(self):
+        with open(SAMPLE_PDF, "rb") as f:
+            result = parse_pdf(f.read())
+        assert "Jane Smith" in result
+        assert "PROFESSIONAL SUMMARY" in result
+
+    def test_sample_resume_through_dispatch(self):
+        with open(SAMPLE_PDF, "rb") as f:
+            result = parse_file(f.read(), "pdf")
+        assert "Senior Data Scientist" in result
+
+    def test_blank_pages_yield_empty_text(self):
+        assert parse_pdf(_build_blank_pdf_bytes(2)).strip() == ""
+
+    def test_rejects_too_many_pages(self):
+        with pytest.raises(ValueError, match="too many pages"):
+            parse_pdf(_build_blank_pdf_bytes(MAX_PDF_PAGES + 1))
+
+    def test_invalid_pdf_raises_value_error(self):
+        with pytest.raises(ValueError, match="Error parsing PDF file"):
+            parse_pdf(b"%PDF-1.4 not a real pdf body")
 
 
 # =============================================================================
