@@ -424,7 +424,10 @@ describe('JobFormModal', () => {
 
       await user.type(screen.getByLabelText(/company/i), 'TechCorp')
       await user.type(screen.getByLabelText(/position/i), 'Software Engineer')
-      await user.type(screen.getByLabelText(/notes/i), longText)
+      // Paste rather than type: typing 1000 keystrokes one by one can exceed the
+      // test timeout on slower machines without testing anything extra.
+      await user.click(screen.getByLabelText(/notes/i))
+      await user.paste(longText)
 
       const submitButton = screen.getByRole('button', { name: /add job/i })
       await user.click(submitButton)
