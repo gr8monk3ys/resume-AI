@@ -88,6 +88,13 @@ extension/
 
 4. Test your changes on a job board
 
+The shared `lib/` modules (API client, storage helper) have unit tests that run on
+Node's built-in test runner with no dependencies:
+
+```bash
+cd extension && node --test lib/*.test.js   # or: bun run test
+```
+
 ### Debugging
 
 - **Popup**: Right-click the extension icon and select "Inspect popup"
@@ -154,8 +161,11 @@ The extension requests the following permissions:
 - `activeTab`: Access the current tab to detect job pages
 - `storage`: Store user preferences and cached data
 - `tabs`: Query and interact with browser tabs
+- `notifications`: Confirm when a job is saved to the tracker
+- `contextMenus`: "Track this job with ResuBoost" on job links
 
-Host permissions are required for content script injection on supported job boards.
+Host permissions are required for content script injection on supported job boards,
+plus `http://localhost:8000/*` so the popup and service worker can call the local API.
 
 ## Security
 

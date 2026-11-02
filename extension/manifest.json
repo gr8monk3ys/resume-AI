@@ -11,9 +11,12 @@
   "permissions": [
     "activeTab",
     "storage",
-    "tabs"
+    "tabs",
+    "notifications",
+    "contextMenus"
   ],
   "host_permissions": [
+    "http://localhost:8000/*",
     "https://www.linkedin.com/*",
     "https://linkedin.com/*",
     "https://www.indeed.com/*",
@@ -61,7 +64,6 @@
         "https://*.breezy.hr/*"
       ],
       "js": [
-        "lib/storage.js",
         "content/detector.js",
         "content/fillers/generic.js",
         "content/fillers/linkedin.js",
