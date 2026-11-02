@@ -165,10 +165,10 @@ def parse_pdf(file_content: bytes) -> str:
     _check_file_size(file_content)
 
     try:
-        import PyPDF2
+        from pypdf import PdfReader
 
         pdf_file = io.BytesIO(file_content)
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        pdf_reader = PdfReader(pdf_file)
 
         # Check page count limit
         num_pages = len(pdf_reader.pages)
@@ -203,7 +203,7 @@ def parse_pdf(file_content: bytes) -> str:
         return result
     except ImportError:
         raise ImportError(
-            "PyPDF2 is required to parse PDF files. Install it with: pip install PyPDF2"
+            "pypdf is required to parse PDF files. Install it with: pip install pypdf"
         )
     except ValueError:
         # Re-raise ValueError (our security checks)

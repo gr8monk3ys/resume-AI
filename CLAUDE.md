@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-ResuBoost AI: resume/job-search toolkit. FastAPI backend (`backend/`, Python 3.10+, uv)
+ResuBoost AI: resume/job-search toolkit. FastAPI backend (`backend/`, Python 3.11+, uv)
 plus Next.js 15 frontend (`frontend/`, Bun). Not deployed; runs locally.
 
 ## Run / test

@@ -21,7 +21,7 @@ everything works with no API key; set a provider in `.env` for real generations.
 
 ## Run
 
-Requires Python 3.10+, [uv](https://docs.astral.sh/uv/), and [Bun](https://bun.sh).
+Requires Python 3.11+, [uv](https://docs.astral.sh/uv/), and [Bun](https://bun.sh).
 
 ```bash
 git clone https://github.com/gr8monk3ys/resume-AI.git && cd resume-AI
