@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, assert } from 'vitest'
 
 import { createMockJobApplication } from '@/__tests__/test-utils'
 import { JobFormModal } from '@/components/jobs/JobFormModal'
@@ -136,7 +136,8 @@ describe('JobFormModal', () => {
 
       // HTML5 validation should prevent submission
       const companyInput = screen.getByLabelText(/company/i)
-      expect((companyInput as HTMLInputElement).validity.valid).toBe(false)
+      assert.instanceOf(companyInput, HTMLInputElement)
+      expect(companyInput.validity.valid).toBe(false)
       expect(mockOnSave).not.toHaveBeenCalled()
     })
 
@@ -151,7 +152,8 @@ describe('JobFormModal', () => {
       await user.click(submitButton)
 
       const positionInput = screen.getByLabelText(/position/i)
-      expect((positionInput as HTMLInputElement).validity.valid).toBe(false)
+      assert.instanceOf(positionInput, HTMLInputElement)
+      expect(positionInput.validity.valid).toBe(false)
       expect(mockOnSave).not.toHaveBeenCalled()
     })
 
@@ -234,7 +236,8 @@ describe('JobFormModal', () => {
       render(<JobFormModal onClose={mockOnClose} onSave={mockOnSave} />)
 
       const statusSelect = screen.getByLabelText(/status/i)
-      const options = Array.from((statusSelect as HTMLSelectElement).options).map((opt) => opt.value)
+      assert.instanceOf(statusSelect, HTMLSelectElement)
+      const options = Array.from(statusSelect.options).map((opt) => opt.value)
 
       expect(options).toEqual([
         'Bookmarked',

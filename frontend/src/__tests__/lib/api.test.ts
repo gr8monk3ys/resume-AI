@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, assert } from 'vitest'
 
 import { authApi, ApiError } from '@/lib/api'
 
 describe('authApi.deleteAccount', () => {
-  const fetchMock = vi.fn()
+  const fetchMock = vi.fn<typeof fetch>()
 
   beforeEach(() => {
     fetchMock.mockReset()
@@ -22,13 +22,16 @@ describe('authApi.deleteAccount', () => {
     await authApi.deleteAccount('correct-password')
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    const call = fetchMock.mock.calls[0] as [string, RequestInit]
+    const call = fetchMock.mock.calls.at(0)
+    assert(call !== undefined)
     const [url, options] = call
+    assert(options !== undefined)
 
     expect(url).toBe('http://localhost:8000/api/auth/account')
     expect(options.method).toBe('DELETE')
     expect(options.credentials).toBe('include')
-    expect(JSON.parse(options.body as string)).toEqual({ password: 'correct-password' })
+    assert(typeof options.body === 'string')
+    expect(JSON.parse(options.body)).toEqual({ password: 'correct-password' })
   })
 
   it('throws an ApiError when the password is incorrect', async () => {

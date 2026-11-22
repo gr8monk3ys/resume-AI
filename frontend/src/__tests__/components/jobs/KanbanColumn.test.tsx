@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, assert } from 'vitest'
 
 import { createMockJobApplication } from '@/__tests__/test-utils'
 import { KanbanColumn } from '@/components/jobs/KanbanColumn'
@@ -488,7 +488,8 @@ describe('KanbanColumn', () => {
         />
       )
 
-      const column = container.firstChild as HTMLElement
+      const column = container.firstChild
+      assert.instanceOf(column, HTMLElement)
       expect(column).toHaveClass('w-80')
     })
 
@@ -504,7 +505,8 @@ describe('KanbanColumn', () => {
         />
       )
 
-      const column = container.firstChild as HTMLElement
+      const column = container.firstChild
+      assert.instanceOf(column, HTMLElement)
       expect(column).toHaveClass('rounded-lg')
     })
 
