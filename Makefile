@@ -1,6 +1,6 @@
 .PHONY: backend frontend dev test test-e2e lint clean help \
         docker-up docker-down docker-build docker-logs docker-clean \
-        db-migrate db-upgrade db-downgrade install setup
+        db-migrate db-upgrade db-downgrade install setup check
 
 # =============================================================================
 # Help
@@ -22,6 +22,7 @@ help:
 	@echo "  make test       - Run all tests"
 	@echo "  make test-e2e   - Run E2E tests with Playwright"
 	@echo "  make lint       - Run linting on all code"
+	@echo "  make check      - lint + typecheck + tests + boundaries + build"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up    - Start all services with Docker Compose"
@@ -127,6 +128,13 @@ lint:
 	@echo "=== Frontend ==="
 	cd frontend && bun run lint
 	cd frontend && bun run typecheck
+
+check: lint
+	cd backend && uv run mypy app --ignore-missing-imports
+	cd backend && LLM_PROVIDER=mock TESTING=true DATABASE_URL=sqlite:///:memory: uv run pytest tests/ -q
+	cd frontend && bun run depcruise
+	cd frontend && bun run test:ci
+	cd frontend && bun run build
 
 format:
 	@echo "Formatting backend code..."
