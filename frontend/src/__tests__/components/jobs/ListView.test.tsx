@@ -1,6 +1,6 @@
 import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, assert } from 'vitest'
 
 import { createMockJobApplication } from '@/__tests__/test-utils'
 import { ListView } from '@/components/jobs/ListView'
@@ -281,7 +281,8 @@ describe('ListView', () => {
       )
 
       const statusFilter = screen.getByLabelText(/filter by status/i)
-      const options = Array.from((statusFilter as HTMLSelectElement).options).map((opt) => opt.value)
+      assert.instanceOf(statusFilter, HTMLSelectElement)
+      const options = Array.from(statusFilter.options).map((opt) => opt.value)
 
       expect(options).toContain('')
       expect(options).toContain('Bookmarked')

@@ -22,6 +22,7 @@ export default tseslint.config(
       'vitest.config.ts',
       'vitest.setup.tsx',
       'next-env.d.ts',
+      '.dependency-cruiser.cjs',
     ],
   },
   js.configs.recommended,

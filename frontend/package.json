@@ -18,7 +18,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "depcruise": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.0",
@@ -46,6 +47,8 @@
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.0",
+    "@total-typescript/shoehorn": "^0.1.2",
+    "@total-typescript/ts-reset": "^0.6.1",
     "@types/node": "^26.0.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -53,6 +56,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "@vitest/ui": "^4.1.10",
     "autoprefixer": "^10.5.4",
+    "dependency-cruiser": "^18.8.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "^16.2.12",
     "eslint-plugin-jsx-a11y": "^6.10.2",

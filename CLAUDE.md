@@ -15,7 +15,8 @@ cd frontend && bun install --frozen-lockfile
   bun run lint && bun run typecheck && bun run test:ci && bun run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs exactly those commands; coverage gate is 63%.
+`make check` runs lint, typecheck, backend and frontend tests, dependency-cruiser (`bun run depcruise`) and the frontend build.
+CI (`.github/workflows/ci.yml`) runs the same steps; coverage gate is 63%.
 
 ## Where things live
 

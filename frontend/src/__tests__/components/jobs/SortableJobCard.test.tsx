@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, assert } from 'vitest'
 
 import { createMockJobApplication } from '@/__tests__/test-utils'
 import { SortableJobCard } from '@/components/jobs/SortableJobCard'
@@ -399,7 +399,8 @@ describe('SortableJobCard', () => {
       )
 
       const statusSelect = screen.getByLabelText('Change job status')
-      const options = Array.from((statusSelect as HTMLSelectElement).options).map((opt) => opt.value)
+      assert.instanceOf(statusSelect, HTMLSelectElement)
+      const options = Array.from(statusSelect.options).map((opt) => opt.value)
 
       expect(options).toEqual([
         'Bookmarked',
